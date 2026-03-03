@@ -18,12 +18,17 @@ const AnalyticsDashboard = () => {
             if (user?.role === 'Customer') {
                 const { data } = await api.get('/analytics/customer-insights');
                 if (data.success) setInsights(data.insights);
-            } else if (user?.role === 'Owner' && user?.shop) {
-                const { data } = await api.get(`/analytics/predictive-sales/${user.shop}`);
-                if (data.success) setPredictions(data.predictions);
+            } else if (user?.role === 'Owner') {
+                // Fetch shop first to ensure we have the ID
+                const shopRes = await api.get('/shop/my/shop');
+                if (shopRes.data.success && shopRes.data.shop) {
+                    const shopId = shopRes.data.shop._id;
+                    const { data } = await api.get(`/analytics/predictive-sales/${shopId}`);
+                    if (data.success) setPredictions(data.predictions);
+                }
             }
         } catch (error) {
-            console.error('Analytics fetch failed');
+            console.error('Analytics fetch failed', error);
         } finally {
             setLoading(false);
         }
@@ -151,8 +156,8 @@ const AnalyticsDashboard = () => {
                                     <div
                                         key={idx}
                                         className={`p-4 rounded-2xl text-center ${pred.confidence === 'High'
-                                                ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200'
-                                                : 'bg-gray-50 border-2 border-gray-200'
+                                            ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200'
+                                            : 'bg-gray-50 border-2 border-gray-200'
                                             }`}
                                     >
                                         <p className="text-xs font-black uppercase tracking-widest text-gray-600 mb-1">{pred.day}</p>

@@ -6,13 +6,13 @@ const sendEmail = require('../utils/sendEmail');
 // Generate JWT Token
 // Generate JWT Tokens
 const sendToken = (user, statusCode, res) => {
-    // Short-lived Access Token
+    // Extended Access Token for stability
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '15m',
+        expiresIn: '24h',
     });
 
     // Long-lived Refresh Token
-    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { // Using same secret for simplicity unless env var differs
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: '7d',
     });
 
@@ -25,7 +25,7 @@ const sendToken = (user, statusCode, res) => {
 
     res.status(statusCode)
         .cookie('refreshToken', refreshToken, options)
-        .cookie('token', accessToken, { ...options, expires: new Date(Date.now() + 15 * 60 * 1000) }) // Fallback for existing middleware
+        .cookie('token', accessToken, { ...options, expires: new Date(Date.now() + 24 * 60 * 60 * 1000) })
         .json({
             success: true,
             user,
@@ -444,7 +444,7 @@ exports.raiseSupportTicket = async (req, res) => {
             subject,
             message,
             category,
-            orderId
+            orderId: orderId || undefined
         });
 
         res.status(201).json({ success: true, ticket });
@@ -473,5 +473,39 @@ exports.refreshToken = async (req, res) => {
         sendToken(user, 200, res);
     } catch (error) {
         res.status(401).json({ success: false, message: 'Invalid refresh token. Please login again.' });
+    }
+};
+
+// Update Delivery Location
+exports.updateDeliveryLocation = async (req, res) => {
+    try {
+        const { lat, lng } = req.body;
+
+        if (!lat || !lng) {
+            return res.status(400).json({ success: false, message: 'Latitude and Longitude are required' });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (user.role !== 'Delivery') {
+            return res.status(403).json({ success: false, message: 'Not authorized as delivery partner' });
+        }
+
+        user.deliverySpecs.currentLocation = {
+            lat,
+            lng,
+            updatedAt: new Date()
+        };
+
+        // Also update last active
+        user.lastActive = Date.now();
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Location updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };

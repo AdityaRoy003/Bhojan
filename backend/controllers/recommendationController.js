@@ -144,3 +144,83 @@ exports.getTimeBasedSuggestions = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+// --- LEADERBOARDS ---
+
+exports.getLeaderboardCustomers = async (req, res) => {
+    try {
+        const customers = await User.find({ role: 'Customer' })
+            .sort({ 'milestones.totalOrders': -1, loyaltyPoints: -1 })
+            .limit(10)
+            .select('fullname avatar milestones.totalOrders loyaltyPoints');
+        res.json({ success: true, customers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getLeaderboardRestaurants = async (req, res) => {
+    try {
+        const Shop = require('../models/Shop');
+        const restaurants = await Shop.find()
+            .sort({ orderCount: -1, rating: -1 })
+            .limit(10)
+            .select('name logo orderCount rating city');
+        res.json({ success: true, restaurants });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getLeaderboardDelivery = async (req, res) => {
+    try {
+        const partners = await User.find({ role: 'Delivery' })
+            .sort({ 'deliverySpecs.completedDeliveries': -1, 'deliverySpecs.rating': -1 })
+            .limit(10)
+            .select('fullname avatar deliverySpecs.completedDeliveries deliverySpecs.rating');
+        res.json({ success: true, partners });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// --- PREDICTIVE MEAL PLANNING ---
+
+exports.getPredictiveMealPlan = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const orders = await Order.find({ user: userId }).populate('items.item').limit(30);
+
+        if (orders.length < 3) {
+            return res.json({ success: true, message: 'Ordering more often helps us create better plans!', plan: [] });
+        }
+
+        // Simple AI logic: analyze favorite categories
+        const categoryFreq = {};
+        orders.forEach(o => {
+            o.items.forEach(it => {
+                if (it.item) {
+                    categoryFreq[it.item.category] = (categoryFreq[it.item.category] || 0) + 1;
+                }
+            });
+        });
+
+        const sortedCategories = Object.keys(categoryFreq).sort((a, b) => categoryFreq[b] - categoryFreq[a]);
+        const topCategories = sortedCategories.slice(0, 3);
+
+        const suggestedItems = await Item.find({ category: { $in: topCategories } })
+            .populate('shop', 'name')
+            .limit(7)
+            .sort({ rating: -1 });
+
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const plan = days.map((day, i) => ({
+            day,
+            suggestion: suggestedItems[i % suggestedItems.length],
+            type: i % 2 === 0 ? 'Lunch' : 'Dinner'
+        }));
+
+        res.json({ success: true, plan });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

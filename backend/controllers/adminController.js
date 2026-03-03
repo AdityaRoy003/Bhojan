@@ -2,6 +2,9 @@ const User = require('../models/User');
 const Shop = require('../models/Shop');
 const Order = require('../models/Order');
 const Item = require('../models/Item');
+const Zone = require('../models/Zone');
+const Dispute = require('../models/Dispute');
+const Notification = require('../models/Notification');
 const SystemConfig = require('../models/SystemConfig');
 const bcrypt = require('bcryptjs');
 const logger = require('../config/logger');
@@ -9,14 +12,6 @@ const logger = require('../config/logger');
 // Get Global Platform Stats
 exports.getPlatformStats = async (req, res) => {
     try {
-        const redisClient = require('../config/redisClient');
-        const CACHE_KEY = 'admin:platformStats';
-
-        if (redisClient && redisClient.isOpen) {
-            const cached = await redisClient.get(CACHE_KEY);
-            if (cached) return res.json(JSON.parse(cached));
-        }
-
         const [totalUsers, totalShops, totalOrders, totalItems] = await Promise.all([
             User.countDocuments(),
             Shop.countDocuments(),
@@ -53,11 +48,6 @@ exports.getPlatformStats = async (req, res) => {
         };
 
         logger.info(`[ADMIN] Stats fetched: users=${totalUsers}, shops=${totalShops}`);
-
-        // Cache for 2 minutes (analytics don't need to be instant-instant)
-        if (redisClient && redisClient.isOpen) {
-            await redisClient.setEx(CACHE_KEY, 120, JSON.stringify(responseData));
-        }
 
         res.status(200).json(responseData);
     } catch (error) {
@@ -299,3 +289,158 @@ exports.updateTicketStatus = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// --- DELIVERY FLEET MANAGEMENT ---
+
+// Get All Delivery Partners
+exports.getAllDeliveryPartners = async (req, res) => {
+    try {
+        const partners = await User.find({ role: 'Delivery' })
+            .select('-password')
+            .sort({ 'deliverySpecs.isOnline': -1, updatedAt: -1 });
+
+        res.status(200).json({ success: true, partners });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Manual Order Assignment
+exports.assignOrderManually = async (req, res) => {
+    try {
+        const { orderId, partnerId } = req.body;
+
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        const partner = await User.findById(partnerId);
+        if (!partner || partner.role !== 'Delivery') {
+            return res.status(400).json({ success: false, message: 'Invalid delivery partner' });
+        }
+
+        // Assign partner
+        order.deliveryPartner = partnerId;
+        order.orderStatus = 'Preparing'; // Set to preparing if assigned manually to proceed
+        order.statusHistory.push({
+            status: 'Preparing',
+            message: `Order manually assigned to ${partner.fullname} by Admin`,
+            updatedBy: req.user._id
+        });
+
+        await order.save();
+
+        // Notify partner
+        // Create notification
+        await Notification.create({
+            user: partnerId,
+            type: 'order',
+            title: 'New Manual Assignment',
+            message: `You have been manually assigned to Order #${order._id.toString().slice(-6)}`
+        });
+
+        res.status(200).json({ success: true, message: 'Order assigned successfully', order });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Broadcast Notification
+exports.broadcastNotification = async (req, res) => {
+    try {
+        const { title, message, targetRole, targetArea } = req.body;
+
+        let query = {};
+        if (targetRole) query.role = targetRole;
+        if (targetArea) query.city = targetArea;
+
+        const users = await User.find(query).select('_id');
+
+        const notifications = users.map(u => ({
+            user: u._id,
+            type: 'announcement',
+            title,
+            message
+        }));
+
+        await Notification.insertMany(notifications);
+
+        res.status(200).json({
+            success: true,
+            message: `Broadcast sent to ${users.length} users`
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// --- ADVANCED LOGISTICS ADMIN ---
+
+// Get All raised disputes
+exports.getAllDisputes = async (req, res) => {
+    try {
+        const disputes = await Dispute.find()
+            .populate('order', 'totalAmount orderStatus')
+            .populate('raisedBy', 'fullname email mobile role')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, disputes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Resolve a dispute
+exports.resolveDispute = async (req, res) => {
+    try {
+        const { status, resolutionNotes } = req.body;
+        const dispute = await Dispute.findById(req.params.id);
+        if (!dispute) return res.status(404).json({ success: false, message: 'Dispute not found' });
+
+        dispute.status = status;
+        dispute.resolutionNotes = resolutionNotes;
+        dispute.resolvedBy = req.user._id;
+        dispute.resolvedAt = new Date();
+        await dispute.save();
+
+        // Notify the user who raised it
+        await Notification.create({
+            user: dispute.raisedBy,
+            type: 'announcement',
+            title: 'Dispute Resolved',
+            message: `Your dispute regarding Order #${dispute.order.toString().slice(-6)} has been ${status}.`
+        });
+
+        res.status(200).json({ success: true, dispute });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update Zone Surge Pricing
+exports.updateZoneSurge = async (req, res) => {
+    try {
+        const { currentSurge, demandLevel, isActive } = req.body;
+        const zone = await Zone.findById(req.params.id);
+        if (!zone) return res.status(404).json({ success: false, message: 'Zone not found' });
+
+        if (currentSurge !== undefined) zone.currentSurge = currentSurge;
+        if (demandLevel !== undefined) zone.demandLevel = demandLevel;
+        if (isActive !== undefined) zone.isActive = isActive;
+
+        await zone.save();
+        res.status(200).json({ success: true, zone });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Create a new zone
+exports.createZone = async (req, res) => {
+    try {
+        const zone = await Zone.create(req.body);
+        res.status(201).json({ success: true, zone });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

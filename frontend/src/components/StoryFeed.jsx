@@ -37,17 +37,17 @@ const StoryFeed = () => {
                     >
                         <div className="relative">
                             <div className="w-20 h-20 rounded-full p-[3px] bg-gradient-to-tr from-orange-500 via-primary to-yellow-500 group-hover:rotate-180 transition-transform duration-700">
-                                <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
+                                <div className="w-full h-full rounded-full border-2 border-white dark:border-gray-800 overflow-hidden bg-gray-100 dark:bg-gray-700">
                                     <img src={story.mediaUrl} className="w-full h-full object-cover" alt="" />
                                 </div>
                             </div>
                             {story.isRegional && (
-                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-orange-200">
+                                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm border border-orange-200 dark:border-orange-900">
                                     <span className="text-[10px]">🎨</span>
                                 </div>
                             )}
                         </div>
-                        <p className="text-[10px] font-black text-center mt-2 text-gray-700 truncate w-20 uppercase tracking-tighter">
+                        <p className="text-[10px] font-black text-center mt-2 text-gray-700 dark:text-gray-300 truncate w-20 uppercase tracking-tighter">
                             {story.shop?.name || story.user?.fullname}
                         </p>
                     </motion.div>

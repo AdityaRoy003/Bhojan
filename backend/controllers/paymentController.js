@@ -54,20 +54,57 @@ exports.getRazorpayKey = async (req, res) => {
 // Validate Coupon
 exports.validateCoupon = async (req, res) => {
     try {
-        const { code, orderTotal } = req.body;
+        const { code, orderTotal, shopId } = req.body;
+        const User = require('../models/User');
         const Coupon = require('../models/Coupon');
 
-        const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+        const upperCode = code.toUpperCase();
+
+        // 1. Check User's personal coupons wallet (e.g., from Spin-the-Wheel)
+        const user = await User.findById(req.user.id);
+        const personalCoupon = user.coupons?.find(c => c.code.toUpperCase() === upperCode);
+
+        if (personalCoupon) {
+            if (personalCoupon.isUsed) {
+                return res.status(400).json({ success: false, message: 'Coupon already used' });
+            }
+            if (new Date() > personalCoupon.expiresAt) {
+                return res.status(400).json({ success: false, message: 'Coupon has expired' });
+            }
+
+            let discount = 0;
+            if (personalCoupon.type === 'free_delivery') {
+                discount = 30; // Match hardcoded delivery fee in Checkout.jsx
+            } else {
+                // Value is numeric for discount types (e.g., 50, 100)
+                discount = Number(personalCoupon.value) || 0;
+            }
+
+            return res.status(200).json({
+                success: true,
+                discount: Math.floor(discount),
+                couponCode: personalCoupon.code,
+                message: personalCoupon.type === 'free_delivery' ? 'Free Delivery applied!' : 'Personal discount applied!'
+            });
+        }
+
+        // 2. Fall back to global Shop Coupons
+        const coupon = await Coupon.findOne({ code: upperCode });
 
         if (!coupon) {
             return res.status(404).json({ success: false, message: 'Invalid coupon code' });
+        }
+
+        // Verify Shop (Only for global coupons)
+        if (shopId && coupon.shop.toString() !== shopId) {
+            return res.status(400).json({ success: false, message: 'Coupon not valid for this shop' });
         }
 
         if (!coupon.isActive) {
             return res.status(400).json({ success: false, message: 'Coupon is inactive' });
         }
 
-        if (new Date() > coupon.expiresAt) {
+        if (new Date() > coupon.validUntil) {
             return res.status(400).json({ success: false, message: 'Coupon has expired' });
         }
 
@@ -77,10 +114,10 @@ exports.validateCoupon = async (req, res) => {
 
         // Calculate Discount
         let discount = 0;
-        if (coupon.discountType === 'PERCENTAGE') {
+        if (coupon.discountType === 'Percentage') {
             discount = (orderTotal * coupon.value) / 100;
-            if (coupon.maxDiscountAmount) {
-                discount = Math.min(discount, coupon.maxDiscountAmount);
+            if (coupon.maxDiscount) {
+                discount = Math.min(discount, coupon.maxDiscount);
             }
         } else {
             discount = coupon.value;

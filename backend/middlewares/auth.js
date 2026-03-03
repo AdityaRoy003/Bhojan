@@ -28,7 +28,12 @@ exports.isAuthenticated = async (req, res, next) => {
 
         next();
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+            logger.warn(`[AUTH] Unauthorized: ${error.message}`);
+            return res.status(401).json({ success: false, message: "Session expired, please login again" });
+        }
+        logger.error(`[AUTH] Middleware Error: ${error.message}`);
+        res.status(500).json({ success: false, message: "Server Error during authentication" });
     }
 };
 

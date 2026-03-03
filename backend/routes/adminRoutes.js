@@ -17,7 +17,14 @@ const {
     getSystemConfig,
     updateSystemConfig,
     getAllSupportTickets,
-    updateTicketStatus
+    updateTicketStatus,
+    getAllDeliveryPartners,
+    assignOrderManually,
+    broadcastNotification,
+    getAllDisputes,
+    resolveDispute,
+    updateZoneSurge,
+    createZone
 } = require('../controllers/adminController');
 
 // All routes are protected and restricted to Admin only
@@ -45,5 +52,16 @@ router.put('/config', updateSystemConfig);
 // Support Routes
 router.get('/tickets', getAllSupportTickets);
 router.put('/ticket/status', updateTicketStatus);
+
+// Delivery & Assignment Routes
+router.get('/delivery/partners', getAllDeliveryPartners);
+router.get('/delivery/disputes', getAllDisputes);
+router.put('/delivery/dispute/:id', resolveDispute);
+router.post('/delivery/zones', createZone);
+router.put('/delivery/zone/:id', updateZoneSurge);
+router.put('/order/assign', assignOrderManually);
+
+// Notification Routes
+router.post('/notifications/broadcast', broadcastNotification);
 
 module.exports = router;

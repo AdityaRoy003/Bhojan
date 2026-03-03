@@ -88,6 +88,8 @@ const userSchema = new mongoose.Schema({
     walletBalance: { type: Number, default: 0 },
     bhojanMoney: { type: Number, default: 0 },
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Item' }],
+    followingUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     followingShops: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Shop' }],
     socialStats: {
         followersCount: { type: Number, default: 0 },
@@ -129,8 +131,17 @@ const userSchema = new mongoose.Schema({
         isOnline: { type: Boolean, default: false },
         currentLocation: {
             lat: { type: Number },
-            lng: { type: Number }
+            lng: { type: Number },
+            updatedAt: { type: Date }
         },
+        // Performance & Wallet Metrics
+        acceptanceRate: { type: Number, default: 100 },
+        cancellationRate: { type: Number, default: 0 },
+        completionRate: { type: Number, default: 100 },
+        cashCollected: { type: Number, default: 0 },
+        totalOffered: { type: Number, default: 0 },
+        totalCancelled: { type: Number, default: 0 },
+        rejectedOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
         // Extra Features
         kyc: {
             aadhaar: { type: String },

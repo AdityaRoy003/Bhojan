@@ -2,9 +2,10 @@ const express = require('express');
 const {
     signup, signin, logout, forgotPassword, resetPassword,
     getUserProfile, updateProfile, addAddress, getAddresses, deleteAddress,
-    changePassword, updatePreferences, updateSettings, deleteAccount, raiseSupportTicket
+    changePassword, updatePreferences, updateSettings, deleteAccount, raiseSupportTicket,
+    updateDeliveryLocation
 } = require('../controllers/authController');
-const { isAuthenticated } = require('../middlewares/auth');
+const { isAuthenticated, authorizeRoles } = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.post('/address/add', isAuthenticated, addAddress);
 router.get('/addresses', isAuthenticated, getAddresses);
 router.delete('/address/:id', isAuthenticated, deleteAddress);
 router.post('/support/ticket', isAuthenticated, raiseSupportTicket);
+router.put('/delivery/location', isAuthenticated, authorizeRoles('Delivery'), updateDeliveryLocation);
 
 module.exports = router;

@@ -55,6 +55,25 @@ const orderSchema = new mongoose.Schema({
         default: 'Medium'
     },
     routePolyline: { type: String }, // For real-time map routing
+    batchId: { type: String }, // For AI-based order batching
+    surgeMultiplier: { type: Number, default: 1 },
+    earningsEstimation: {
+        basePay: { type: Number, default: 40 },
+        distancePay: { type: Number, default: 0 },
+        surgePay: { type: Number, default: 0 },
+        incentivePay: { type: Number, default: 0 }
+    },
+    proofOfDelivery: {
+        photoUrl: { type: String },
+        signatureUrl: { type: String },
+        otp: { type: String },
+        verified: { type: Boolean, default: false }
+    },
+    geofencing: {
+        arrivedAtShop: { type: Date },
+        deliveredAtCustomer: { type: Date }
+    },
+    zone: { type: String }, // Operational zone name
     statusHistory: [{
         status: { type: String },
         timestamp: { type: Date, default: Date.now },

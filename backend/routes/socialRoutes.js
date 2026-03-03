@@ -6,7 +6,9 @@ const {
     getFeed,
     getStories,
     toggleLike,
-    toggleFollowShop
+    toggleFollowShop,
+    toggleFollowUser,
+    getFriendsActivity
 } = require('../controllers/socialController');
 
 router.post('/post', isAuthenticated, createPost);
@@ -14,5 +16,7 @@ router.get('/feed', getFeed);
 router.get('/stories', getStories);
 router.put('/like/:postId', isAuthenticated, toggleLike);
 router.put('/follow/:shopId', isAuthenticated, toggleFollowShop);
+router.put('/follow-user/:userId', isAuthenticated, toggleFollowUser);
+router.get('/friends-activity', isAuthenticated, getFriendsActivity);
 
 module.exports = router;

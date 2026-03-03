@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #e63946;
   --color-secondary: #f1faee;
@@ -12,7 +14,7 @@
 
 body {
   font-family: var(--font-sans);
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
 }
 
 ::-webkit-scrollbar {
@@ -25,4 +27,15 @@ body {
 
 ::-webkit-scrollbar-thumb {
   @apply bg-gray-300 rounded-full;
+}
+
+/* Custom Range Input Styling */
+input[type="range"] {
+  height: 6px;
+  @apply bg-gray-200 dark:bg-gray-800 rounded-full accent-primary transition-all;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply w-4 h-4 bg-primary rounded-full shadow-lg border-2 border-white dark:border-gray-900 cursor-pointer hover:scale-125 transition-transform;
+  -webkit-appearance: none;
 }

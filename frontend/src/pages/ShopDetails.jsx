@@ -1,22 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, replaceCart, updateQuantity, removeFromCart } from '../redux/cartSlice';
 import { motion, AnimatePresence } from 'framer-motion';
 import FollowButton from '../components/FollowButton';
+import DishPreviewModal from '../components/DishPreviewModal';
 
 const ShopDetails = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [shop, setShop] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const dispatch = useDispatch();
-    const cart = useSelector(state => state.cart);
-    const cartRestaurant = cart.restaurant;
-    const cartItems = cart.cartItems;
-
     const { isAuthenticated, user } = useSelector(state => state.user);
+    const cart = useSelector(state => state.cart);
+    const cartItems = cart.cartItems;
+    const cartRestaurant = cart.restaurant;
+
+    // Calculate totals for current shop
+    const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+    const totalAmount = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const isCartFromThisShop = cartRestaurant && cartRestaurant._id === id;
+
+    const [wishlist, setWishlist] = useState([]);
+    const [previewDish, setPreviewDish] = useState(null);
 
     useEffect(() => {
         const fetchShopDetails = async () => {
@@ -25,6 +34,13 @@ const ShopDetails = () => {
                 const itemsRes = await api.get(`/shop/${id}/items`);
                 if (shopRes.data.success) setShop(shopRes.data.shop);
                 if (itemsRes.data.success) setItems(itemsRes.data.items);
+
+                if (isAuthenticated) {
+                    const wishlistRes = await api.get('/user-actions/wishlist');
+                    if (wishlistRes.data.success) {
+                        setWishlist(wishlistRes.data.wishlist.map(item => item._id));
+                    }
+                }
             } catch (error) {
                 console.error("Error fetching shop details:", error);
             } finally {
@@ -32,7 +48,19 @@ const ShopDetails = () => {
             }
         };
         fetchShopDetails();
-    }, [id]);
+    }, [id, isAuthenticated]);
+
+    const handleToggleWishlist = async (itemId) => {
+        try {
+            const { data } = await api.post('/user-actions/wishlist/toggle', { itemId });
+            if (data.success) {
+                setWishlist(data.wishlist);
+            }
+        } catch (error) {
+            console.error("Error toggling wishlist:", error);
+            alert("Failed to update wishlist");
+        }
+    };
 
     const handleAddToCart = (item) => {
         if (isAuthenticated && user?.role !== 'Customer') {
@@ -107,21 +135,6 @@ const ShopDetails = () => {
                 </div>
             )}
 
-            {/* Vendor Story Section */}
-            {shop.story && (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 mb-8">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-orange-500"
-                    >
-                        <h3 className="text-orange-600 font-black uppercase tracking-widest text-xs mb-2">Our Story</h3>
-                        <p className="text-gray-700 italic text-lg leading-relaxed">"{shop.story}"</p>
-                    </motion.div>
-                </div>
-            )}
-
             {/* Menu Items */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <h2 className="text-2xl font-bold mb-6">Menu</h2>
@@ -138,13 +151,21 @@ const ShopDetails = () => {
                                 transition={{ delay: index * 0.1 }}
                                 className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4 hover:shadow-md transition group"
                             >
-                                <div className="w-32 h-32 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden relative">
+                                <div className="w-32 h-32 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden relative cursor-pointer" onClick={() => setPreviewDish(item)}>
                                     <img src={item.image} alt={item.name} className="w-full h-full object-cover transition group-hover:scale-105" />
-                                    <div className="absolute top-2 left-2">
+                                    <div className="absolute top-2 left-2 pointer-events-none">
                                         <span className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center bg-white ${item.foodType === 'Veg' ? 'border-green-600' : 'border-red-600'}`}>
                                             <span className={`w-1.5 h-1.5 rounded-full ${item.foodType === 'Veg' ? 'bg-green-600' : 'bg-red-600'}`}></span>
                                         </span>
                                     </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleToggleWishlist(item._id); }}
+                                        className="absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-transform active:scale-95"
+                                    >
+                                        <span className={`text-lg leading-none ${wishlist.includes(item._id) ? 'text-red-500' : 'text-gray-300'}`}>
+                                            {wishlist.includes(item._id) ? '❤️' : '🤍'}
+                                        </span>
+                                    </button>
                                 </div>
                                 <div className="flex-1 flex flex-col justify-between">
                                     <div>
@@ -196,6 +217,39 @@ const ShopDetails = () => {
                     {items.length === 0 && <p className="col-span-3 text-center text-gray-500">No items available yet.</p>}
                 </div>
             </div>
+
+            {/* Sticky Cart Footer (Swiggy Style) - Visible only if cart has items from this shop */}
+            <AnimatePresence>
+                {isCartFromThisShop && cartItems.length > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-20 left-4 right-4 md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:max-w-xl z-[90]"
+                    >
+                        <Link
+                            to="/cart"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-2xl shadow-[0_8px_30px_rgb(5,150,105,0.4)] flex items-center justify-between transition-all active:scale-95 group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 w-10 h-10 rounded-xl flex items-center justify-center text-lg animate-pulse">
+                                    🛒
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-widest opacity-80">
+                                        {totalItems} {totalItems === 1 ? 'Item' : 'Items'} Added
+                                    </p>
+                                    <p className="font-black text-lg">₹{totalAmount.toFixed(2)}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-black uppercase tracking-widest">View Cart</span>
+                                <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

@@ -30,7 +30,7 @@ const RecommendationCard = ({ item, reason }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300"
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
         >
             <div className="relative h-40 overflow-hidden">
                 <img
@@ -53,7 +53,7 @@ const RecommendationCard = ({ item, reason }) => {
             <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 text-lg">{item.name}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{item.name}</h3>
                         <p className="text-xs text-gray-500 mt-1">{item.shop?.name}</p>
                     </div>
                     <div className="flex items-center gap-1">
@@ -63,7 +63,7 @@ const RecommendationCard = ({ item, reason }) => {
                 </div>
 
                 {item.description && (
-                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{item.description}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{item.description}</p>
                 )}
 
                 {/* Dietary Tags */}
@@ -87,7 +87,7 @@ const RecommendationCard = ({ item, reason }) => {
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-gray-900">₹{item.price}</span>
+                        <span className="text-lg font-black text-gray-900 dark:text-white">₹{item.price}</span>
                         {item.rating > 0 && (
                             <div className="flex items-center gap-1 text-xs text-gray-600">
                                 <span className="text-yellow-500">★</span>

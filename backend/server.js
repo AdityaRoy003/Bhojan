@@ -73,7 +73,7 @@ app.get('/health', async (req, res) => {
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // Limit each IP to 1000 requests per windowMs (increased from 100 to prevent 429 errors during dev)
+    max: 5000, // Limit each IP to 5000 requests per windowMs (increased specifically for development frequency)
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -123,6 +123,10 @@ app.use('/api/gamification', require('./routes/gamificationRoutes'));
 app.use('/api/cloud-kitchen', require('./routes/cloudKitchenRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/user-actions', require('./routes/userActionRoutes'));
+app.use('/api/review', require('./routes/reviewRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/quests', require('./routes/questRoutes'));
+app.use('/api/events', require('./routes/eventRoutes'));
 
 // Global Error Handler
 const { errorHandler } = require('./middlewares/errorMiddleware');

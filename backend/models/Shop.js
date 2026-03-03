@@ -43,7 +43,10 @@ const shopSchema = new mongoose.Schema({
     logo: { type: String }, // Shop logo URL
     banner: { type: String }, // Shop banner URL
     story: { type: String }, // Vendor bio/story
-    specialTags: [{ type: String }] // e.g. "Festival Special", "Diwali Sweets"
+    specialTags: [{ type: String }], // e.g. "Festival Special", "Diwali Sweets"
+    rating: { type: Number, default: 0 },
+    numReviews: { type: Number, default: 0 },
+    costForTwo: { type: Number, default: 300 }
 }, { timestamps: true });
 
 // Performance Indexes

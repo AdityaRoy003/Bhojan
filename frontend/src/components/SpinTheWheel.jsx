@@ -1,11 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSelector, useDispatch } from 'react-redux';
+import { updateUser } from '../redux/userSlice'; // Assuming this action exists
 import api from '../utils/api';
 
 const SpinTheWheel = ({ onClose, onWin }) => {
+    const { user } = useSelector(state => state.user);
+    const dispatch = useDispatch();
     const [spinning, setSpinning] = useState(false);
     const [result, setResult] = useState(null);
     const [rotation, setRotation] = useState(0);
+    const [error, setError] = useState(null);
+
+    // Check if user has spun today
+    const checkCanSpin = () => {
+        if (!user?.gamification?.lastSpinDate) return true;
+        const lastSpin = new Date(user.gamification.lastSpinDate).setHours(0, 0, 0, 0);
+        const today = new Date().setHours(0, 0, 0, 0);
+        return lastSpin !== today;
+    };
+
+    const canSpin = checkCanSpin();
 
     const prizes = [
         { label: '10% OFF', value: 10, color: 'from-red-500 to-red-600' },
@@ -19,8 +34,9 @@ const SpinTheWheel = ({ onClose, onWin }) => {
     ];
 
     const spinWheel = async () => {
-        if (spinning) return;
+        if (spinning || !canSpin) return;
         setSpinning(true);
+        setError(null);
 
         // Random prize selection
         const winningIndex = Math.floor(Math.random() * prizes.length);
@@ -31,10 +47,8 @@ const SpinTheWheel = ({ onClose, onWin }) => {
         setRotation(targetRotation);
 
         setTimeout(async () => {
-            setResult(prizes[winningIndex]);
-            setSpinning(false);
-
             // Save coupon to backend
+            let wonCode = null;
             if (prizes[winningIndex].value !== 0) {
                 try {
                     const { data } = await api.post('/gamification/spin-reward', {
@@ -42,18 +56,29 @@ const SpinTheWheel = ({ onClose, onWin }) => {
                     });
 
                     if (data.success) {
-                        // Use the real coupon code from backend
-                        setResult({ ...prizes[winningIndex], code: data.coupon.code });
+                        wonCode = data.coupon.code;
+                        // Update redux user state to reflect new spin date
+                        if (user) {
+                            const updatedUser = {
+                                ...user,
+                                gamification: {
+                                    ...user.gamification,
+                                    lastSpinDate: new Date().toISOString(),
+                                    totalSpins: (user.gamification?.totalSpins || 0) + 1
+                                }
+                            };
+                            dispatch(updateUser(updatedUser));
+                        }
                         if (onWin) onWin(data.coupon);
                     }
                 } catch (error) {
-                    console.error('Failed to save reward');
-                    // Fallback to client-side display if offline, but no real coupon
-                    setResult(prizes[winningIndex]);
+                    console.error('Failed to save reward', error);
+                    setError(error.response?.data?.message || 'Failed to generate coupon');
                 }
-            } else {
-                setResult(prizes[winningIndex]);
             }
+
+            setResult({ ...prizes[winningIndex], code: wonCode });
+            setSpinning(false);
         }, 4000);
     };
 
@@ -118,37 +143,49 @@ const SpinTheWheel = ({ onClose, onWin }) => {
                 </div>
 
                 {!result ? (
-                    <button
-                        onClick={spinWheel}
-                        disabled={spinning}
-                        className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg ${spinning
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-primary to-orange-500 text-white hover:shadow-xl'
-                            }`}
-                    >
-                        {spinning ? 'Spinning...' : 'Spin Now!'}
-                    </button>
+                    <div className="text-center">
+                        <button
+                            onClick={spinWheel}
+                            disabled={spinning || !canSpin}
+                            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg ${spinning || !canSpin
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-primary to-orange-500 text-white hover:shadow-xl'
+                                }`}
+                        >
+                            {spinning ? 'Spinning...' : canSpin ? 'Spin Now!' : 'Come back tomorrow!'}
+                        </button>
+                        {!canSpin && <p className="text-xs text-gray-500 font-bold mt-2">You can only spin once per day.</p>}
+                    </div>
                 ) : (
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         className="text-center"
                     >
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200 mb-4">
-                            <p className="text-sm font-black uppercase tracking-widest text-green-600 mb-2">
-                                🎉 Congratulations!
-                            </p>
-                            <p className="text-3xl font-black text-gray-900">{result.label}</p>
-                            {result.value !== 0 && (
-                                <div className="mt-4">
-                                    <p className="text-xs text-gray-600 font-bold mb-1">Use Code:</p>
-                                    <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl py-2 px-4 font-mono font-black text-lg tracking-widest text-primary selection:bg-primary selection:text-white">
-                                        {result.code || 'Loading...'}
+                        {error ? (
+                            <div className="bg-red-50 p-6 rounded-2xl border-2 border-red-200 mb-4">
+                                <p className="text-sm font-black uppercase tracking-widest text-red-600 mb-2">
+                                    Oops!
+                                </p>
+                                <p className="text-gray-900 font-bold">{error}</p>
+                            </div>
+                        ) : (
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200 mb-4">
+                                <p className="text-sm font-black uppercase tracking-widest text-green-600 mb-2">
+                                    🎉 Congratulations!
+                                </p>
+                                <p className="text-3xl font-black text-gray-900">{result.label}</p>
+                                {result.value !== 0 && (
+                                    <div className="mt-4">
+                                        <p className="text-xs text-gray-600 font-bold mb-1">Use Code:</p>
+                                        <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl py-2 px-4 font-mono font-black text-lg tracking-widest text-primary selection:bg-primary selection:text-white">
+                                            {result.code || 'Loading...'}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 font-bold mt-2">Added to your active coupons</p>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 font-bold mt-2">Added to your active coupons</p>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
                         <button
                             onClick={onClose}
                             className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-800"

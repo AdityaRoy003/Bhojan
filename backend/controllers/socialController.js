@@ -96,3 +96,54 @@ exports.toggleFollowShop = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+// Follow/Unfollow a user
+exports.toggleFollowUser = async (req, res) => {
+    try {
+        const targetUserId = req.params.userId;
+        if (targetUserId === req.user.id) return res.status(400).json({ success: false, message: 'You cannot follow yourself' });
+
+        const targetUser = await User.findById(targetUserId);
+        const currentUser = await User.findById(req.user.id);
+
+        if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const index = targetUser.followers.indexOf(req.user.id);
+        if (index === -1) {
+            targetUser.followers.push(req.user.id);
+            currentUser.followingUsers.push(targetUserId);
+        } else {
+            targetUser.followers.splice(index, 1);
+            const followIndex = currentUser.followingUsers.indexOf(targetUserId);
+            if (followIndex !== -1) currentUser.followingUsers.splice(followIndex, 1);
+        }
+
+        targetUser.socialStats.followersCount = targetUser.followers.length;
+        currentUser.socialStats.followingCount = currentUser.followingUsers.length;
+
+        await targetUser.save();
+        await currentUser.save();
+
+        res.status(200).json({ success: true, isFollowing: index === -1 });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get activity of followed friends
+exports.getFriendsActivity = async (req, res) => {
+    try {
+        const currentUser = await User.findById(req.user.id);
+        const friends = currentUser.followingUsers;
+
+        const Order = require('../models/Order');
+        const activity = await Order.find({ user: { $in: friends }, status: 'Delivered' })
+            .populate('user', 'fullname avatar')
+            .populate('shop', 'name logo')
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        res.json({ success: true, activity });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

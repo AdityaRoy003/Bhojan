@@ -1,7 +1,25 @@
 const Order = require('../models/Order');
+const User = require('../models/User');
+const Shop = require('../models/Shop');
+const Zone = require('../models/Zone');
+const Dispute = require('../models/Dispute');
+const logger = require('../config/logger');
 const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
 const emailTemplates = require('../utils/emailTemplates');
+
+// Helper for Haversine distance in KM
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
 
 // Place Order
 exports.placeOrder = async (req, res) => {
@@ -76,6 +94,15 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
+        // Handle Coupon usage for Personal Rewards
+        if (couponCode) {
+            const userCoupon = user.coupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase() && !c.isUsed);
+            if (userCoupon) {
+                userCoupon.isUsed = true;
+                logger.info(`Personal coupon ${couponCode} marked as used for user ${user._id}`);
+            }
+        }
+
         await user.save();
 
         const newOrder = await Order.create({
@@ -140,7 +167,10 @@ exports.placeOrder = async (req, res) => {
 exports.getMyOrders = async (req, res) => {
     try {
         console.log(`[ORDER] Fetching orders for user: ${req.user?._id}`);
-        const orders = await Order.find({ user: req.user._id }).populate('shop', 'name image').sort({ createdAt: -1 });
+        const orders = await Order.find({ user: req.user._id })
+            .populate('shop', 'name image city')
+            .populate('items.item', 'name image price type') // Populate item details for Reorder
+            .sort({ createdAt: -1 });
         console.log(`[ORDER] Found ${orders.length} orders`);
         res.status(200).json({ success: true, orders });
     } catch (error) {
@@ -220,6 +250,26 @@ exports.updateOrderStatus = async (req, res) => {
                 orderId: order._id,
                 shopName: shop.name
             });
+
+            // Create persistent Notification documents for all online delivery partners
+            try {
+                const User = require('../models/User');
+                const Notification = require('../models/Notification');
+
+                const onlinePartners = await User.find({ role: 'Delivery', isOnline: true });
+                const notificationsToCreate = onlinePartners.map(p => ({
+                    user: p._id,
+                    title: 'New Delivery Available',
+                    message: `A new order from ${shop.name} is ready for pickup. Area: ${shop.city || 'Local'}`,
+                    type: 'order'
+                }));
+
+                if (notificationsToCreate.length > 0) {
+                    await Notification.insertMany(notificationsToCreate);
+                }
+            } catch (notifyErr) {
+                console.error("Error creating delivery notifications:", notifyErr);
+            }
         }
 
         // Send Status Update Notifications
@@ -246,6 +296,19 @@ exports.updateOrderStatus = async (req, res) => {
             console.error('Status Notification Error:', notifErr.message);
         }
 
+        if (status === 'Delivered' && order.paymentMethod === 'COD') {
+            try {
+                const User = require('../models/User');
+                const p = await User.findById(order.deliveryPartner);
+                if (p) {
+                    p.deliverySpecs.cashCollected = (p.deliverySpecs.cashCollected || 0) + order.totalAmount;
+                    await p.save();
+                }
+            } catch (err) {
+                console.error('Error updating cash collected:', err);
+            }
+        }
+
         res.status(200).json({ success: true, order });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -255,11 +318,23 @@ exports.updateOrderStatus = async (req, res) => {
 // Get Available Orders for Delivery
 exports.getAvailableDeliveryOrders = async (req, res) => {
     try {
-        // Fetch orders that are 'Prepared' (Ready for pickup)
-        const orders = await Order.find({ orderStatus: { $in: ['Preparing', 'Ready'] }, deliveryPartner: { $exists: false } })
+        const User = require('../models/User');
+        const user = await User.findById(req.user._id);
+        const rejectedIds = user.deliverySpecs?.rejectedOrders || [];
+
+        // Fetch orders that are 'Prepared' or 'Preparing' (Ready for pickup) and not rejected
+        const orders = await Order.find({
+            orderStatus: { $in: ['Preparing', 'Ready'] },
+            deliveryPartner: { $exists: false },
+            _id: { $nin: rejectedIds }
+        })
             .populate('shop', 'name address city')
             .populate('user', 'fullname mobile')
             .sort({ createdAt: -1 });
+
+        // Update totalOffered implicitly based on unique orders seen
+        // (Simplified for simulation: we just rely on acceptance / rejection clicks)
+
 
         res.status(200).json({ success: true, orders });
     } catch (error) {
@@ -301,13 +376,56 @@ exports.acceptOrder = async (req, res) => {
         }
         await order.save();
 
+        // Update totalOffered implicitly based on unique orders seen
         // Notify user that a partner has accepted
         req.io.to(`user_${order.user}`).emit('order_notification', {
             message: 'A delivery partner has been assigned to your order.',
             orderId: order._id
         });
 
+        const User = require('../models/User');
+        const user = await User.findById(req.user._id);
+        if (user) {
+            user.deliverySpecs.totalOffered = (user.deliverySpecs.totalOffered || 0) + 1;
+            // recalculate acceptance rate
+            const rejectedCount = user.deliverySpecs.rejectedOrders?.length || 0;
+            const acceptedCount = (user.deliverySpecs.totalOffered - rejectedCount);
+            if (user.deliverySpecs.totalOffered > 0) {
+                user.deliverySpecs.acceptanceRate = Math.round((acceptedCount / user.deliverySpecs.totalOffered) * 100);
+            }
+            await user.save();
+        }
+
         res.status(200).json({ success: true, order });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Reject Order (Hide from Delivery Partner)
+exports.rejectOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        const User = require('../models/User');
+        const user = await User.findById(req.user._id);
+
+        if (user) {
+            if (!user.deliverySpecs.rejectedOrders.includes(order._id)) {
+                user.deliverySpecs.rejectedOrders.push(order._id);
+                user.deliverySpecs.totalOffered = (user.deliverySpecs.totalOffered || 0) + 1;
+
+                const rejectedCount = user.deliverySpecs.rejectedOrders.length;
+                const acceptedCount = Math.max(0, user.deliverySpecs.totalOffered - rejectedCount);
+                if (user.deliverySpecs.totalOffered > 0) {
+                    user.deliverySpecs.acceptanceRate = Math.round((acceptedCount / user.deliverySpecs.totalOffered) * 100);
+                }
+                await user.save();
+            }
+        }
+
+        res.status(200).json({ success: true, message: 'Order rejected' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -349,6 +467,108 @@ exports.getUserInsights = async (req, res) => {
             }
         });
     } catch (error) {
+        logger.error(`[ORDER] getActiveOrder error: ${error.message}`);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// --- Advanced Logistics Functions ---
+
+// 📍 Geofencing: Partner Arrived at Restaurant
+exports.verifyArrival = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id).populate('shop');
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        const { lat, lng } = req.body; // Partner's current position
+        const shopLat = order.shop.location?.coordinates?.[1];
+        const shopLng = order.shop.location?.coordinates?.[0];
+
+        if (shopLat && shopLng) {
+            const distance = calculateDistance(lat, lng, shopLat, shopLng);
+            if (distance > 0.5) { // 500 meters threshold
+                return res.status(400).json({
+                    success: false,
+                    message: `You are too far from the restaurant (${(distance).toFixed(2)} km away).`
+                });
+            }
+        }
+
+        order.geofencing.arrivedAtShop = new Date();
+        order.orderStatus = 'Preparing';
+        await order.save();
+
+        res.status(200).json({ success: true, message: 'Arrival verified' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 🧾 Proof of Delivery: Partner marking as Delivered
+exports.verifyDelivery = async (req, res) => {
+    try {
+        const { otp, photoUrl, signatureUrl, lat, lng } = req.body;
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // OTP Verification (Mocked or real check if implemented)
+        if (otp && order.proofOfDelivery.otp !== otp) {
+            return res.status(400).json({ success: false, message: 'Invalid delivery OTP' });
+        }
+
+        // Geofencing Check (Delivery side)
+        // Note: Real address geocoding would be ideal, but for now we expect lat/lng
+        // and can compare with the order's deliveryAddress coordinates if we had them.
+        // Assuming success for demo if lat/lng present.
+
+        order.orderStatus = 'Delivered';
+        order.proofOfDelivery.photoUrl = photoUrl;
+        order.proofOfDelivery.signatureUrl = signatureUrl;
+        order.proofOfDelivery.verified = true;
+        order.geofencing.deliveredAtCustomer = new Date();
+
+        // Update Partner Earnings
+        const partner = await User.findById(req.user._id);
+        if (partner) {
+            const earnings = order.deliveryFee + (order.earningsEstimation?.surgePay || 0);
+            partner.deliverySpecs.totalEarnings += earnings;
+            partner.deliverySpecs.completedDeliveries += 1;
+            if (order.paymentMethod === 'COD') {
+                partner.deliverySpecs.cashCollected += order.totalAmount;
+            }
+            await partner.save();
+        }
+
+        await order.save();
+        res.status(200).json({ success: true, message: 'Order delivered successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 🧑⚖️ Dispute Resolution: Partner raising a dispute
+exports.raiseDispute = async (req, res) => {
+    try {
+        const { orderId, type, description, evidence } = req.body;
+        const dispute = await Dispute.create({
+            order: orderId,
+            raisedBy: req.user._id,
+            type,
+            description,
+            evidence
+        });
+        res.status(201).json({ success: true, dispute });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// 📦 Smart Zone Management: Fetch zones
+exports.getZones = async (req, res) => {
+    try {
+        const zones = await Zone.find({ isActive: true });
+        res.status(200).json({ success: true, zones });
+    } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -371,8 +591,8 @@ exports.getActiveOrder = async (req, res) => {
 
         res.status(200).json({ success: true, order });
     } catch (error) {
-        console.error(`[ORDER] getActiveOrder error: ${error.message}`);
-        res.status(500).json({ success: false, message: error.message });
+        logger.error(`[ORDER] getActiveOrder error: ${error.message}`);
+        res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
 
@@ -383,7 +603,7 @@ exports.cancelMyOrder = async (req, res) => {
         const orderId = req.params.id;
         const userId = req.user.id || req.user._id;
 
-        console.log(`[ORDER] Cancellation attempt: Order ${orderId} by User ${userId}`);
+        logger.info(`[ORDER] Cancellation attempt: Order ${orderId} by User ${userId}`);
 
         if (!orderId) {
             return res.status(400).json({ success: false, message: "Order ID is required" });
@@ -392,20 +612,22 @@ exports.cancelMyOrder = async (req, res) => {
         const order = await Order.findById(orderId);
 
         if (!order) {
-            console.log(`[ORDER] Cancel failed: Order ${orderId} not found`);
+            logger.warn(`[ORDER] Cancel failed: Order ${orderId} not found`);
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
         // Verify ownership
-        const orderUserId = order.user.id || order.user._id || order.user;
-        if (orderUserId.toString() !== userId.toString()) {
-            console.log(`[ORDER] Cancel failed: Unauthorized. Owner: ${orderUserId}, Requestor: ${userId}`);
+        const orderUserId = order.user.toString();
+        const authUserId = userId.toString();
+
+        if (orderUserId !== authUserId) {
+            logger.warn(`[ORDER] Cancel failed: Unauthorized. Owner: ${orderUserId}, Requestor: ${authUserId}`);
             return res.status(403).json({ success: false, message: 'Not authorized to cancel this order' });
         }
 
         // Only allow cancellation if order is still 'Placed'
         if (order.orderStatus !== 'Placed') {
-            console.log(`[ORDER] Cancel failed: Status is ${order.orderStatus}, cannot cancel`);
+            logger.warn(`[ORDER] Cancel failed: Status is ${order.orderStatus}, cannot cancel`);
             return res.status(400).json({ success: false, message: `Orders in ${order.orderStatus} status cannot be cancelled` });
         }
 
@@ -428,11 +650,11 @@ exports.cancelMyOrder = async (req, res) => {
             req.io.to(`shop_${shopId}`).emit('status_update', { status: 'Cancelled', orderId: order._id });
         }
 
-        console.log(`[ORDER] Order ${orderId} cancelled successfully`);
+        logger.info(`[ORDER] Order ${orderId} cancelled successfully by User ${authUserId}`);
         res.status(200).json({ success: true, message: 'Order cancelled successfully' });
 
     } catch (error) {
-        console.error(`[ORDER] Cancel error:`, error);
+        logger.error(`[ORDER] Cancel error: ${error.message}`);
         res.status(500).json({ success: false, message: `System error: ${error.message}` });
     }
 };
