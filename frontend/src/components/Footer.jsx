@@ -21,6 +21,9 @@ const Footer = () => {
                             <li><Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium">Home Feed</Link></li>
                             <li><Link to="/profile" className="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium">My Account</Link></li>
                             <li><Link to="/cart" className="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium">View Cart</Link></li>
+                            <li><a href="https://adityaportfollio.netlify.app/" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium">Developer Portfolio</a></li>
+                            <li><a href="https://github.com/AdityaRoy003" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium">GitHub Profile</a></li>
+                            <li><a href="https://www.linkedin.com/in/aditya-kumar-roy-667824316" target="_blank" rel="noopener noreferrer" className="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors text-sm font-medium">LinkedIn</a></li>
                         </ul>
                     </div>
 
