@@ -24617,3 +24617,4 @@
 2026-03-03 22:15:26 [INFO]: ::1 - - [03/Mar/2026:16:45:26 +0000] "GET /api/user-actions/wishlist HTTP/1.1" 304 - "http://localhost:5173/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 2026-03-03 22:15:30 [INFO]: ::1 - - [03/Mar/2026:16:45:30 +0000] "GET /api/shop/697686923c607f6ac0f74cb6 HTTP/1.1" 304 - "http://localhost:5173/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 2026-03-03 22:15:30 [INFO]: ::1 - - [03/Mar/2026:16:45:30 +0000] "GET /api/shop/697686923c607f6ac0f74cb6 HTTP/1.1" 304 - "http://localhost:5173/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+2026-03-03 22:25:55 [INFO]: Server is running on port 8000
