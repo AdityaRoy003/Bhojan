@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../redux/userSlice';
 import { detectLocation } from '../redux/locationSlice';
@@ -13,6 +13,7 @@ const Navbar = () => {
     const { city, state: locationState, loading: locationLoading } = useSelector((state) => state.location);
     const dispatch = useDispatch();
     const location = useLocation();
+    const navigate = useNavigate();
     const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -58,6 +59,63 @@ const Navbar = () => {
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) {
             console.error("Failed to mark read");
+        }
+    };
+
+    const deleteNotification = async (e, id) => {
+        e.stopPropagation();
+        try {
+            await api.delete(`/notifications/${id}`);
+            setNotifications(prev => prev.filter(n => n._id !== id));
+            setUnreadCount(prev => {
+                const deleted = notifications.find(n => n._id === id);
+                if (deleted && !deleted.isRead) {
+                    return Math.max(0, prev - 1);
+                }
+                return prev;
+            });
+        } catch (error) {
+            console.error("Failed to delete notification");
+        }
+    };
+
+    const clearAllNotifications = async (e) => {
+        if (e) e.stopPropagation();
+        try {
+            await api.delete('/notifications/clear/all');
+            setNotifications([]);
+            setUnreadCount(0);
+        } catch (error) {
+            console.error("Failed to clear all notifications");
+        }
+    };
+
+    const handleNotificationClick = async (n) => {
+        if (!n.isRead) {
+            await markAsRead(n._id);
+        }
+        setShowNotifications(false);
+        
+        if (n.type === 'order') {
+            if (user?.role === 'Owner') {
+                navigate('/owner/dashboard');
+            } else if (user?.role === 'Delivery') {
+                navigate('/delivery/dashboard');
+            } else {
+                navigate('/profile?tab=orders');
+            }
+        } else if (n.type === 'delivery') {
+            navigate('/delivery/dashboard');
+        } else if (n.type === 'payments') {
+            navigate('/profile?tab=payments');
+        } else if (n.type === 'quests') {
+            navigate('/profile?tab=quests');
+        } else if (n.type === 'wishlist') {
+            navigate('/profile?tab=wishlist');
+        } else if (n.type === 'system') {
+            navigate('/profile?tab=settings');
+        } else {
+            navigate('/profile');
         }
     };
 
@@ -227,64 +285,68 @@ const Navbar = () => {
                             )}
                         </div>
 
-                        <Link to="/cart" className="relative text-gray-700 dark:text-gray-200 hover:text-primary transition-colors py-2 px-1 hidden md:block">
-                            <span className="text-xl md:text-2xl">🛒</span>
-                            {cartItems.length > 0 && (
-                                <span className="absolute top-1 -right-1 md:-right-2 bg-primary text-white text-[8px] md:text-[10px] font-black w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center shadow-sm">
-                                    {cartItems.length}
-                                </span>
-                            )}
-                        </Link>
-
-                        {/* Mini Cart Preview - Desktop only */}
-                        <AnimatePresence>
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                whileHover={{ opacity: 1, y: 0, scale: 1 }}
-                                className="hidden md:block absolute right-0 top-full pt-2 w-72 pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-all z-50"
-                            >
-                                <div className="bg-white dark:bg-gray-800 rounded-[24px] shadow-2xl border border-gray-100 dark:border-gray-700 p-4 overflow-hidden">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Cart Preview</h4>
-                                        <Link to="/cart" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">View All</Link>
-                                    </div>
-
-                                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                        {cartItems.length > 0 ? (
-                                            cartItems.slice(0, 3).map(item => (
-                                                <div key={item._id} className="flex gap-3">
-                                                    <img src={item.image} alt={item.name} className="w-10 h-10 rounded-xl object-cover" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[10px] font-black text-gray-900 dark:text-white truncate">{item.name}</p>
-                                                        <p className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{item.quantity} x ₹{item.price}</p>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-[10px] text-gray-400 font-bold py-4 text-center">Your cart is empty</p>
-                                        )}
-                                        {cartItems.length > 3 && (
-                                            <p className="text-[8px] font-black text-center text-gray-300 uppercase tracking-widest">+{cartItems.length - 3} more items</p>
-                                        )}
-                                    </div>
-
+                        {(!isAuthenticated || user?.role === 'Customer') && (
+                            <>
+                                <Link to="/cart" className="relative text-gray-700 dark:text-gray-200 hover:text-primary transition-colors py-2 px-1 hidden md:block">
+                                    <span className="text-xl md:text-2xl">🛒</span>
                                     {cartItems.length > 0 && (
-                                        <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</span>
-                                                <span className="text-sm font-black text-gray-900 dark:text-white">₹{cartItems.reduce((acc, i) => acc + i.price * i.quantity, 0).toFixed(2)}</span>
-                                            </div>
-                                            <Link
-                                                to="/checkout"
-                                                className="block w-full bg-primary text-white text-center py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-100 hover:bg-red-700 transition-all"
-                                            >
-                                                Checkout Now
-                                            </Link>
-                                        </div>
+                                        <span className="absolute top-1 -right-1 md:-right-2 bg-primary text-white text-[8px] md:text-[10px] font-black w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center shadow-sm">
+                                            {cartItems.length}
+                                        </span>
                                     )}
-                                </div>
-                            </motion.div>
-                        </AnimatePresence>
+                                </Link>
+
+                                {/* Mini Cart Preview - Desktop only */}
+                                <AnimatePresence>
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        whileHover={{ opacity: 1, y: 0, scale: 1 }}
+                                        className="hidden md:block absolute right-0 top-full pt-2 w-72 pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-all z-50"
+                                    >
+                                        <div className="bg-white dark:bg-gray-800 rounded-[24px] shadow-2xl border border-gray-100 dark:border-gray-700 p-4 overflow-hidden">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Cart Preview</h4>
+                                                <Link to="/cart" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">View All</Link>
+                                            </div>
+
+                                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                                {cartItems.length > 0 ? (
+                                                    cartItems.slice(0, 3).map(item => (
+                                                        <div key={item._id} className="flex gap-3">
+                                                            <img src={item.image} alt={item.name} className="w-10 h-10 rounded-xl object-cover" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[10px] font-black text-gray-900 dark:text-white truncate">{item.name}</p>
+                                                                <p className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{item.quantity} x ₹{item.price}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-[10px] text-gray-400 font-bold py-4 text-center">Your cart is empty</p>
+                                                )}
+                                                {cartItems.length > 3 && (
+                                                    <p className="text-[8px] font-black text-center text-gray-300 uppercase tracking-widest">+{cartItems.length - 3} more items</p>
+                                                )}
+                                            </div>
+
+                                            {cartItems.length > 0 && (
+                                                <div className="mt-4 pt-4 border-t border-gray-50 dark:border-gray-700">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</span>
+                                                        <span className="text-sm font-black text-gray-900 dark:text-white">₹{cartItems.reduce((acc, i) => acc + i.price * i.quantity, 0).toFixed(2)}</span>
+                                                    </div>
+                                                    <Link
+                                                        to="/checkout"
+                                                        className="block w-full bg-primary text-white text-center py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-100 hover:bg-red-700 transition-all"
+                                                    >
+                                                        Checkout Now
+                                                    </Link>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                </AnimatePresence>
+                            </>
+                        )}
 
 
                         <motion.button
@@ -319,27 +381,55 @@ const Navbar = () => {
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                             className="absolute right-0 top-full mt-2 w-72 md:w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden z-50"
                                         >
-                                            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                                                <h4 className="font-black text-sm uppercase tracking-widest text-gray-900 dark:text-white">Notifications</h4>
-                                                <button className="text-[10px] font-bold text-primary uppercase" onClick={() => setShowNotifications(false)}>Close</button>
+                                            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-950/20">
+                                                <div className="flex flex-col">
+                                                    <h4 className="font-black text-sm uppercase tracking-widest text-gray-900 dark:text-white">Notifications</h4>
+                                                    {unreadCount > 0 && <span className="text-[10px] text-primary font-bold text-left">{unreadCount} unread</span>}
+                                                </div>
+                                                <div className="flex gap-2 items-center">
+                                                    {notifications.length > 0 && (
+                                                        <button 
+                                                            className="text-[10px] font-bold text-gray-500 hover:text-red-500 uppercase transition-colors mr-1" 
+                                                            onClick={clearAllNotifications}
+                                                        >
+                                                            Clear All
+                                                        </button>
+                                                    )}
+                                                    <button className="text-[10px] font-bold text-primary uppercase" onClick={() => setShowNotifications(false)}>Close</button>
+                                                </div>
                                             </div>
                                             <div className="max-h-64 overflow-y-auto">
                                                 {notifications.length === 0 ? (
                                                     <p className="text-center text-xs text-gray-400 py-4">No new notifications</p>
                                                 ) : (
                                                     notifications.map(n => (
-                                                        <div key={n._id} onClick={() => markAsRead(n._id)} className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex gap-3 border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer ${!n.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-                                                            <span className="text-lg">{n.type === 'order' ? '📦' : n.type === 'promotion' ? '🎉' : '📢'}</span>
-                                                            <div>
-                                                                <p className={`text-xs ${!n.isRead ? 'font-black text-gray-900 dark:text-white' : 'font-medium text-gray-600 dark:text-gray-400'}`}>{n.message}</p>
-                                                                <p className="text-[10px] text-gray-400 font-medium uppercase mt-1">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                        <div 
+                                                            key={n._id} 
+                                                            onClick={() => handleNotificationClick(n)} 
+                                                            className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex gap-3 border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer relative group ${!n.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                                                        >
+                                                            <span className="text-lg shrink-0">{n.type === 'order' ? '📦' : n.type === 'delivery' ? '🛵' : n.type === 'promotion' ? '🎉' : '📢'}</span>
+                                                            <div className="flex-1 pr-6 min-w-0">
+                                                                <h5 className={`text-xs text-left ${!n.isRead ? 'font-black text-gray-900 dark:text-white' : 'font-semibold text-gray-700 dark:text-gray-300'}`}>{n.title || 'Notification'}</h5>
+                                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 text-left truncate">{n.message}</p>
+                                                                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-1 text-left">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                                             </div>
+                                                            {/* Individual Delete Button */}
+                                                            <button
+                                                                onClick={(e) => deleteNotification(e, n._id)}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                title="Delete notification"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </button>
                                                         </div>
                                                     ))
                                                 )}
                                             </div>
                                             <div className="p-3 bg-gray-50 dark:bg-gray-800 text-center">
-                                                <Link to="/notifications" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">View All</Link>
+                                                <Link to="/notifications" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline" onClick={() => setShowNotifications(false)}>View All</Link>
                                             </div>
                                         </motion.div>
                                     )}

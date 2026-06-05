@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../utils/api';
 import StatusTimeline from '../components/StatusTimeline';
+import ThreeDDeliveryCanvas from '../components/ThreeDDeliveryCanvas';
+import socket from '../utils/socket';
 
 // Fix for default marker icons in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -37,11 +40,57 @@ const deliveryIcon = new L.Icon({
 const OrderTracking = () => {
     const { orderId } = useParams();
     const navigate = useNavigate();
+    const { user } = useSelector((state) => state.user);
     const [order, setOrder] = useState(null);
     const [tracking, setTracking] = useState(null);
     const [eta, setEta] = useState(null);
     const [loading, setLoading] = useState(true);
     const [mapCenter, setMapCenter] = useState([28.6139, 77.2090]); // Default: Delhi
+    const [viewMode, setViewMode] = useState('3d');
+
+    // Courier Chat State
+    const [chatOpen, setChatOpen] = useState(false);
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
+    const chatEndRef = useRef(null);
+
+    // Join chat room and listen for messages
+    useEffect(() => {
+        if (!orderId || !order?.deliveryPartner) return;
+
+        socket.connect();
+        socket.emit('join_chat', orderId);
+
+        const handleChatMessage = (msg) => {
+            setMessages(prev => [...prev, msg]);
+        };
+
+        socket.on('chat_message', handleChatMessage);
+
+        return () => {
+            socket.off('chat_message', handleChatMessage);
+        };
+    }, [orderId, order?.deliveryPartner]);
+
+    // Auto scroll chat to bottom
+    useEffect(() => {
+        if (chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, chatOpen]);
+
+    const sendChatMessage = () => {
+        if (!newMessage.trim() || !orderId) return;
+
+        socket.emit('send_chat_message', {
+            orderId,
+            message: newMessage,
+            senderName: user?.fullname || 'Customer',
+            senderRole: 'Customer',
+            timestamp: new Date().toISOString()
+        });
+        setNewMessage('');
+    };
 
     const fetchTrackingDetails = async () => {
         try {
@@ -155,60 +204,94 @@ const OrderTracking = () => {
                             statusHistory={tracking?.statusHistory || []}
                         />
 
-                        {/* Live Map */}
+                        {/* Live Tracking Map / 3D Visualizer */}
                         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                            <div className="p-4 bg-primary text-white flex items-center justify-between">
-                                <h3 className="text-lg font-bold">Live Tracking</h3>
-                                {order.orderStatus === 'OutForDelivery' && (
-                                    <span className="flex items-center gap-2 text-sm">
-                                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                                        Live
-                                    </span>
-                                )}
-                            </div>
-                            <div className="h-96">
-                                <MapContainer
-                                    center={mapCenter}
-                                    zoom={13}
-                                    style={{ height: '100%', width: '100%' }}
-                                >
-                                    <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    />
-
-                                    {/* User Location Marker */}
-                                    <Marker position={userLocation} icon={userIcon}>
-                                        <Popup>
-                                            <strong>Delivery Address</strong>
-                                            <br />
-                                            {order.deliveryAddress}
-                                        </Popup>
-                                    </Marker>
-
-                                    {/* Delivery Partner Location Marker */}
-                                    {deliveryPartnerLocation && (
-                                        <>
-                                            <Marker position={deliveryPartnerLocation} icon={deliveryIcon}>
-                                                <Popup>
-                                                    <strong>Delivery Partner</strong>
-                                                    <br />
-                                                    {order.deliveryPartner?.fullname || 'On the way'}
-                                                </Popup>
-                                            </Marker>
-
-                                            {/* Route Line */}
-                                            <Polyline
-                                                positions={[userLocation, deliveryPartnerLocation]}
-                                                color="#EF4444"
-                                                weight={3}
-                                                opacity={0.7}
-                                                dashArray="10, 10"
-                                            />
-                                        </>
+                            <div className="p-4 bg-primary text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-4">
+                                    <h3 className="text-lg font-bold">Live Tracking</h3>
+                                    {order.orderStatus === 'OutForDelivery' && (
+                                        <span className="flex items-center gap-2 text-sm bg-green-600 px-3 py-1 rounded-full border border-green-400/30">
+                                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                            Live
+                                        </span>
                                     )}
-                                </MapContainer>
+                                </div>
+                                <div className="flex bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/20 text-[10px] self-start sm:self-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('3d')}
+                                        className={`px-4 py-2 rounded-full font-black uppercase tracking-widest transition-all cursor-pointer ${viewMode === '3d' ? 'bg-white text-primary shadow-md' : 'text-white/80 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        🎬 3D Cinematic
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('map')}
+                                        className={`px-4 py-2 rounded-full font-black uppercase tracking-widest transition-all cursor-pointer ${viewMode === 'map' ? 'bg-white text-primary shadow-md' : 'text-white/80 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        🗺️ Map View
+                                    </button>
+                                </div>
                             </div>
+                            {viewMode === 'map' ? (
+                                <div className="h-96">
+                                    <MapContainer
+                                        center={mapCenter}
+                                        zoom={13}
+                                        style={{ height: '100%', width: '100%' }}
+                                    >
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+
+                                        {/* User Location Marker */}
+                                        <Marker position={userLocation} icon={userIcon}>
+                                            <Popup>
+                                                <strong>Delivery Address</strong>
+                                                <br />
+                                                {order.deliveryAddress}
+                                            </Popup>
+                                        </Marker>
+
+                                        {/* Delivery Partner Location Marker */}
+                                        {deliveryPartnerLocation && (
+                                            <>
+                                                <Marker position={deliveryPartnerLocation} icon={deliveryIcon}>
+                                                    <Popup>
+                                                        <strong>Delivery Partner</strong>
+                                                        <br />
+                                                        {order.deliveryPartner?.fullname || 'On the way'}
+                                                    </Popup>
+                                                </Marker>
+
+                                                {/* Route Line */}
+                                                <Polyline
+                                                    positions={[userLocation, deliveryPartnerLocation]}
+                                                    color="#EF4444"
+                                                    weight={3}
+                                                    opacity={0.7}
+                                                    dashArray="10, 10"
+                                                />
+                                            </>
+                                        )}
+                                    </MapContainer>
+                                </div>
+                            ) : (
+                                <div className="p-6 bg-gray-950 flex flex-col justify-center items-center">
+                                    <div className="w-full">
+                                        <ThreeDDeliveryCanvas currentStatus={order.orderStatus} />
+                                    </div>
+                                    <div className="mt-4 text-center">
+                                        <p className="text-xs font-black uppercase tracking-widest text-amber-500 mb-1">
+                                            Status: {order.orderStatus === 'OutForDelivery' ? 'Courier en route' : order.orderStatus === 'Preparing' ? 'Kitchen is preparing food' : order.orderStatus === 'Placed' ? 'Waiting for confirmation' : order.orderStatus === 'Delivered' ? 'Food delivered!' : 'Order Placed'}
+                                        </p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                            Interactive 3D Corridor visualizer of your delivery path
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -253,10 +336,18 @@ const OrderTracking = () => {
                                     <span className="font-bold text-primary">₹{order.totalAmount}</span>
                                 </div>
                                 {order.deliveryPartner && (
-                                    <div className="pt-3 border-t border-gray-100">
-                                        <p className="text-xs text-gray-500 mb-1">Delivery Partner</p>
-                                        <p className="font-bold text-gray-900">{order.deliveryPartner.fullname}</p>
-                                        <p className="text-xs text-gray-600">{order.deliveryPartner.mobile}</p>
+                                    <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Delivery Partner</p>
+                                            <p className="font-bold text-gray-900">{order.deliveryPartner.fullname}</p>
+                                            <p className="text-xs text-gray-600">{order.deliveryPartner.mobile}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setChatOpen(true)}
+                                            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-2.5 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-100 dark:shadow-none mt-2 flex items-center justify-center gap-2"
+                                        >
+                                            <span>💬</span> Chat with Courier
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -274,6 +365,99 @@ const OrderTracking = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Courier Chat Drawer */}
+            <AnimatePresence>
+                {chatOpen && (
+                    <>
+                        {/* Overlay backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 0.5 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setChatOpen(false)}
+                            className="fixed inset-0 bg-black z-50 cursor-pointer"
+                        />
+                        {/* Chat Panel */}
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col border-l border-gray-100 dark:border-gray-800"
+                        >
+                            {/* Header */}
+                            <div className="p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white flex items-center justify-between shadow-md">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg">
+                                        {order.deliveryPartner?.fullname?.[0]?.toUpperCase() || '🏍️'}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-black text-sm">{order.deliveryPartner?.fullname || 'Courier'}</h3>
+                                        <p className="text-[9px] uppercase tracking-wider opacity-85">Courier Chat Portal</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setChatOpen(false)}
+                                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors font-bold text-sm"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {/* Chat Messages */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
+                                {messages.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400 dark:text-gray-600">
+                                        <span className="text-4xl mb-2">💬</span>
+                                        <p className="text-sm font-bold">No messages yet</p>
+                                        <p className="text-xs">Ask the courier about your delivery status!</p>
+                                    </div>
+                                ) : (
+                                    messages.map((msg, index) => {
+                                        const isMe = msg.senderRole === 'Customer';
+                                        return (
+                                            <div
+                                                key={index}
+                                                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                                            >
+                                                <div
+                                                    className={`max-w-[75%] p-3 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${isMe ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-tr-none' : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'}`}
+                                                >
+                                                    {msg.message}
+                                                </div>
+                                                <span className="text-[8px] text-gray-400 dark:text-gray-600 mt-1 uppercase tracking-widest font-black">
+                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                                <div ref={chatEndRef} />
+                            </div>
+
+                            {/* Input Form */}
+                            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Type a message..."
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                                    className="flex-1 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-3 text-sm focus:outline-none dark:text-white dark:placeholder-gray-500 font-medium"
+                                />
+                                <button
+                                    onClick={sendChatMessage}
+                                    disabled={!newMessage.trim()}
+                                    className="bg-primary text-white p-3 rounded-xl hover:bg-primary/95 transition-all shadow-md shadow-red-100 dark:shadow-none disabled:opacity-50"
+                                >
+                                    ➔
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

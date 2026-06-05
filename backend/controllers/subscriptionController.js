@@ -1,10 +1,37 @@
 const Subscription = require('../models/Subscription');
 const User = require('../models/User');
+const crypto = require('crypto');
 
 // Create a new subscription
 exports.createSubscription = async (req, res) => {
     try {
-        const { planType, duration, mealPlan, corporateDetails, paymentId, amountPaid } = req.body;
+        const { 
+            planType, 
+            duration, 
+            mealPlan, 
+            corporateDetails, 
+            razorpay_order_id, 
+            razorpay_payment_id, 
+            razorpay_signature, 
+            amountPaid 
+        } = req.body;
+
+        // Perform Razorpay signature check for paid plans (Prime and Tiffin)
+        if (planType === 'Prime' || planType === 'Tiffin') {
+            if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+                return res.status(400).json({ success: false, message: 'Missing payment details for subscription activation.' });
+            }
+
+            const body = razorpay_order_id + '|' + razorpay_payment_id;
+            const expectedSignature = crypto
+                .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+                .update(body.toString())
+                .digest('hex');
+
+            if (expectedSignature !== razorpay_signature) {
+                return res.status(400).json({ success: false, message: 'Payment verification failed. Invalid Signature.' });
+            }
+        }
 
         const endDate = new Date();
         if (duration === 'monthly') endDate.setMonth(endDate.getMonth() + 1);
@@ -17,7 +44,7 @@ exports.createSubscription = async (req, res) => {
             endDate,
             mealPlan,
             corporateDetails,
-            paymentId,
+            paymentId: razorpay_payment_id || 'DEMO_PAYMENT_' + Date.now(),
             amountPaid
         });
 

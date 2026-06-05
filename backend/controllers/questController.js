@@ -35,7 +35,50 @@ exports.deleteQuest = async (req, res) => {
 // --- CUSTOMER: Get My Quests (with progress) ---
 exports.getMyQuests = async (req, res) => {
     try {
-        const activeQuests = await Quest.find({ isActive: true });
+        let activeQuests = await Quest.find({ isActive: true });
+        if (activeQuests.length === 0) {
+            const defaultQuests = [
+                {
+                    title: 'Bhojan Beginner',
+                    description: 'Place your first order on Bhojan!',
+                    icon: '🍔',
+                    conditionType: 'order_count',
+                    targetValue: 1,
+                    rewardPoints: 50,
+                    isActive: true
+                },
+                {
+                    title: 'Cuisine Connoisseur',
+                    description: 'Explore the menu! Order from 3 different cuisines',
+                    icon: '🍕',
+                    conditionType: 'cuisine_variety',
+                    targetValue: 3,
+                    rewardPoints: 150,
+                    isActive: true
+                },
+                {
+                    title: 'Big Spender',
+                    description: 'Order your favorites and spend a total of ₹1000',
+                    icon: '💰',
+                    conditionType: 'spend_amount',
+                    targetValue: 1000,
+                    rewardPoints: 200,
+                    isActive: true
+                },
+                {
+                    title: 'Bhojan Fanatic',
+                    description: 'Order 5 times to prove your loyalty',
+                    icon: '👑',
+                    conditionType: 'order_count',
+                    targetValue: 5,
+                    rewardPoints: 300,
+                    isActive: true
+                }
+            ];
+            await Quest.insertMany(defaultQuests);
+            activeQuests = await Quest.find({ isActive: true });
+        }
+
         const userQuestDocs = await UserQuest.find({ user: req.user._id });
         const userQuestMap = {};
         userQuestDocs.forEach(uq => { userQuestMap[uq.quest.toString()] = uq; });

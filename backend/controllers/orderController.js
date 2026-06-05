@@ -129,6 +129,27 @@ exports.placeOrder = async (req, res) => {
             }]
         });
 
+        const { sendNotification } = require('../utils/notificationHelper');
+        
+        // Notify Customer
+        await sendNotification(
+            req.user.id,
+            '🛒 Order Placed!',
+            `Your order #${newOrder._id.toString().slice(-6).toUpperCase()} has been placed successfully.`,
+            'order'
+        );
+
+        // Notify Shop Owner
+        const shop = await Shop.findById(shopId);
+        if (shop && shop.owner) {
+            await sendNotification(
+                shop.owner,
+                '🍳 New Order Received!',
+                `You have received a new order #${newOrder._id.toString().slice(-6).toUpperCase()} from ${user.fullname}.`,
+                'order'
+            );
+        }
+
         res.status(201).json({
             success: true,
             order: newOrder,
@@ -236,12 +257,32 @@ exports.updateOrderStatus = async (req, res) => {
 
         await order.save();
 
-        // Emit socket events
+        // Save database notification and emit in real-time
+        const { sendNotification } = require('../utils/notificationHelper');
+        let title = '📦 Order Update';
+        let message = `Your order #${order._id.toString().slice(-6).toUpperCase()} status is now: ${status}`;
+
+        if (status === 'Preparing') {
+            title = '🍳 Order Accepted';
+            message = `The kitchen has started preparing your order from ${shop.name}!`;
+        } else if (status === 'Ready') {
+            title = '🍲 Order Ready';
+            message = `Your order from ${shop.name} is ready for pickup!`;
+        } else if (status === 'OutForDelivery' || status === 'Out for Delivery') {
+            title = '🛵 Out for Delivery';
+            message = `Your order from ${shop.name} is out for delivery!`;
+        } else if (status === 'Delivered') {
+            title = '🍽️ Order Delivered';
+            message = `Your order from ${shop.name} has been delivered. Enjoy your meal!`;
+        } else if (status === 'Cancelled') {
+            title = '❌ Order Cancelled';
+            message = `Your order from ${shop.name} has been cancelled.`;
+        }
+
+        await sendNotification(order.user, title, message, 'order');
+
+        // Emit socket events for Order Tracking screen
         req.io.to(`order_${order._id}`).emit('status_update', { status, orderId: order._id });
-        req.io.to(`user_${order.user}`).emit('order_notification', {
-            message: `Your order status is now: ${status}`,
-            orderId: order._id
-        });
 
         // Notify all online delivery partners if order is Ready
         if (status === 'Ready') {

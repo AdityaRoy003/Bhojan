@@ -24,7 +24,7 @@ const CookieConsent = () => {
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
-                    className="fixed bottom-4 left-4 right-4 md:left-8 md:right-auto md:max-w-md bg-white border border-gray-100 shadow-2xl rounded-2xl p-6 z-[9999]"
+                    className="fixed bottom-[100px] left-4 right-4 md:bottom-4 md:left-8 md:right-auto md:max-w-md bg-white border border-gray-100 shadow-2xl rounded-2xl p-6 z-[9999]"
                 >
                     <div className="flex items-start gap-4">
                         <div className="bg-orange-100 p-2 rounded-lg">

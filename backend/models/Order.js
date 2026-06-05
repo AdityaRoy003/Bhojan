@@ -20,9 +20,17 @@ const orderSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['COD', 'Online'],
+        enum: ['COD', 'Online', 'Split'],
         default: 'Online'
     },
+    isGroupOrder: { type: Boolean, default: false },
+    splitPayments: [{
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        amount: { type: Number },
+        status: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' }
+    }],
+    optOutCutlery: { type: Boolean, default: false },
+    prepVideoUrl: { type: String },
     isPaid: {
         type: Boolean,
         default: false

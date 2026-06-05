@@ -50,6 +50,23 @@ const UserProfile = () => {
     const [adminData, setAdminData] = useState({
         stats: null, users: [], shops: [], items: [], orders: [], config: { featureFlags: {} }
     });
+
+    // Email Campaign State
+    const [campaignType, setCampaignType] = useState('festival');
+    const [recipientType, setRecipientType] = useState('single');
+    const [targetUserId, setTargetUserId] = useState('');
+    const [campDetails, setCampDetails] = useState({
+        festivalName: 'Diwali Dhamaka',
+        discountPercent: '50',
+        couponCode: 'DIWALI50',
+        orderId: '',
+        referralCode: ''
+    });
+    const [sendingCampaign, setSendingCampaign] = useState(false);
+
+    // 2FA Security State
+    const [backupCodes, setBackupCodes] = useState([]);
+    const [showCodesModal, setShowCodesModal] = useState(false);
     const [availableOrders, setAvailableOrders] = useState([]);
     const [orderTimeouts, setOrderTimeouts] = useState({});
     const [deliveryStats, setDeliveryStats] = useState({ totalEarnings: 0, completedDeliveries: 0, rating: 4.8 });
@@ -193,6 +210,7 @@ const UserProfile = () => {
         { id: 'admin-settings', label: 'Platform Settings', icon: '⚙️' },
         { id: 'admin-moderation', label: 'Moderation', icon: '🛡️' },
         { id: 'admin-support', label: 'Support', icon: '🎫' },
+        { id: 'admin-emails', label: 'Email Campaigns', icon: '✉️' },
         { id: 'personal', label: 'Account', icon: '👤' }
     ];
 
@@ -576,6 +594,74 @@ const UserProfile = () => {
         }
     };
 
+    const handleToggle2FA = async () => {
+        setUpdating(true);
+        try {
+            const nextStatus = !user?.securitySettings?.twoFactorEnabled;
+            const { data } = await api.put('/auth/me/2fa/toggle', { enabled: nextStatus });
+            if (data.success) {
+                dispatch(updateUser({ ...user, securitySettings: { ...user.securitySettings, twoFactorEnabled: nextStatus, backupCodes: data.backupCodes } }));
+                toast.success(data.message);
+                if (data.backupCodes && data.backupCodes.length > 0) {
+                    setBackupCodes(data.backupCodes);
+                    setShowCodesModal(true);
+                }
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update 2FA status');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleGenerateBackupCodes = async () => {
+        setUpdating(true);
+        try {
+            const { data } = await api.put('/auth/me/2fa/backup-codes');
+            if (data.success) {
+                dispatch(updateUser({ ...user, securitySettings: { ...user.securitySettings, backupCodes: data.backupCodes } }));
+                setBackupCodes(data.backupCodes);
+                setShowCodesModal(true);
+                toast.success('Generated new backup codes successfully!');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to generate backup codes');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleGDPRDataExport = async () => {
+        try {
+            const { data } = await api.post('/auth/me/privacy/gdpr-export');
+            if (data.success) {
+                toast.success(data.message);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'GDPR request failed');
+        }
+    };
+
+    const handleSendCampaign = async (e) => {
+        e.preventDefault();
+        setSendingCampaign(true);
+        try {
+            const { data } = await api.post('/admin/emails/send', {
+                campaignType,
+                recipientType,
+                userId: recipientType === 'single' ? targetUserId : undefined,
+                details: campDetails
+            });
+            if (data.success) {
+                toast.success(data.message);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to send campaign email');
+        } finally {
+            setSendingCampaign(false);
+        }
+    };
+
     const handleUpdateShopSettings = async (e) => {
         e.preventDefault();
         setUpdating(true);
@@ -745,10 +831,12 @@ const UserProfile = () => {
 
     const handleTopUp = async (amount) => {
         try {
+            // Fetch real key from backend instead of using placeholder
+            const { data: keyData } = await api.get('/payment/key');
             const { data } = await api.post('/user-actions/wallet/topup/initiate', { amount });
             if (data.success) {
                 const options = {
-                    key: "rzp_test_placeholder", // Replace with real key from env if needed
+                    key: keyData.key,
                     amount: data.order.amount,
                     currency: "INR",
                     name: "Bhojan",
@@ -769,6 +857,13 @@ const UserProfile = () => {
                         name: user.fullname,
                         email: user.email,
                         contact: user.mobile
+                    },
+                    method: {
+                        upi: true,
+                        card: true,
+                        netbanking: true,
+                        wallet: true,
+                        paylater: true
                     },
                     theme: { color: "#ff4d4d" }
                 };
@@ -1108,6 +1203,9 @@ const UserProfile = () => {
 
             case 'admin-support':
                 return renderAdminSupport();
+
+            case 'admin-emails':
+                return renderAdminEmails();
 
             case 'admin-settings':
                 return renderAdminSettings();
@@ -1585,6 +1683,55 @@ const UserProfile = () => {
                                     {updating ? 'Updating...' : 'Update Password'}
                                 </button>
                             </form>
+                        </section>
+
+                        <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-xl font-black flex items-center gap-2 dark:text-white">
+                                        <span>🛡️</span> Two-Factor Authentication (2FA)
+                                    </h3>
+                                    <p className="text-xs text-gray-400 mt-1">Require an email OTP verification code upon login.</p>
+                                </div>
+                                <button
+                                    onClick={handleToggle2FA}
+                                    className={`px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                                        user?.securitySettings?.twoFactorEnabled
+                                            ? 'bg-green-600 text-white hover:bg-green-700'
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    }`}
+                                >
+                                    {user?.securitySettings?.twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+                                </button>
+                            </div>
+                            
+                            {user?.securitySettings?.twoFactorEnabled && (
+                                <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">Backup recovery codes</h4>
+                                        <p className="text-[10px] text-gray-500 mt-1">If locked out, use a backup code to access your account.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleGenerateBackupCodes}
+                                        className="bg-white dark:bg-gray-800 text-indigo-600 border border-indigo-200 dark:border-indigo-900 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-50"
+                                    >
+                                        Regenerate
+                                    </button>
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
+                            <h3 className="text-xl font-black flex items-center gap-2 dark:text-white">
+                                <span>📄</span> GDPR Data Portability
+                            </h3>
+                            <p className="text-xs text-gray-400">Request a full archive export of all personal data held in Bhojan.</p>
+                            <button
+                                onClick={handleGDPRDataExport}
+                                className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition"
+                            >
+                                Export My Data (GDPR)
+                            </button>
                         </section>
 
                         <section className="bg-red-50 dark:bg-red-900/10 p-8 rounded-[32px] border border-red-100 dark:border-red-900/30">
@@ -3193,6 +3340,232 @@ const UserProfile = () => {
         </motion.div>
     );
 
+    const renderAdminEmails = () => (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 text-left">
+            <header className="bg-white dark:bg-gray-800 p-8 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm flex justify-between items-center">
+                <div>
+                    <h3 className="text-2xl font-black flex items-center gap-2 dark:text-white"><span>✉️</span> Email Campaigns Console</h3>
+                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">Draft and send animated HTML marketing emails to Bhojan users</p>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Controls Card */}
+                <section className="bg-white dark:bg-gray-800 p-8 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
+                    <h4 className="text-sm font-black uppercase tracking-widest text-indigo-600">Campaign Details</h4>
+                    <form onSubmit={handleSendCampaign} className="space-y-5">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Campaign Template</label>
+                            <select
+                                className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                value={campaignType}
+                                onChange={e => setCampaignType(e.target.value)}
+                            >
+                                <option value="festival">Festival Offer Email</option>
+                                <option value="spin">Spin-the-Wheel discount</option>
+                                <option value="feedback">Rating stars feedback</option>
+                                <option value="prime">Prime renewal reminder</option>
+                                <option value="referral">Share referral code</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recipient Target</label>
+                            <select
+                                className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                value={recipientType}
+                                onChange={e => setRecipientType(e.target.value)}
+                            >
+                                <option value="single">Single User</option>
+                                <option value="all">All Active Users</option>
+                            </select>
+                        </div>
+
+                        {recipientType === 'single' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Target User</label>
+                                <select
+                                    className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                    value={targetUserId}
+                                    onChange={e => setTargetUserId(e.target.value)}
+                                    required
+                                >
+                                    <option value="">Select User</option>
+                                    {adminData.users?.map(u => (
+                                        <option key={u._id} value={u._id}>{u.fullname} ({u.email})</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {campaignType === 'festival' && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Festival Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                        value={campDetails.festivalName}
+                                        onChange={e => setCampDetails({ ...campDetails, festivalName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Discount %</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                            value={campDetails.discountPercent}
+                                            onChange={e => setCampDetails({ ...campDetails, discountPercent: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Coupon Code</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                            value={campDetails.couponCode}
+                                            onChange={e => setCampDetails({ ...campDetails, couponCode: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {campaignType === 'feedback' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Order ID (optional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Enter order ID or leave blank"
+                                    className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none outline-none dark:text-white"
+                                    value={campDetails.orderId}
+                                    onChange={e => setCampDetails({ ...campDetails, orderId: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={sendingCampaign || (recipientType === 'single' && !targetUserId)}
+                            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white transition-all shadow-lg ${
+                                sendingCampaign ? 'bg-gray-300 dark:bg-gray-800' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/10'
+                            }`}
+                        >
+                            {sendingCampaign ? 'Sending Campaign...' : 'Send Campaign Email 🚀'}
+                        </button>
+                    </form>
+                </section>
+
+                {/* Email Preview Card Mockup */}
+                <section className="bg-gray-900 p-8 rounded-[40px] border border-gray-800 shadow-2xl flex flex-col justify-between text-left">
+                    <div>
+                        <h4 className="text-sm font-black uppercase tracking-widest text-indigo-400 mb-4">Live Email UI Mockup</h4>
+                        <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 min-h-[350px] flex flex-col">
+                            {campaignType === 'festival' && (
+                                <>
+                                    <div className="bg-gradient-to-r from-orange-500 to-rose-650 p-6 text-center text-white">
+                                        <h2 className="text-xl font-extrabold tracking-wide">✨ {campDetails.festivalName || 'Festival Offer'} ✨</h2>
+                                        <p className="text-[9px] uppercase tracking-widest mt-1 opacity-80">Exclusive Gift</p>
+                                    </div>
+                                    <div className="p-6 text-center space-y-4 flex-1 flex flex-col justify-center">
+                                        <h3 className="text-gray-800 font-extrabold text-lg">Celebrate With Delicious Savings</h3>
+                                        <div className="p-4 border-2 border-dashed border-rose-500 bg-rose-50/50 rounded-xl max-w-xs mx-auto">
+                                            <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Coupon code</span>
+                                            <div className="text-2xl font-black text-rose-650 tracking-wider my-1">{campDetails.couponCode || 'CODE'}</div>
+                                            <div className="text-sm font-extrabold text-gray-800">Flat {campDetails.discountPercent || '50'}% OFF</div>
+                                        </div>
+                                        <button className="bg-rose-500 text-white font-extrabold text-[10px] uppercase tracking-widest px-6 py-2.5 rounded-xl mx-auto shadow-md scale-100 hover:scale-105 transition-all">Order Festive Feast 🍲</button>
+                                    </div>
+                                </>
+                            )}
+                            {campaignType === 'spin' && (
+                                <>
+                                    <div className="bg-gradient-to-r from-indigo-500 to-purple-650 p-6 text-center text-white">
+                                        <h2 className="text-xl font-extrabold tracking-wide">🎡 Spin & Win!</h2>
+                                        <p className="text-[9px] uppercase tracking-widest mt-1 opacity-80">Interactive game reward</p>
+                                    </div>
+                                    <div className="p-6 text-center space-y-4 flex-1 flex flex-col justify-center">
+                                        <h3 className="text-gray-800 font-extrabold text-lg">Are you feeling lucky today?</h3>
+                                        
+                                        {/* CSS Spinning Wheel simulation */}
+                                        <div className="w-24 h-24 rounded-full border-[6px] border-gray-800 relative mx-auto overflow-hidden animate-spin" style={{ animationDuration: '6s' }}>
+                                            <div className="absolute inset-0 bg-red-400 rotate-0 skew-y-[30deg]"></div>
+                                            <div className="absolute inset-0 bg-yellow-400 rotate-60 skew-y-[30deg]"></div>
+                                            <div className="absolute inset-0 bg-emerald-400 rotate-120 skew-y-[30deg]"></div>
+                                            <div className="absolute inset-0 bg-blue-400 rotate-180 skew-y-[30deg]"></div>
+                                            <div className="absolute inset-0 bg-pink-400 rotate-240 skew-y-[30deg]"></div>
+                                            <div className="absolute inset-0 bg-indigo-400 rotate-300 skew-y-[30deg]"></div>
+                                            <div className="absolute w-6 h-6 rounded-full bg-white border-2 border-gray-800 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"></div>
+                                        </div>
+
+                                        <button className="bg-indigo-600 text-white font-extrabold text-[10px] uppercase tracking-widest px-6 py-2.5 rounded-xl mx-auto shadow-md">Spin the Wheel Now 🎡</button>
+                                    </div>
+                                </>
+                            )}
+                            {campaignType === 'feedback' && (
+                                <>
+                                    <div className="bg-gradient-to-r from-red-500 to-rose-600 p-6 text-center text-white">
+                                        <h2 className="text-xl font-extrabold tracking-wide">🍽️ Rate Your Meal</h2>
+                                        <p className="text-[9px] uppercase tracking-widest mt-1 opacity-80">Feedback request</p>
+                                    </div>
+                                    <div className="p-6 text-center space-y-4 flex-1 flex flex-col justify-center">
+                                        <h3 className="text-gray-800 font-extrabold text-lg">How was your delivery?</h3>
+                                        <p className="text-xs text-gray-500">Rate your recent order #{campDetails.orderId?.slice(-6).toUpperCase() || 'RECENT'} with one click:</p>
+                                        <div className="flex justify-center gap-2 text-3xl text-gray-300">
+                                            <span className="hover:text-yellow-400 cursor-pointer">★</span>
+                                            <span className="hover:text-yellow-400 cursor-pointer">★</span>
+                                            <span className="hover:text-yellow-400 cursor-pointer">★</span>
+                                            <span className="hover:text-yellow-400 cursor-pointer">★</span>
+                                            <span className="hover:text-yellow-400 cursor-pointer">★</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                            {campaignType === 'prime' && (
+                                <>
+                                    <div className="bg-gray-900 p-6 text-center border-b-4 border-yellow-500">
+                                        <div className="text-3xl">👑</div>
+                                        <h2 className="text-xl font-extrabold tracking-wide text-yellow-500">BHOJAN PRIME</h2>
+                                        <p className="text-[8px] uppercase tracking-widest mt-1 text-gray-400">Exclusive Membership Perks</p>
+                                    </div>
+                                    <div className="p-6 text-center space-y-4 flex-1 flex flex-col justify-center bg-gray-50/20">
+                                        <h3 className="text-gray-800 font-extrabold text-sm">Upgrade or Renew Your Prime Status</h3>
+                                        <ul className="text-left text-[9px] font-bold text-gray-500 space-y-1.5 max-w-xs mx-auto">
+                                            <li>🚀 Free Delivery on orders above ₹199</li>
+                                            <li>⚡ Express Kitchen Prep (Faster cooking)</li>
+                                            <li>💎 Double Loyalty Reward points</li>
+                                        </ul>
+                                        <button className="bg-yellow-500 text-gray-900 font-black text-[9px] uppercase tracking-widest px-6 py-2.5 rounded-xl mx-auto shadow-md">Renew Membership 👑</button>
+                                    </div>
+                                </>
+                            )}
+                            {campaignType === 'referral' && (
+                                <>
+                                    <div className="bg-emerald-600 p-6 text-center text-white">
+                                        <h2 className="text-xl font-extrabold tracking-wide">👥 Spread the Taste</h2>
+                                        <p className="text-[9px] uppercase tracking-widest mt-1 opacity-80">Referral Loyalty bonus</p>
+                                    </div>
+                                    <div className="p-6 text-center space-y-4 flex-1 flex flex-col justify-center">
+                                        <h3 className="text-gray-800 font-extrabold text-lg">Invite Friends & Get 500 Pts</h3>
+                                        <div className="p-4 border-2 border-dashed border-emerald-500 bg-emerald-50 rounded-xl max-w-xs mx-auto">
+                                            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Your Code</span>
+                                            <div className="text-xl font-black text-emerald-700 tracking-wider my-0.5">REFXXXX</div>
+                                        </div>
+                                        <button className="bg-emerald-600 text-white font-extrabold text-[9px] uppercase tracking-widest px-6 py-2.5 rounded-xl mx-auto shadow-md">Copy Share Link</button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </motion.div>
+    );
+
     const renderAdminSettings = () => (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <header className="bg-white dark:bg-gray-800 p-8 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -3900,6 +4273,46 @@ const UserProfile = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* 2FA Backup Codes Modal */}
+            {showCodesModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="w-full max-w-md bg-white dark:bg-gray-900 rounded-[32px] p-8 border border-gray-150 dark:border-gray-800 shadow-2xl relative text-left"
+                    >
+                        <h3 className="text-xl font-black mb-4 flex items-center gap-2 dark:text-white">
+                            <span>🔐</span> Save Backup Codes
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                            If you lose access to your verification email, you can use these backup codes to access your account. Write them down in a secure place. Each code can only be used once.
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 mb-6 bg-gray-50 dark:bg-gray-950 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                            {backupCodes?.map((code, idx) => (
+                                <div key={idx} className="p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-850 rounded-xl text-center font-mono font-black text-sm text-primary select-all">
+                                    {code}
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(backupCodes.join('\n'));
+                                toast.success('Codes copied to clipboard!');
+                            }}
+                            className="w-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-100 transition mb-3"
+                        >
+                            Copy All Codes
+                        </button>
+                        <button
+                            onClick={() => setShowCodesModal(false)}
+                            className="w-full bg-primary text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition"
+                        >
+                            Done
+                        </button>
+                    </motion.div>
+                </div>
+            )}
         </div >
     );
 };

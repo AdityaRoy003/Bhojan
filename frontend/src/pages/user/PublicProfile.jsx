@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '../utils/api';
-import FollowUserButton from '../components/FollowUserButton';
-import Loader from '../components/Loader';
+import api from '../../utils/api';
+import FollowUserButton from '../../components/FollowUserButton';
+import Loader from '../../components/Loader';
 
 const PublicProfile = () => {
     const { id } = useParams();

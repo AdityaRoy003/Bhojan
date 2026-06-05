@@ -16,12 +16,23 @@ const app = express();
 const http = require('http');
 const { Server } = require('socket.io');
 const server = http.createServer(app);
+
+// Allowed origins for CORS (shared between Express and Socket.io)
+const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'].filter(Boolean);
+
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:5173',
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         credentials: true
     }
 });
+global.io = io; // Expose globally for notificationHelper and background tasks
 
 const PORT = process.env.PORT || 8000;
 
@@ -30,11 +41,17 @@ const logger = require('./config/logger');
 
 // Standard Middleware
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // Security Middleware
@@ -79,6 +96,27 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// Strict Rate Limiting for Authentication endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 authentication requests per windowMs
+    message: { success: false, message: 'Too many authentication requests, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/auth', authLimiter);
+
+// Extra-Strict Rate Limiting for OTP and Password Resets (spammer protection)
+const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 password recovery requests per windowMs
+    message: { success: false, message: 'Too many password recovery attempts, please try again after 15 minutes' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/auth/forgot-password', otpLimiter);
+app.use('/api/auth/reset-password', otpLimiter);
+
 
 // Database Connection
 connectDB();
@@ -93,8 +131,34 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update_location', (data) => {
-        // Broadcast driver location to relevant tracking rooms
         io.to(`track_${data.orderId}`).emit('location_update', data);
+    });
+
+    // --- Group Ordering ---
+    socket.on('join_group', (groupId) => {
+        socket.join(`group_${groupId}`);
+        // Notify others in the group that a new member joined
+        socket.to(`group_${groupId}`).emit('group_member_joined', { socketId: socket.id });
+    });
+
+    socket.on('update_group_cart', ({ groupId, userId, userName, cartItems, total }) => {
+        // Broadcast updated cart from one member to all others in the group
+        io.to(`group_${groupId}`).emit('group_cart_updated', { userId, userName, cartItems, total });
+    });
+
+    socket.on('leave_group', (groupId) => {
+        socket.leave(`group_${groupId}`);
+        socket.to(`group_${groupId}`).emit('group_member_left', { socketId: socket.id });
+    });
+
+    // --- Courier Chat ---
+    socket.on('join_chat', (orderId) => {
+        socket.join(`chat_${orderId}`);
+    });
+
+    socket.on('send_chat_message', ({ orderId, message, senderName, senderRole, timestamp }) => {
+        // Broadcast to everyone in the chat room (customer + courier)
+        io.to(`chat_${orderId}`).emit('chat_message', { message, senderName, senderRole, timestamp });
     });
 
     socket.on('disconnect', () => {
@@ -127,6 +191,7 @@ app.use('/api/review', require('./routes/reviewRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/quests', require('./routes/questRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
+app.use('/api/cart', require('./routes/cartRoutes'));
 
 // Global Error Handler
 const { errorHandler } = require('./middlewares/errorMiddleware');
@@ -139,3 +204,4 @@ initRetentionJob();
 server.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
 });
+// Trigger nodemon reload to load updated env vars

@@ -24,7 +24,8 @@ const {
     getAllDisputes,
     resolveDispute,
     updateZoneSurge,
-    createZone
+    createZone,
+    sendCampaignEmail
 } = require('../controllers/adminController');
 
 // All routes are protected and restricted to Admin only
@@ -63,5 +64,6 @@ router.put('/order/assign', assignOrderManually);
 
 // Notification Routes
 router.post('/notifications/broadcast', broadcastNotification);
+router.post('/emails/send', sendCampaignEmail);
 
 module.exports = router;

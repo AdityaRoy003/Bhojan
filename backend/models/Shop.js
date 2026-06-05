@@ -9,6 +9,8 @@ const shopSchema = new mongoose.Schema({
     address: { type: String, required: true },
     items: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Item' }],
     isLocal: { type: Boolean, default: false }, // "Support Local" flag
+    shopType: { type: String, enum: ['Restaurant', 'Cloud Kitchen', 'Home Chef'], default: 'Restaurant' },
+    fssaiRegistrationType: { type: String, enum: ['Registered', 'State License', 'Central License', 'None'], default: 'Registered' },
     isActive: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
     adminCommission: { type: Number, default: 10 }, // Percentage
@@ -46,7 +48,11 @@ const shopSchema = new mongoose.Schema({
     specialTags: [{ type: String }], // e.g. "Festival Special", "Diwali Sweets"
     rating: { type: Number, default: 0 },
     numReviews: { type: Number, default: 0 },
-    costForTwo: { type: Number, default: 300 }
+    costForTwo: { type: Number, default: 300 },
+    location: {
+        type: { type: String, enum: ['Point'], default: 'Point' },
+        coordinates: { type: [Number], default: [0, 0] }
+    }
 }, { timestamps: true });
 
 // Performance Indexes

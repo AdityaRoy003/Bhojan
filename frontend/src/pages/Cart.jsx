@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import CheckoutProgress from '../components/CheckoutProgress';
+import socket, { connectSocket } from '../utils/socket';
+import { toast } from 'react-toastify';
 
 const Cart = () => {
     const { cartItems, restaurant, coupon } = useSelector((state) => state.cart);
@@ -17,12 +19,133 @@ const Cart = () => {
     const [couponError, setCouponError] = useState('');
     const [suggestions, setSuggestions] = useState([]);
 
+    // Group Ordering State
+    const [groupId, setGroupId] = useState('');
+    const [groupMembers, setGroupMembers] = useState({}); // { [userId]: { userName, cartItems, total } }
+    const [isGroupMode, setIsGroupMode] = useState(false);
+    const [splitType, setSplitType] = useState('individual'); // 'individual', 'equal'
+    const [copiedLink, setCopiedLink] = useState(false);
+
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const deliveryFee = subtotal > 500 ? 0 : 40;
     const gstRate = 0.05;
     const gstAmount = subtotal * gstRate;
     const discount = coupon?.discount || 0;
     const total = subtotal + deliveryFee + gstAmount - discount;
+
+    // Start or Join a Group Ordering Session
+    const startGroupSession = (id) => {
+        const activeId = id || Math.random().toString(36).substring(2, 9).toUpperCase();
+        setGroupId(activeId);
+        setIsGroupMode(true);
+        if (user?._id) {
+            connectSocket(user._id);
+        } else {
+            socket.connect();
+        }
+        socket.emit('join_group', activeId);
+
+        // Share initial cart
+        socket.emit('update_group_cart', {
+            groupId: activeId,
+            userId: user?._id || 'guest_' + Math.random().toString(36).substring(2, 6),
+            userName: user?.fullname || 'Creator (You)',
+            cartItems,
+            total
+        });
+    };
+
+    const leaveGroupSession = () => {
+        if (groupId) {
+            socket.emit('leave_group', groupId);
+        }
+        setIsGroupMode(false);
+        setGroupId('');
+        setGroupMembers({});
+    };
+
+    // Auto-join from URL parameter
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const urlGroupId = queryParams.get('groupId');
+        if (urlGroupId) {
+            startGroupSession(urlGroupId);
+        }
+    }, [user?._id]);
+
+    // Handle updates & broadcasts
+    useEffect(() => {
+        if (!isGroupMode || !groupId) return;
+
+        const localUserId = user?._id || 'my_cart';
+        // Broadcast local changes to group
+        socket.emit('update_group_cart', {
+            groupId,
+            userId: localUserId,
+            userName: user?.fullname || 'Me',
+            cartItems,
+            total
+        });
+
+        const handleGroupCartUpdated = ({ userId, userName, cartItems: remoteCartItems, total: remoteTotal }) => {
+            if (userId === localUserId) return;
+            setGroupMembers(prev => ({
+                ...prev,
+                [userId]: { userName, cartItems: remoteCartItems, total: remoteTotal }
+            }));
+        };
+
+        const handleMemberJoined = () => {
+            // Send cart to make sure newcomer knows about us
+            socket.emit('update_group_cart', {
+                groupId,
+                userId: localUserId,
+                userName: user?.fullname || 'Me',
+                cartItems,
+                total
+            });
+        };
+
+        socket.on('group_cart_updated', handleGroupCartUpdated);
+        socket.on('group_member_joined', handleMemberJoined);
+
+        return () => {
+            socket.off('group_cart_updated', handleGroupCartUpdated);
+            socket.off('group_member_joined', handleMemberJoined);
+        };
+    }, [cartItems, isGroupMode, groupId, total, user?._id]);
+
+    const groupMembersArray = Object.values(groupMembers);
+    const groupCount = 1 + groupMembersArray.length;
+    
+    const combinedSubtotal = subtotal + groupMembersArray.reduce((acc, m) => 
+        acc + m.cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), 0);
+
+    const combinedTotal = total + groupMembersArray.reduce((acc, m) => acc + m.total, 0);
+
+    const getSplitBreakdown = () => {
+        if (splitType === 'equal') {
+            const share = combinedTotal / groupCount;
+            const breakdown = [{ name: user?.fullname || 'Me', share, itemsCount: cartItems.length }];
+            groupMembersArray.forEach(m => {
+                breakdown.push({ name: m.userName, share, itemsCount: m.cartItems.length });
+            });
+            return breakdown;
+        } else {
+            const breakdown = [{ name: user?.fullname || 'Me', share: total, itemsCount: cartItems.length }];
+            groupMembersArray.forEach(m => {
+                breakdown.push({ name: m.userName, share: m.total, itemsCount: m.cartItems.length });
+            });
+            return breakdown;
+        }
+    };
+
+    const copyInviteLink = () => {
+        const link = `${window.location.origin}/cart?groupId=${groupId}`;
+        navigator.clipboard.writeText(link);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
 
     const loyaltyPointsEarning = Math.floor(subtotal / 10);
 
@@ -54,7 +177,7 @@ const Cart = () => {
             if (data.success) {
                 dispatch(applyCoupon({ code: data.couponCode, discount: data.discount }));
                 setCouponCode('');
-                alert('Coupon applied successfully!');
+                toast.success('Coupon applied successfully!');
             }
         } catch (err) {
             setCouponError(err.response?.data?.message || 'Invalid coupon');
@@ -67,9 +190,9 @@ const Cart = () => {
         try {
             await api.post('/user-actions/wishlist/toggle', { foodItemId: itemId });
             dispatch(removeFromCart(itemId));
-            alert('Moved to wishlist!');
+            toast.success('Moved to wishlist!');
         } catch (err) {
-            alert('Failed to save for later');
+            toast.error('Failed to save for later');
         }
     };
 
@@ -80,7 +203,7 @@ const Cart = () => {
         }
 
         if (!['Customer', 'User', 'Admin'].includes(user?.role)) {
-            alert(`You are logged in as a ${user.role}. Only Customers can place orders.`);
+            toast.warning(`You are logged in as a ${user.role}. Only Customers can place orders.`);
             return;
         }
 
@@ -181,6 +304,32 @@ const Cart = () => {
                             </AnimatePresence>
                         </div>
 
+                        {/* Group Items List */}
+                        {isGroupMode && groupMembersArray.length > 0 && (
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-2 ml-2">Added by friends</h3>
+                                {groupMembersArray.map((member, idx) => (
+                                    <div key={idx} className="bg-white dark:bg-gray-800 p-5 rounded-[28px] md:rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base">👤</span>
+                                            <span className="font-black text-sm text-gray-900 dark:text-white">{member.userName}'s Cart</span>
+                                        </div>
+                                        <div className="space-y-2 border-t border-gray-50 dark:border-gray-700/50 pt-2">
+                                            {member.cartItems.map((item, itemIdx) => (
+                                                <div key={itemIdx} className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
+                                                    <span className="font-semibold">{item.name} x{item.quantity}</span>
+                                                    <span className="font-bold dark:text-white">₹{(item.price * item.quantity).toFixed(2)}</span>
+                                                </div>
+                                            ))}
+                                            {member.cartItems.length === 0 && (
+                                                <p className="text-[10px] text-gray-400 italic">Cart is empty</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Smart Suggestions */}
                         {suggestions.length > 0 && (
                             <section>
@@ -206,6 +355,98 @@ const Cart = () => {
 
                     {/* Right Column: Checkout Info */}
                     <div className="w-full lg:w-96 space-y-6">
+                        {/* Group Ordering Panel */}
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                            <h3 className="font-black text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-2">
+                                <span>👥</span> Group Ordering
+                            </h3>
+                            
+                            {!isGroupMode ? (
+                                <div className="space-y-3">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
+                                        Order together with friends in real-time, view their selections, and choose how to split the bill.
+                                    </p>
+                                    <button
+                                        onClick={() => startGroupSession()}
+                                        className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-100 dark:shadow-none"
+                                    >
+                                        Start Group Session
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-2xl border border-dashed border-gray-200 dark:border-gray-600">
+                                        <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Group ID</p>
+                                        <div className="flex justify-between items-center mt-1">
+                                            <span className="font-mono font-bold text-sm tracking-wider dark:text-white">{groupId}</span>
+                                            <button
+                                                onClick={copyInviteLink}
+                                                className="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                                            >
+                                                {copiedLink ? 'Copied! ✅' : 'Copy Invite'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Active Members list */}
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Active Members ({groupCount})</p>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center py-1 border-b border-gray-50 dark:border-gray-700/40 text-xs">
+                                                <span className="font-bold text-gray-700 dark:text-gray-300">🙋‍♂️ You (Creator)</span>
+                                                <span className="font-black dark:text-white">₹{total.toFixed(2)}</span>
+                                            </div>
+                                            {groupMembersArray.map((m, idx) => (
+                                                <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-50 dark:border-gray-700/40 text-xs">
+                                                    <span className="font-semibold text-gray-600 dark:text-gray-400">👤 {m.userName}</span>
+                                                    <span className="font-bold dark:text-white">₹{m.total.toFixed(2)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Bill split selector */}
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">Split Strategy</p>
+                                        <div className="flex gap-2 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-xl">
+                                            <button
+                                                onClick={() => setSplitType('individual')}
+                                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${splitType === 'individual' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-400'}`}
+                                            >
+                                                Pay Own
+                                            </button>
+                                            <button
+                                                onClick={() => setSplitType('equal')}
+                                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${splitType === 'equal' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-400'}`}
+                                            >
+                                                Split Equally
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Visualizer Breakdown */}
+                                    <div className="bg-indigo-50/30 dark:bg-indigo-950/20 p-3 rounded-2xl border border-indigo-100/50 dark:border-indigo-950/40 space-y-2">
+                                        <p className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest">Individual shares</p>
+                                        <div className="space-y-1.5">
+                                            {getSplitBreakdown().map((b, idx) => (
+                                                <div key={idx} className="flex justify-between items-center text-xs">
+                                                    <span className="font-semibold text-gray-700 dark:text-gray-300">{b.name} ({b.itemsCount} items)</span>
+                                                    <span className="font-black text-indigo-600 dark:text-indigo-400">₹{b.share.toFixed(2)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={leaveGroupSession}
+                                        className="w-full text-red-500 hover:text-red-600 text-[10px] font-black uppercase tracking-widest transition-all pt-1 text-center"
+                                    >
+                                        Leave Session
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Coupon Section */}
                         <div className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
                             <h3 className="font-black text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-2">
@@ -241,11 +482,13 @@ const Cart = () => {
 
                         {/* Bill Breakdown */}
                         <div className="bg-white dark:bg-gray-800 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 transition-all">
-                            <h3 className="font-black text-xl mb-4 dark:text-white">Total Bill</h3>
+                            <h3 className="font-black text-xl mb-4 dark:text-white">
+                                {isGroupMode ? 'Combined Group Bill' : 'Total Bill'}
+                            </h3>
                             <div className="space-y-3">
                                 <div className="flex justify-between text-gray-500 dark:text-gray-400 text-sm font-medium">
                                     <span>Subtotal</span>
-                                    <span>₹{subtotal.toFixed(2)}</span>
+                                    <span>₹{(isGroupMode ? combinedSubtotal : subtotal).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-gray-500 dark:text-gray-400 text-sm font-medium">
                                     <span>Delivery Fee</span>
@@ -253,7 +496,7 @@ const Cart = () => {
                                 </div>
                                 <div className="flex justify-between text-gray-500 dark:text-gray-400 text-sm font-medium">
                                     <span>GST (5%)</span>
-                                    <span>₹{gstAmount.toFixed(2)}</span>
+                                    <span>₹{((isGroupMode ? combinedSubtotal : subtotal) * gstRate).toFixed(2)}</span>
                                 </div>
                                 {coupon && (
                                     <div className="flex justify-between text-green-600 text-sm font-bold">
@@ -261,10 +504,18 @@ const Cart = () => {
                                         <span>- ₹{discount.toFixed(2)}</span>
                                     </div>
                                 )}
+                                {isGroupMode && (
+                                    <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 flex justify-between text-gray-600 dark:text-gray-400 text-sm font-bold">
+                                        <span>Your Share</span>
+                                        <span className="text-primary font-black">₹{(getSplitBreakdown().find(b => b.name === 'Me' || b.name.includes('Creator'))?.share || total).toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="pt-4 border-t border-gray-50 dark:border-gray-700 flex justify-between items-end transition-all">
                                     <div>
-                                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">To Pay</p>
-                                        <p className="text-3xl font-black text-gray-900 dark:text-white">₹{total.toFixed(2)}</p>
+                                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                                            {isGroupMode ? 'Combined Grand Total' : 'To Pay'}
+                                        </p>
+                                        <p className="text-3xl font-black text-gray-900 dark:text-white">₹{(isGroupMode ? combinedTotal : total).toFixed(2)}</p>
                                     </div>
                                     <div className="bg-amber-50 dark:bg-amber-900/10 px-3 py-1 rounded-full flex items-center gap-1.5 border border-amber-100 dark:border-amber-900/30">
                                         <span className="text-sm">💎</span>
@@ -277,7 +528,7 @@ const Cart = () => {
                                 onClick={handleCheckout}
                                 className="w-full bg-primary text-white py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-red-700 transition shadow-2xl shadow-red-200 transform active:scale-95 duration-200 group"
                             >
-                                Secure Checkout
+                                {isGroupMode ? 'Proceed with Group Order' : 'Secure Checkout'}
                                 <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
                             </button>
 
@@ -294,8 +545,12 @@ const Cart = () => {
             <div className="lg:hidden fixed bottom-[92px] left-4 right-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 z-40 shadow-2xl rounded-3xl transition-all">
                 <div className="flex items-center justify-between mb-2 px-2">
                     <div>
-                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Grand Total</p>
-                        <p className="text-xl font-black text-gray-900 dark:text-white">₹{total.toFixed(2)}</p>
+                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                            {isGroupMode ? 'Combined Total' : 'Grand Total'}
+                        </p>
+                        <p className="text-xl font-black text-gray-900 dark:text-white">
+                            ₹{(isGroupMode ? combinedTotal : total).toFixed(2)}
+                        </p>
                     </div>
                     {coupon && <span className="text-[8px] font-black text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full uppercase">Code Applied</span>}
                 </div>
@@ -303,7 +558,7 @@ const Cart = () => {
                     onClick={handleCheckout}
                     className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-red-100"
                 >
-                    Proceed to Payment →
+                    {isGroupMode ? 'Proceed with Group Order' : 'Proceed to Payment →'}
                 </button>
             </div>
         </div>

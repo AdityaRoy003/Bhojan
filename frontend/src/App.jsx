@@ -7,6 +7,8 @@ import CookieConsent from './components/CookieConsent';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import BottomNav from './components/BottomNav';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy Load Pages
 const Landing = lazy(() => import('./pages/Landing'));
@@ -29,6 +31,9 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const PublicProfile = lazy(() => import('./pages/user/PublicProfile'));
+const GroupCartScreen = lazy(() => import('./pages/GroupCartScreen'));
+const HomeChefs = lazy(() => import('./pages/HomeChefs'));
+const Notifications = lazy(() => import('./pages/Notifications'));
 
 const CHROME_HIDDEN_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
 
@@ -39,12 +44,14 @@ function AppContent() {
   return (
     <>
       <ScrollToTop />
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
       {!hideChrome && <Navbar />}
       <CookieConsent />
       <Suspense fallback={<Loader />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/home-chefs" element={<HomeChefs />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/shop/:id" element={<ShopDetails />} />
@@ -59,6 +66,8 @@ function AppContent() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/group-cart/:partyId" element={<GroupCartScreen />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/track/:orderId" element={<OrderTracking />} />
             <Route path="/prime-membership" element={<PrimeMembership />} />

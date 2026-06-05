@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import api from '../utils/api';
 
 const PrimeMembership = () => {
-    const { user } = useSelector(state => state.user);
+    const navigate = useNavigate();
+    const { isAuthenticated, user } = useSelector(state => state.user);
     const [subscriptions, setSubscriptions] = useState([]);
     const [isPrimeActive, setIsPrimeActive] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -35,22 +37,69 @@ const PrimeMembership = () => {
     };
 
     const handleSubscribe = async (planType, duration, amount) => {
+        if (!isAuthenticated) {
+            alert('Please login first to subscribe!');
+            navigate('/login');
+            return;
+        }
+
         try {
-            // In production, integrate with Razorpay
-            const { data } = await api.post('/subscription/create', {
-                planType,
-                duration,
-                paymentId: 'DEMO_PAYMENT_' + Date.now(),
-                amountPaid: amount
+            // 1️⃣ Get public key from backend
+            const { data: { key } } = await api.get('/payment/key');
+
+            // 2️⃣ Create a payment order on backend
+            const { data: orderRes } = await api.post('/payment/create', {
+                amount: Math.round(amount)
             });
 
-            if (data.success) {
-                alert('Subscription activated successfully!');
-                fetchSubscriptions();
-                checkPrimeStatus();
+            if (!orderRes.success) {
+                alert(orderRes.message || 'Failed to create payment order');
+                return;
             }
+
+            // 3️⃣ Open Razorpay Checkout modal
+            const options = {
+                key,
+                amount: orderRes.order.amount,
+                currency: orderRes.order.currency,
+                name: 'Bhojan Prime',
+                description: `${planType} Subscription (${duration})`,
+                order_id: orderRes.order.id,
+                handler: async (response) => {
+                    try {
+                        // 4️⃣ Verify and activate subscription on backend
+                        const { data } = await api.post('/subscription/create', {
+                            planType,
+                            duration,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            amountPaid: amount
+                        });
+
+                        if (data.success) {
+                            alert('Subscription activated successfully! 🎉');
+                            fetchSubscriptions();
+                            checkPrimeStatus();
+                        }
+                    } catch (err) {
+                        console.error('Subscription activation failed:', err);
+                        alert(err.response?.data?.message || 'Verification and activation failed');
+                    }
+                },
+                prefill: {
+                    name: user?.fullname || '',
+                    email: user?.email || '',
+                    contact: ''
+                },
+                theme: { color: '#4f46e5' }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
         } catch (error) {
-            alert('Subscription failed');
+            console.error(error);
+            alert(error.response?.data?.message || 'Payment initialization failed');
         }
     };
 

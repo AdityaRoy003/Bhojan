@@ -4,7 +4,7 @@ const User = require('../models/User');
 // Create Shop
 exports.createShop = async (req, res) => {
     try {
-        const { name, image, city, state, address } = req.body;
+        const { name, image, city, state, address, location } = req.body;
 
         const shop = await Shop.create({
             name,
@@ -12,7 +12,8 @@ exports.createShop = async (req, res) => {
             owner: req.user.id,
             city,
             state,
-            address
+            address,
+            location
         });
 
         // Update user role to Owner if not already
@@ -29,12 +30,15 @@ exports.createShop = async (req, res) => {
 // Get All Shops (with city filter and dietary preferences)
 exports.getAllShops = async (req, res) => {
     try {
-        const { city, dietaryTags } = req.query;
+        const { city, dietaryTags, shopType } = req.query;
         const userId = req.user?.id;
 
         let query = {};
         if (city) {
             query.city = city;
+        }
+        if (shopType) {
+            query.shopType = shopType;
         }
 
         let shops = await Shop.find(query).populate('items');

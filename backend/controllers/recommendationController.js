@@ -2,6 +2,86 @@ const Order = require('../models/Order');
 const Item = require('../models/Item');
 const User = require('../models/User');
 
+// --- AI RECOMMENDER ---
+exports.getAIRecommendations = async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query || query.trim().length < 2) {
+            return res.status(400).json({ success: false, message: 'Query too short.' });
+        }
+
+        const q = query.toLowerCase();
+
+        // Parse dietary intent
+        const isVeg = /\bveg(an|etarian)?\b/.test(q);
+        const isNonVeg = /\bnon.?veg|chicken|mutton|fish|egg|meat|prawn|seafood\b/.test(q);
+        const isSpicy = /\bspic(y|e)|hot\b/.test(q);
+        const isMild = /\bmild\b/.test(q);
+        const isSweet = /\bsweet|dessert|gulab|halwa|kheer|cake\b/.test(q);
+        const isCheap = /\bcheap|budget|affordable|under ?(\d+)\b/.test(q);
+
+        // Extract price ceiling if mentioned
+        const priceMatch = q.match(/under\s*(\d+)/);
+        const maxPrice = priceMatch ? parseInt(priceMatch[1]) : null;
+
+        // Cuisine keywords
+        const cuisines = ['pizza', 'burger', 'biryani', 'sushi', 'chinese', 'italian',
+            'south indian', 'north indian', 'thai', 'mexican', 'pasta', 'sandwich',
+            'momos', 'rolls', 'kebab', 'dosa', 'idli', 'paneer', 'salad', 'soup'];
+        const matchedCuisines = cuisines.filter(c => q.includes(c));
+
+        // Build mongo query
+        const mongoQuery = {};
+
+        if (isVeg && !isNonVeg) mongoQuery.foodType = 'Veg';
+        if (isNonVeg && !isVeg) mongoQuery.foodType = 'Non-Veg';
+        if (maxPrice) mongoQuery.price = { $lte: maxPrice };
+
+        if (matchedCuisines.length > 0) {
+            mongoQuery.$or = matchedCuisines.map(c => ({
+                $or: [
+                    { name: { $regex: c, $options: 'i' } },
+                    { description: { $regex: c, $options: 'i' } },
+                    { category: { $regex: c, $options: 'i' } }
+                ]
+            })).flat();
+            // Flatten nested $or properly
+            const orConditions = matchedCuisines.flatMap(c => [
+                { name: { $regex: c, $options: 'i' } },
+                { description: { $regex: c, $options: 'i' } },
+                { category: { $regex: c, $options: 'i' } }
+            ]);
+            mongoQuery.$or = orConditions;
+        } else {
+            // General text search
+            const words = q.split(/\s+/).filter(w => w.length > 2);
+            if (words.length > 0) {
+                mongoQuery.$or = words.flatMap(w => [
+                    { name: { $regex: w, $options: 'i' } },
+                    { description: { $regex: w, $options: 'i' } },
+                    { category: { $regex: w, $options: 'i' } }
+                ]);
+            }
+        }
+
+        const items = await Item.find(mongoQuery)
+            .populate('shop', 'name city image')
+            .sort({ rating: -1, isPopular: -1 })
+            .limit(12);
+
+        // Build a human-readable response summary
+        let summary = `Found ${items.length} result${items.length !== 1 ? 's' : ''}`;
+        if (isVeg) summary += ' (Veg only)';
+        if (isNonVeg) summary += ' (Non-Veg)';
+        if (maxPrice) summary += ` under ₹${maxPrice}`;
+        if (matchedCuisines.length) summary += ` for ${matchedCuisines.join(', ')}`;
+
+        res.json({ success: true, items, summary });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // Get personalized recommendations based on order history
 exports.getPersonalizedRecommendations = async (req, res) => {
     try {

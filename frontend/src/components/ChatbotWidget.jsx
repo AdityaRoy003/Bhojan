@@ -95,7 +95,7 @@ const ChatbotWidget = () => {
     };
 
     return (
-        <div className="fixed bottom-8 right-6 z-[150] md:bottom-10 md:right-8">
+        <div className="fixed bottom-[130px] right-4 z-[150] md:bottom-10 md:right-8">
             {/* Chat Panel */}
             <AnimatePresence>
                 {isOpen && (
@@ -104,8 +104,8 @@ const ChatbotWidget = () => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 20 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        className="mb-4 w-80 bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col"
-                        style={{ height: '440px' }}
+                        className="mb-4 w-[calc(100vw-2rem)] sm:w-80 bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col"
+                        style={{ height: '440px', maxHeight: '60vh' }}
                     >
                         {/* Header */}
                         <div className="bg-gradient-to-r from-orange-500 to-red-500 p-4 flex items-center gap-3">
@@ -181,7 +181,7 @@ const ChatbotWidget = () => {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-14 h-14 bg-gradient-to-r from-orange-500 to-red-500 rounded-[22px] shadow-2xl shadow-red-300 dark:shadow-red-900/40 flex items-center justify-center text-2xl relative"
+                className="w-11 h-11 md:w-14 md:h-14 bg-gradient-to-r from-orange-500 to-red-500 rounded-full md:rounded-[22px] shadow-2xl shadow-red-300 dark:shadow-red-900/40 flex items-center justify-center text-xl md:text-2xl relative"
             >
                 <AnimatePresence mode="wait">
                     {isOpen

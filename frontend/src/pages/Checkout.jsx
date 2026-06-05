@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { clearCart } from '../redux/cartSlice';
 import { updateUserAddresses } from '../redux/userSlice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import CheckoutProgress from '../components/CheckoutProgress';
+import { toast } from 'react-toastify';
 
 const Checkout = () => {
     const { cartItems, restaurant } = useSelector((state) => state.cart);
@@ -19,7 +20,11 @@ const Checkout = () => {
     const [newAddress, setNewAddress] = useState({ street: '', city: '', state: '', pincode: '' });
     const [loading, setLoading] = useState(false);
 
-    const [paymentMethod, setPaymentMethod] = useState('Online'); // 'Online' or 'COD'
+    const location = useLocation();
+    const isGroupOrder = location.state?.isGroupOrder || false;
+    const partyId = location.state?.partyId || null;
+
+    const [paymentMethod, setPaymentMethod] = useState(isGroupOrder ? 'Split' : 'Online'); // 'Online', 'COD', or 'Split'
     const [instructions, setInstructions] = useState('');
 
     const [orderSuccess, setOrderSuccess] = useState(false);
@@ -99,7 +104,7 @@ const Checkout = () => {
                 setNewAddress({ street: '', city: '', state: '', pincode: '' });
             }
         } catch (error) {
-            alert("Failed to add address");
+            toast.error("Failed to add address");
         }
     };
 
@@ -120,6 +125,8 @@ const Checkout = () => {
             platformFee,
             taxAmount: taxes,
             redeemPoints, // Flag to backend
+            isGroupOrder,
+            partyId,
             couponCode: couponApplied ? couponCode : null,
             couponDiscount,
             ...paymentDetails
@@ -133,13 +140,13 @@ const Checkout = () => {
                 dispatch(clearCart());
             }
         } catch (error) {
-            alert("Failed to place order. Please try again.");
+            toast.error("Failed to place order. Please try again.");
         }
     };
 
     const handlePayment = async () => {
         if (!selectedAddress) {
-            alert("Please select a delivery address");
+            toast.warning("Please select a delivery address");
             return;
         }
 
@@ -156,7 +163,7 @@ const Checkout = () => {
             const { data } = await api.post('/payment/create', { amount: Math.round(total) });
 
             if (!data.success) {
-                alert(`Order creation failed: ${data.message}`);
+                toast.error(`Order creation failed: ${data.message}`);
                 setLoading(false);
                 return;
             }
@@ -176,13 +183,20 @@ const Checkout = () => {
                             orderId: response.razorpay_order_id
                         });
                     } catch (error) {
-                        alert("Payment verification failed. Please contact support.");
+                        toast.error("Payment verification failed. Please contact support.");
                     }
                 },
                 prefill: {
                     name: user?.fullname,
                     email: user?.email,
                     contact: user?.mobile
+                },
+                method: {
+                    upi: true,
+                    card: true,
+                    netbanking: true,
+                    wallet: true,
+                    paylater: true
                 },
                 theme: { color: "#e63946" }
             };
@@ -192,7 +206,7 @@ const Checkout = () => {
         } catch (error) {
             console.error("Payment initialization error:", error);
             const msg = error.response?.data?.message || "Failed to initialize payment modal. Please check your internet or payment keys.";
-            alert(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -271,8 +285,8 @@ const Checkout = () => {
                         <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">2. Payment Method</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div
-                                onClick={() => setPaymentMethod('Online')}
-                                className={`p-4 rounded-xl border-2 cursor-pointer flex items-center gap-4 transition-all ${paymentMethod === 'Online' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'}`}
+                                onClick={() => !isGroupOrder && setPaymentMethod('Online')}
+                                className={`p-4 rounded-xl border-2 cursor-pointer flex items-center gap-4 transition-all ${paymentMethod === 'Online' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'} ${isGroupOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'Online' ? 'border-primary' : 'border-gray-300'}`}>
                                     {paymentMethod === 'Online' && <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>}
@@ -283,8 +297,8 @@ const Checkout = () => {
                                 </div>
                             </div>
                             <div
-                                onClick={() => setPaymentMethod('COD')}
-                                className={`p-4 rounded-xl border-2 cursor-pointer flex items-center gap-4 transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'}`}
+                                onClick={() => !isGroupOrder && setPaymentMethod('COD')}
+                                className={`p-4 rounded-xl border-2 cursor-pointer flex items-center gap-4 transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'} ${isGroupOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'COD' ? 'border-primary' : 'border-gray-300'}`}>
                                     {paymentMethod === 'COD' && <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>}
@@ -294,6 +308,19 @@ const Checkout = () => {
                                     <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">Pay when order arrives</p>
                                 </div>
                             </div>
+                            {isGroupOrder && (
+                                <div
+                                    className="col-span-1 sm:col-span-2 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center gap-4"
+                                >
+                                    <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-gray-800 dark:text-white text-sm md:text-base">Split Payment (Group Cart)</p>
+                                        <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">Each participant pays their share</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

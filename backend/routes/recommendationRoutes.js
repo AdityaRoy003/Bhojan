@@ -6,7 +6,8 @@ const {
     getLeaderboardCustomers,
     getLeaderboardRestaurants,
     getLeaderboardDelivery,
-    getPredictiveMealPlan
+    getPredictiveMealPlan,
+    getAIRecommendations
 } = require('../controllers/recommendationController');
 const { isAuthenticated } = require('../middlewares/auth');
 
@@ -19,5 +20,6 @@ router.get('/leaderboard/customers', getLeaderboardCustomers);
 router.get('/leaderboard/restaurants', getLeaderboardRestaurants);
 router.get('/leaderboard/delivery', getLeaderboardDelivery);
 router.get('/meal-plan', isAuthenticated, getPredictiveMealPlan);
+router.get('/ai', getAIRecommendations);
 
 module.exports = router;

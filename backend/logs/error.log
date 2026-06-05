@@ -695,3 +695,64 @@
 2026-02-11 23:41:54 [ERROR]: Redis Client Error: connect ECONNREFUSED ::1:6379
 2026-02-11 23:50:20 [ERROR]: Redis Client Error: connect ECONNREFUSED ::1:6379
 2026-02-12 14:25:48 [ERROR]: Redis Client Error: connect ECONNREFUSED ::1:6379
+2026-05-06 14:02:05 [ERROR]: 500 - request entity too large - /api/social/stories - POST - ::1
+2026-05-06 14:02:05 [ERROR]: PayloadTooLargeError: request entity too large
+    at readStream (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:163:17)
+    at getRawBody (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:116:12)
+    at read (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\read.js:113:3)
+    at jsonParser (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\types\json.js:88:5)
+    at Layer.handleRequest (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:342:13)
+    at C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:297:9
+    at processParams (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:291:5)
+    at cors (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\cors\lib\index.js:188:7)
+2026-05-06 14:02:07 [ERROR]: 500 - request entity too large - /api/social/stories - POST - ::1
+2026-05-06 14:02:07 [ERROR]: PayloadTooLargeError: request entity too large
+    at readStream (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:163:17)
+    at getRawBody (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:116:12)
+    at read (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\read.js:113:3)
+    at jsonParser (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\types\json.js:88:5)
+    at Layer.handleRequest (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:342:13)
+    at C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:297:9
+    at processParams (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:291:5)
+    at cors (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\cors\lib\index.js:188:7)
+2026-05-06 14:02:09 [ERROR]: 500 - request entity too large - /api/social/stories - POST - ::1
+2026-05-06 14:02:09 [ERROR]: PayloadTooLargeError: request entity too large
+    at readStream (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:163:17)
+    at getRawBody (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:116:12)
+    at read (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\read.js:113:3)
+    at jsonParser (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\types\json.js:88:5)
+    at Layer.handleRequest (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:342:13)
+    at C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:297:9
+    at processParams (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:291:5)
+    at cors (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\cors\lib\index.js:188:7)
+2026-05-06 14:03:27 [ERROR]: [AUTH] Middleware Error: connect ECONNREFUSED 127.0.0.1:27017
+2026-05-06 14:07:12 [ERROR]: 500 - request entity too large - /api/social/stories - POST - ::1
+2026-05-06 14:07:12 [ERROR]: PayloadTooLargeError: request entity too large
+    at readStream (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:163:17)
+    at getRawBody (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:116:12)
+    at read (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\read.js:113:3)
+    at jsonParser (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\types\json.js:88:5)
+    at Layer.handleRequest (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:342:13)
+    at C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:297:9
+    at processParams (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:291:5)
+    at cors (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\cors\lib\index.js:188:7)
+2026-05-06 14:07:36 [ERROR]: 500 - request entity too large - /api/social/stories - POST - ::1
+2026-05-06 14:07:36 [ERROR]: PayloadTooLargeError: request entity too large
+    at readStream (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:163:17)
+    at getRawBody (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\raw-body\index.js:116:12)
+    at read (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\read.js:113:3)
+    at jsonParser (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\body-parser\lib\types\json.js:88:5)
+    at Layer.handleRequest (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:342:13)
+    at C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:297:9
+    at processParams (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:582:12)
+    at next (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\router\index.js:291:5)
+    at cors (C:\Users\adity\OneDrive\Desktop\Bhojan\backend\node_modules\cors\lib\index.js:188:7)

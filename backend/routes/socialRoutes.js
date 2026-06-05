@@ -12,6 +12,7 @@ const {
 } = require('../controllers/socialController');
 
 router.post('/post', isAuthenticated, createPost);
+router.post('/stories', isAuthenticated, createPost);
 router.get('/feed', getFeed);
 router.get('/stories', getStories);
 router.put('/like/:postId', isAuthenticated, toggleLike);

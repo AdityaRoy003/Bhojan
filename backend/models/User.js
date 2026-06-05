@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
     fullname: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String }, // Optional for Google Auth users
+    password: { type: String, select: false }, // Optional for Google Auth users
     mobile: { type: String },
     role: {
         type: String,
@@ -32,6 +32,9 @@ const userSchema = new mongoose.Schema({
     securitySettings: {
         twoFactorEnabled: { type: Boolean, default: false },
         otpMethod: { type: String, enum: ['Email', 'SMS'], default: 'Email' },
+        twoFactorCode: { type: String },
+        twoFactorCodeExpires: { type: Date },
+        backupCodes: { type: [String], default: [] },
         activeSessions: [{
             deviceId: String,
             lastActive: Date,
@@ -39,6 +42,8 @@ const userSchema = new mongoose.Schema({
             os: String
         }]
     },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
     userSettings: {
         notifications: {
             email: { type: Boolean, default: true },

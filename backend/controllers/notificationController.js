@@ -3,9 +3,10 @@ const Notification = require('../models/Notification');
 // Get all notifications for the logged-in user
 exports.getNotifications = async (req, res) => {
     try {
+        const limit = req.query.limit ? parseInt(req.query.limit) : 100;
         const notifications = await Notification.find({ user: req.user._id })
             .sort({ createdAt: -1 })
-            .limit(20);
+            .limit(limit);
 
         res.status(200).json({
             success: true,
@@ -69,6 +70,17 @@ exports.deleteNotification = async (req, res) => {
 
         await notification.deleteOne();
         res.status(200).json({ success: true, message: 'Notification removed' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// Clear all notifications for user
+exports.clearAllNotifications = async (req, res) => {
+    try {
+        await Notification.deleteMany({ user: req.user._id });
+        res.status(200).json({ success: true, message: 'All notifications cleared' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server Error' });

@@ -10,6 +10,7 @@ import ActiveOrderDrawer from '../components/ActiveOrderDrawer';
 import MoodBanner from '../components/MoodBanner';
 import EventBanner from '../components/EventBanner';
 import ChatbotWidget from '../components/ChatbotWidget';
+import BhojanAI from '../components/BhojanAI';
 import PostStoryModal from '../components/PostStoryModal';
 import FriendsActivity from '../components/FriendsActivity';
 
@@ -253,7 +254,7 @@ const Home = () => {
 
     return (
         <div
-            className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-32 transition-colors duration-300 relative"
+            className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-32 transition-colors duration-300 relative overflow-x-hidden"
             onTouchStart={(e) => {
                 if (window.scrollY === 0) {
                     const startY = e.touches[0].pageY;
@@ -284,7 +285,7 @@ const Home = () => {
             </AnimatePresence>
 
             {/* Hero Section - Compact & Modern */}
-            <div className={`relative pt-8 pb-10 md:py-20 transition-all duration-500 ${activeFestival ? `bg-gradient-to-br ${activeFestival.colors.bg}` : 'bg-white dark:bg-gray-950'}`}>
+            <div className={`relative overflow-hidden pt-8 pb-10 md:py-20 transition-all duration-500 ${activeFestival ? `bg-gradient-to-br ${activeFestival.colors.bg}` : 'bg-white dark:bg-gray-950'}`}>
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -545,18 +546,26 @@ const Home = () => {
                     {categories.map((cat, idx) => (
                         <motion.div
                             key={idx}
-                            whileTap={{ scale: 0.9 }}
-                            className="flex-shrink-0 cursor-pointer text-center group snap-start"
+                            whileHover={{ scale: 1.15, y: -6 }}
+                            whileTap={{ scale: 0.95 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 12 }}
+                            className="flex-shrink-0 cursor-pointer text-center snap-start"
                             onClick={() => {
                                 setSearchQuery(cat.name);
                                 fetchShops(cat.name);
                             }}
                         >
-                            <div className="relative w-20 h-20 md:w-36 md:h-36 mb-3 transition-transform duration-300 group-hover:scale-105">
+                            <div className="relative w-20 h-20 md:w-36 md:h-36 mb-3">
+                                {/* Glow ring background */}
+                                <motion.div 
+                                    className="absolute -inset-1.5 bg-gradient-to-br from-red-500 to-orange-500 rounded-full blur-md opacity-0 z-0"
+                                    whileHover={{ opacity: 0.65 }}
+                                    transition={{ duration: 0.2 }}
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-full -z-1" />
-                                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover rounded-full shadow-sm group-hover:shadow-xl transition-all border-2 border-white dark:border-gray-800" />
+                                <img src={cat.image} alt={cat.name} className="relative w-full h-full object-cover rounded-full shadow-sm border-2 border-white dark:border-gray-800 z-10" />
                             </div>
-                            <span className="text-[10px] md:text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest group-hover:text-primary transition-colors">{cat.name}</span>
+                            <span className="text-[10px] md:text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest hover:text-red-500 transition-colors block">{cat.name}</span>
                         </motion.div>
                     ))}
                 </div>
@@ -674,6 +683,24 @@ const Home = () => {
                 </div>
             </div>
 
+            {/* Ghar ka Khana (Home Chefs) Banner */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="bg-gradient-to-r from-emerald-100 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer hover:shadow-xl"
+                     onClick={() => navigate('/home-chefs')}
+                >
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-emerald-600 font-bold text-sm">🥘 Ghar ka Khana</span>
+                        </div>
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white">Authentic Home Cooked Meals</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Freshly prepared by verified local home chefs in your neighborhood.</p>
+                    </div>
+                    <div className="mt-4 md:mt-0 bg-emerald-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md">
+                        Explore Home Chefs →
+                    </div>
+                </div>
+            </div>
+
             {/* Featured Shops Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <motion.h2
@@ -713,8 +740,11 @@ const Home = () => {
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity" />
 
                                         {/* Offer Badge Overlay (Modern Style) */}
-                                        <div className="absolute bottom-2 left-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm border border-white/20 dark:border-gray-800">
-                                            <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Flat ₹100 OFF</span>
+                                        <div className="absolute bottom-2 left-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm border border-white/20 dark:border-gray-800 flex gap-1">
+                                            {shop.shopType === 'Home Chef' && (
+                                                <span className="text-[10px] font-black uppercase text-emerald-600 border-r border-gray-300 pr-1 mr-1">Home Cooked</span>
+                                            )}
+                                            <span className="text-[10px] font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-500">20% OFF</span>
                                         </div>
                                     </div>
 
@@ -809,6 +839,7 @@ const Home = () => {
 
             {/* AI Chatbot Concierge */}
             <ChatbotWidget />
+            <BhojanAI />
 
             {/* Post Story Modal */}
             <AnimatePresence>

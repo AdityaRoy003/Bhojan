@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import api from '../utils/api';
 import { setUser, setError } from '../redux/userSlice';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -27,12 +28,13 @@ const Signup = () => {
             const { data } = await api.post('/auth/signup', formData);
             if (data.success) {
                 dispatch(setUser(data.user));
+                toast.success('Account created successfully! Welcome to Bhojan.');
                 navigate('/');
             }
         } catch (error) {
             console.error(error);
             dispatch(setError(error.response?.data?.message || 'Signup failed'));
-            alert(error.response?.data?.message || 'Signup failed');
+            toast.error(error.response?.data?.message || 'Signup failed');
         }
     };
 

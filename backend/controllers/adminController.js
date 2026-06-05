@@ -8,6 +8,8 @@ const Notification = require('../models/Notification');
 const SystemConfig = require('../models/SystemConfig');
 const bcrypt = require('bcryptjs');
 const logger = require('../config/logger');
+const sendEmail = require('../utils/sendEmail');
+const emailTemplates = require('../utils/emailTemplates');
 
 // Get Global Platform Stats
 exports.getPlatformStats = async (req, res) => {
@@ -440,6 +442,90 @@ exports.createZone = async (req, res) => {
         const zone = await Zone.create(req.body);
         res.status(201).json({ success: true, zone });
     } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Send Promotional / Marketing Email Campaigns
+exports.sendCampaignEmail = async (req, res) => {
+    try {
+        const { campaignType, recipientType, userId, details } = req.body;
+
+        if (!campaignType || !recipientType) {
+            return res.status(400).json({ success: false, message: 'Please provide campaignType and recipientType' });
+        }
+
+        let users = [];
+        if (recipientType === 'single') {
+            if (!userId) {
+                return res.status(400).json({ success: false, message: 'Please provide a userId for single recipient' });
+            }
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'User not found' });
+            }
+            users.push(user);
+        } else {
+            // Find all active customers/owners
+            users = await User.find({ status: 'Active', role: { $in: ['Customer', 'Owner', 'Admin'] } });
+        }
+
+        if (users.length === 0) {
+            return res.status(400).json({ success: false, message: 'No users found to send email' });
+        }
+
+        let sentCount = 0;
+        let failedCount = 0;
+
+        for (const user of users) {
+            try {
+                let html = '';
+                let subject = '';
+
+                switch (campaignType) {
+                    case 'festival':
+                        subject = `🎉 Special Festival Offer for You!`;
+                        html = emailTemplates.festivalOffer({ ...details, user });
+                        break;
+                    case 'spin':
+                        subject = `🎡 Spin & Win Food Rewards!`;
+                        html = emailTemplates.spinTheWheel({ ...details, user });
+                        break;
+                    case 'feedback':
+                        subject = `🍽️ How was your recent meal?`;
+                        html = emailTemplates.feedbackRating({ ...details, orderId: details.orderId || 'recent' });
+                        break;
+                    case 'prime':
+                        subject = `👑 Renew Your Bhojan Prime Membership`;
+                        html = emailTemplates.primeMembership({ ...details, user });
+                        break;
+                    case 'referral':
+                        subject = `👥 Invite Friends, Earn Loyalty Rewards!`;
+                        html = emailTemplates.referral({ ...details, referralCode: user.referralCode });
+                        break;
+                    default:
+                        return res.status(400).json({ success: false, message: 'Invalid campaign type specified' });
+                }
+
+                await sendEmail({
+                    email: user.email,
+                    subject,
+                    html,
+                    message: subject
+                });
+                sentCount++;
+            } catch (err) {
+                logger.error(`Failed to send campaign email to ${user.email}: ${err.message}`);
+                failedCount++;
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Campaign email campaign processed: ${sentCount} successfully sent, ${failedCount} failed.`
+        });
+    } catch (error) {
+        logger.error(`[ADMIN] sendCampaignEmail error: ${error.message}`);
         res.status(500).json({ success: false, message: error.message });
     }
 };
