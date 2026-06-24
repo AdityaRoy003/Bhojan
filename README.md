@@ -24,6 +24,34 @@ Bhojan goes beyond simple ordering. It is a **hyper-local community platform** t
 
 ---
 
+## ✨ Premium Features & Updates
+
+### 🏍️ Swiggy-Style Live Delivery Tracking
+- **Smooth Marker Interpolation**: Rider markers (🏍️) utilize CSS bearing rotation and linear interpolation (lerp) over `requestAnimationFrame` for silky movement (no sudden jumps).
+- **Haversine-based Live ETA**: Continuous calculations of distance and delivery times updating dynamically on every location ping.
+- **Interactive Routing Map**: Uses dark custom Carto map tiles, displaying solid routes for traveled distances and dashed routes for remaining paths.
+- **Coordinates Seeding & Self-Healing**: Automatic lookup of shop coordinates and randomized offset generation for drop-off addresses to guarantee map rendering and calculation accuracy.
+
+### 📧 Premium Animated Email Notification System
+- **Advanced Responsive UI**: Custom-branded email templates built with modern layouts, embedded CSS keyframe animations, and vector SVG logos.
+- **Promotional & Marketing Campaigns**: Interactive templates for Festival Offers, Gamified Spin-the-Wheel discounts, and Post-Delivery Feedback requests with one-click rating stars.
+- **Operational & Account Services**: Prime Membership renewal reminders and Referral code sharing templates.
+- **Security & Privacy Alerts**: Automated templates for Login Alerts (new device/location), Suspicious Activity Alerts (failed login detections), Two-Factor (2FA) verification codes, Account Recovery, and GDPR Privacy Notices.
+
+### 📸 Profile Photo Management
+- **Interactive Hover Overlays**: Desktop/mobile user avatar displays a camera icon overlay on hover for quick uploads.
+- **Clean Media Removals**: Form controls to easily remove profile pictures, integrated with backend handlers to cleanly clear avatars from databases.
+
+### 🗺️ Operational & Fleet Onboarding
+- **Partner Programs**: Clean onboarding templates for Restaurant Owners and Delivery Fleet riders at `/partner`.
+- **Query Auto-Select**: Smart query parameters (`?role=Owner` or `?role=Delivery`) automatically pre-select registration options on the signup page.
+- **Dark Mode Support**: Upgraded legal pages (Terms of Service, Privacy Policy) to support fully premium dark modes.
+
+### 📱 Responsive Overlaps Prevention
+- Prevent mobile navigation overlaps by introducing context-based padding (`pb-28 md:pb-8`) for footer elements, removing legacy placeholder links, and adding secure checkout trust badges.
+
+---
+
 ## 🛠 Tech Stack
 
 ### Frontend
@@ -44,23 +72,6 @@ Bhojan goes beyond simple ordering. It is a **hyper-local community platform** t
 - **Containerization**: Docker & Docker Compose
 - **Monitoring**: Winston & Morgan (Centralized logging)
 - **Deployment**: Configured for Vercel/Render/Docker environments.
-
----
-
-## 📱 Premium Mobile UX
-*Built with a "Mobile-First" philosophy:*
-- **Sticky Actions**: Swiggy-style sticky cart footer and checkout buttons.
-- **Dynamic Drawers**: Professional slide-up drawers for accounts and order tracking.
-- **Gesture Control**: Swipe gestures for cart management.
-- **Active Tracking**: Real-time order timeline with ETA and partner details on the home screen.
-
----
-
-## 👑 Diverse Roles
-1. **Customer**: Browsing, Social, Gamification, and Wallet systems.
-2. **Owner**: Multi-brand Cloud Kitchen management, Analytics Dashboard, and Payout history.
-3. **Delivery Partner**: Smart shift planning, navigation, and performance tracking.
-4. **Admin**: Enterprise-level moderation, platform financials, and fleet management.
 
 ---
 
@@ -94,7 +105,7 @@ docker-compose up --build
 ---
 
 ## ⚖️ Compliance & Trust
-- **GPDR Ready**: Cookie consent, data privacy sections, and account deletion workflows.
+- **GDPR Ready**: Cookie consent, data privacy sections, and account deletion workflows.
 - **Transparency**: Live hygiene photos from kitchens and verified rider badges.
 - **Security**: Robust RBAC (Role-Based Access Control) across all 100+ API endpoints.
 

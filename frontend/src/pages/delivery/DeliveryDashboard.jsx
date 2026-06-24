@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
-import socket, { connectSocket, disconnectSocket } from '../../utils/socket';
+import socket, { connectSocket, disconnectSocket, joinTrackingRoom, emitRiderLocation } from '../../utils/socket';
+import LiveTrackingMap from '../../components/LiveTrackingMap';
 
 const DeliveryDashboard = () => {
     const { user } = useSelector(state => state.user);
@@ -145,21 +146,30 @@ const DeliveryDashboard = () => {
 
     useEffect(() => {
         if (!isOnline) return;
+
         const watchId = navigator.geolocation.watchPosition(
             (pos) => {
-                const { latitude, longitude } = pos.coords;
-                setLocation({ lat: latitude, lng: longitude });
-                socket.emit('update_location', {
-                    lat: latitude,
-                    lng: longitude,
-                    userId: user._id,
-                    activeOrders: myDeliveries.filter(o => o.orderStatus === 'OutForDelivery').map(o => o._id)
+                const { latitude, longitude, heading, speed } = pos.coords;
+                setLocation({ lat: latitude, lng: longitude, heading: heading || 0, speed: speed || 0 });
+
+                // Get active OutForDelivery orders
+                const activeOrderIds = myDeliveries
+                    .filter(o => o.orderStatus === 'OutForDelivery')
+                    .map(o => o._id);
+
+                // Emit location update to socket for each active order (customers tracking)
+                activeOrderIds.forEach(orderId => {
+                    joinTrackingRoom(orderId);
+                    emitRiderLocation({ orderId, latitude, longitude, heading: heading || 0, speed: speed || 0 });
+                    // Also persist to DB via tracking endpoint
+                    api.put(`/tracking/${orderId}/location`, { latitude, longitude, heading: heading || 0, speed: speed || 0 })
+                        .catch(err => console.error('Location persist failed:', err));
                 });
-                api.put('/delivery/location', { lat: latitude, lng: longitude }).catch(err => console.error(err));
+
                 fetchWeather({ lat: latitude, lng: longitude });
             },
-            (err) => console.error(err),
-            { enableHighAccuracy: true, distanceFilter: 10 }
+            (err) => console.error('GPS error:', err),
+            { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
         );
         return () => navigator.geolocation.clearWatch(watchId);
     }, [isOnline, myDeliveries]);
@@ -496,6 +506,58 @@ const DeliveryDashboard = () => {
                                                 <p className="text-xs font-bold text-gray-500 mt-1">{order.deliveryAddress}</p>
                                             </div>
                                         </div>
+
+                                        {/* Navigation Map — shown when OutForDelivery */}
+                                        {order.orderStatus === 'OutForDelivery' && (
+                                            <div className="mb-6 rounded-[28px] overflow-hidden border border-gray-100 shadow-inner relative" style={{ height: '260px' }}>
+                                                <div className="absolute top-3 left-3 z-10 flex items-center gap-2 pointer-events-none">
+                                                    <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                                                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                                        Navigation
+                                                    </div>
+                                                    {location?.speed > 0 && (
+                                                        <div className="bg-amber-500/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[10px] font-black">
+                                                            {(location.speed * 3.6).toFixed(0)} km/h
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <LiveTrackingMap
+                                                    mode="rider"
+                                                    riderPosition={location ? [location.lat, location.lng] : null}
+                                                    restaurantCoords={order.restaurantCoords?.lat ? order.restaurantCoords : null}
+                                                    deliveryCoords={order.deliveryCoords?.lat ? order.deliveryCoords : null}
+                                                    riderHeading={location?.heading || 0}
+                                                    riderName="You"
+                                                    shopName={order.shop?.name}
+                                                    deliveryAddress={order.deliveryAddress}
+                                                    liveMode={isOnline}
+                                                    height="100%"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Directions strip */}
+                                        {order.orderStatus === 'OutForDelivery' && location && (
+                                            <div className="mb-6 bg-slate-900 rounded-[24px] p-4 flex items-center gap-4 text-white">
+                                                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                                                    <span className="text-2xl" style={{ transform: `rotate(${location.heading || 0}deg)`, display: 'inline-block' }}>↑</span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-black uppercase tracking-widest text-amber-400">En Route</p>
+                                                    <p className="text-sm font-bold text-gray-300 truncate">{order.deliveryAddress}</p>
+                                                </div>
+                                                <a
+                                                    href={order.deliveryCoords?.lat
+                                                        ? `https://maps.google.com/?q=${order.deliveryCoords.lat},${order.deliveryCoords.lng}`
+                                                        : `https://maps.google.com/?q=${encodeURIComponent(order.deliveryAddress)}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="bg-amber-500 hover:bg-amber-400 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1"
+                                                >
+                                                    <span>🗺️</span> Open Maps
+                                                </a>
+                                            </div>
+                                        )}
 
                                         <div className="flex gap-3">
                                             {(order.orderStatus === 'Preparing' || order.orderStatus === 'Ready') ? (

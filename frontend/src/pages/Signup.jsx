@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import api from '../utils/api';
 import { setUser, setError } from '../redux/userSlice';
@@ -7,12 +7,15 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 
 const Signup = () => {
+    const [searchParams] = useSearchParams();
+    const defaultRole = searchParams.get('role');
+    
     const [formData, setFormData] = useState({
         fullname: '',
         email: '',
         password: '',
         mobile: '',
-        role: 'Customer'
+        role: (defaultRole === 'Owner' || defaultRole === 'Delivery') ? defaultRole : 'Customer'
     });
     const [showPassword, setShowPassword] = useState(false);
     const dispatch = useDispatch();

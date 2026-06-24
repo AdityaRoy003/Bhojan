@@ -29,6 +29,7 @@ const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
 const VirtualBrandManager = lazy(() => import('./pages/VirtualBrandManager'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Partner = lazy(() => import('./pages/Partner'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const PublicProfile = lazy(() => import('./pages/user/PublicProfile'));
 const GroupCartScreen = lazy(() => import('./pages/GroupCartScreen'));
@@ -60,6 +61,7 @@ function AppContent() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/partner" element={<Partner />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/user/:id" element={<PublicProfile />} />
 

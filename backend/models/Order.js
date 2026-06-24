@@ -53,7 +53,18 @@ const orderSchema = new mongoose.Schema({
     deliveryPartnerLocation: {
         latitude: { type: Number },
         longitude: { type: Number },
+        heading: { type: Number, default: 0 },  // compass degrees 0-360
+        speed: { type: Number, default: 0 },    // m/s from GPS
         lastUpdated: { type: Date }
+    },
+    // Coordinates for map pins (set at order creation or first tracking call)
+    restaurantCoords: {
+        lat: { type: Number },
+        lng: { type: Number }
+    },
+    deliveryCoords: {
+        lat: { type: Number },
+        lng: { type: Number }
     },
     estimatedDeliveryTime: { type: Date },
     deliveryStartTime: { type: Date },

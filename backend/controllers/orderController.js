@@ -105,6 +105,33 @@ exports.placeOrder = async (req, res) => {
 
         await user.save();
 
+        // Retrieve shop details to extract coordinates
+        const shop = await Shop.findById(shopId);
+        
+        let restaurantCoords = req.body.restaurantCoords;
+        let deliveryCoords = req.body.deliveryCoords;
+
+        if (!restaurantCoords && shop && shop.location?.coordinates && shop.location.coordinates[0] !== 0) {
+            restaurantCoords = {
+                lat: shop.location.coordinates[1],
+                lng: shop.location.coordinates[0]
+            };
+        }
+        if (!restaurantCoords) {
+            // Fallback (Noida / Delhi region)
+            restaurantCoords = { lat: 28.5355, lng: 77.3910 };
+        }
+
+        if (!deliveryCoords) {
+            // Generate a random delivery coordinate within ~2km of the shop
+            const latOffset = (Math.random() - 0.5) * 0.02;
+            const lngOffset = (Math.random() - 0.5) * 0.02;
+            deliveryCoords = {
+                lat: restaurantCoords.lat + latOffset,
+                lng: restaurantCoords.lng + lngOffset
+            };
+        }
+
         const newOrder = await Order.create({
             user: req.user.id,
             shop: shopId,
@@ -122,6 +149,8 @@ exports.placeOrder = async (req, res) => {
             taxAmount,
             couponCode,
             couponDiscount,
+            restaurantCoords,
+            deliveryCoords,
             statusHistory: [{
                 status: 'Placed',
                 timestamp: new Date(),
@@ -140,7 +169,6 @@ exports.placeOrder = async (req, res) => {
         );
 
         // Notify Shop Owner
-        const shop = await Shop.findById(shopId);
         if (shop && shop.owner) {
             await sendNotification(
                 shop.owner,

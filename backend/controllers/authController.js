@@ -350,7 +350,8 @@ exports.forgotPassword = async (req, res) => {
             if (process.env.SENDGRID_API_KEY || (process.env.EMAIL_USER && process.env.EMAIL_PASS)) {
                 await sendEmail({
                     email: user.email,
-                    subject: 'Bhojan Password Recovery',
+                    subject: '🔒 Bhojan Password Recovery',
+                    html: emailTemplates.forgotPassword(otp),
                     message,
                 });
                 res.status(200).json({ success: true, message: `Email sent to ${user.email}` });
@@ -480,7 +481,7 @@ exports.updateProfile = async (req, res) => {
         if (fullname) user.fullname = fullname;
         if (mobile) user.mobile = mobile;
         if (alternateMobile) user.alternateMobile = alternateMobile;
-        if (avatar) user.avatar = avatar;
+        if (avatar !== undefined) user.avatar = avatar;
 
         await user.save();
 

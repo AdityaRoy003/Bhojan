@@ -64,6 +64,9 @@ const UserProfile = () => {
     });
     const [sendingCampaign, setSendingCampaign] = useState(false);
 
+    // Photo Upload State
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
     // 2FA Security State
     const [backupCodes, setBackupCodes] = useState([]);
     const [showCodesModal, setShowCodesModal] = useState(false);
@@ -585,12 +588,99 @@ const UserProfile = () => {
             const { data } = await api.put('/auth/me/update', personalData);
             if (data.success) {
                 dispatch(updateUser(data.user));
-                alert('Personal information updated!');
+                toast.success('Personal information updated!');
             }
         } catch (error) {
-            alert(error.response?.data?.message || 'Update failed');
+            toast.error(error.response?.data?.message || 'Update failed');
         } finally {
             setUpdating(false);
+        }
+    };
+
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select a valid image file');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image must be smaller than 5MB');
+            return;
+        }
+        setUploadingPhoto(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', 'bhojan_avatars');
+            // Upload to Cloudinary
+            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'your_cloud_name';
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const cloudData = await res.json();
+            if (cloudData.secure_url) {
+                const { data } = await api.put('/auth/me/update', { ...personalData, avatar: cloudData.secure_url });
+                if (data.success) {
+                    dispatch(updateUser(data.user));
+                    setPersonalData(prev => ({ ...prev, avatar: cloudData.secure_url }));
+                    toast.success('Profile photo updated!');
+                }
+            } else {
+                // Fallback: store as base64 for local demo
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const base64 = ev.target.result;
+                    const { data } = await api.put('/auth/me/update', { ...personalData, avatar: base64 });
+                    if (data.success) {
+                        dispatch(updateUser(data.user));
+                        setPersonalData(prev => ({ ...prev, avatar: base64 }));
+                        toast.success('Profile photo updated!');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        } catch (error) {
+            // Fallback: local base64 preview
+            try {
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const base64 = ev.target.result;
+                    try {
+                        const { data } = await api.put('/auth/me/update', { ...personalData, avatar: base64 });
+                        if (data.success) {
+                            dispatch(updateUser(data.user));
+                            setPersonalData(prev => ({ ...prev, avatar: base64 }));
+                            toast.success('Profile photo updated!');
+                        }
+                    } catch (err) {
+                        toast.error('Failed to save photo');
+                    }
+                };
+                reader.readAsDataURL(file);
+            } catch (err) {
+                toast.error('Failed to upload photo');
+            }
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
+
+    const handleRemovePhoto = async () => {
+        if (!window.confirm('Remove your profile photo?')) return;
+        setUploadingPhoto(true);
+        try {
+            const { data } = await api.put('/auth/me/update', { ...personalData, avatar: '' });
+            if (data.success) {
+                dispatch(updateUser(data.user));
+                setPersonalData(prev => ({ ...prev, avatar: '' }));
+                toast.success('Profile photo removed');
+            }
+        } catch (error) {
+            toast.error('Failed to remove photo');
+        } finally {
+            setUploadingPhoto(false);
         }
     };
 
@@ -1228,6 +1318,53 @@ const UserProfile = () => {
             case 'owner-personal':
                 return (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                        {/* Profile Photo Section */}
+                        <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h3 className="text-xl font-black mb-6 flex items-center gap-2 dark:text-white">
+                                <span>🖼️</span> Profile Photo
+                            </h3>
+                            <div className="flex items-center gap-6">
+                                <div className="relative group/photosec flex-shrink-0">
+                                    {(personalData.avatar || user?.avatar) ? (
+                                        <img
+                                            src={personalData.avatar || user?.avatar}
+                                            alt="Profile"
+                                            className="w-24 h-24 rounded-3xl object-cover shadow-lg ring-4 ring-amber-100 dark:ring-amber-900/30"
+                                        />
+                                    ) : (
+                                        <div className={`w-24 h-24 rounded-3xl flex items-center justify-center text-white text-4xl font-black shadow-lg bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'}`}>
+                                            {user?.fullname?.charAt(0)}
+                                        </div>
+                                    )}
+                                    {uploadingPhoto && (
+                                        <div className="absolute inset-0 rounded-3xl bg-black/50 flex items-center justify-center">
+                                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="space-y-3">
+                                    <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Upload a clear photo of yourself</p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500">JPG, PNG or WebP · Max 5MB · Recommended 400×400px</p>
+                                    <div className="flex gap-3 flex-wrap">
+                                        <label className="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition shadow-lg shadow-amber-100 flex items-center gap-2">
+                                            {uploadingPhoto ? '⏳ Uploading...' : '📷 Upload Photo'}
+                                            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                                        </label>
+                                        {(personalData.avatar || user?.avatar) && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemovePhoto}
+                                                disabled={uploadingPhoto}
+                                                className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-900/40 transition disabled:opacity-50"
+                                            >
+                                                🗑️ Remove Photo
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
                         <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700">
                             <h3 className="text-xl font-black mb-6 flex items-center gap-2 dark:text-white">
                                 <span>👤</span> Personal Information
@@ -3775,8 +3912,18 @@ const UserProfile = () => {
                         </h2>
                         <p className="text-sm font-bold text-gray-400 dark:text-gray-500 mt-1">{user?.mobile || user?.email}</p>
                     </div>
-                    <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center text-white text-xl md:text-3xl font-black shadow-xl bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'}`}>
-                        {user?.fullname?.charAt(0)}
+                    <div className="relative group/mobavatar">
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt={user.fullname} className="w-16 h-16 rounded-[24px] object-cover shadow-xl" />
+                        ) : (
+                            <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center text-white text-xl font-black shadow-xl bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'}`}>
+                                {user?.fullname?.charAt(0)}
+                            </div>
+                        )}
+                        <label className="absolute inset-0 rounded-[24px] bg-black/50 opacity-0 group-hover/mobavatar:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                            <span className="text-white text-base">{uploadingPhoto ? '⏳' : '📷'}</span>
+                            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                        </label>
                     </div>
                 </div>
 
@@ -3875,11 +4022,27 @@ const UserProfile = () => {
             <aside className="hidden md:flex md:w-80 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl md:min-h-screen sticky top-16 md:h-[calc(100vh-64px)] md:overflow-y-auto border-r md:border-r border-b md:border-b-0 border-gray-100 dark:border-gray-700 p-4 md:p-6 z-[20] transition-all duration-300">
                 <div className="flex flex-col h-full">
                     {/* Profile Header Card */}
-                    <div className="relative mb-6 md:mb-10 group cursor-pointer">
-                        <div className={`absolute inset-0 bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'} rounded-[32px] blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-500`}></div>
-                        <div className="relative bg-white dark:bg-gray-800 p-4 md:p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
-                            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white text-xl md:text-3xl font-black shadow-lg bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'}`}>
-                                {user?.fullname?.charAt(0)}
+                    <div className="relative mb-6 md:mb-10">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'} rounded-[32px] blur-xl opacity-20`}></div>
+                        <div className="relative bg-white dark:bg-gray-800 p-4 md:p-6 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4">
+                            {/* Avatar with upload controls */}
+                            <div className="relative group/avatar flex-shrink-0">
+                                {user?.avatar ? (
+                                    <img
+                                        src={user.avatar}
+                                        alt={user.fullname}
+                                        className="w-12 h-12 md:w-16 md:h-16 rounded-2xl object-cover shadow-lg"
+                                    />
+                                ) : (
+                                    <div className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white text-xl md:text-3xl font-black shadow-lg bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'}`}>
+                                        {user?.fullname?.charAt(0)}
+                                    </div>
+                                )}
+                                {/* Hover overlay */}
+                                <label className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                                    <span className="text-white text-lg">{uploadingPhoto ? '⏳' : '📷'}</span>
+                                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                                </label>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h2 className="font-black text-gray-900 dark:text-white text-base md:text-lg leading-tight truncate">{user?.fullname?.split(' ')[0]}</h2>
@@ -3887,6 +4050,15 @@ const UserProfile = () => {
                                     {isAdmin ? '👑 ADMIN' : isOwner ? '🏪 OWNER' : isDelivery ? '🛵 PARTNER' : '👤 CUSTOMER'}
                                     {(isOwner || isDelivery) && user?.businessVerification?.status === 'Verified' && <span className="text-green-500 text-xs" title="Verified">✅</span>}
                                 </p>
+                                {user?.avatar && (
+                                    <button
+                                        onClick={handleRemovePhoto}
+                                        disabled={uploadingPhoto}
+                                        className="text-[9px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest mt-1 transition-colors"
+                                    >
+                                        Remove Photo
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

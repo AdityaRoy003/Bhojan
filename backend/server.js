@@ -130,6 +130,30 @@ io.on('connection', (socket) => {
         console.log(`User joined room: ${room}`);
     });
 
+    // ── Delivery Location Tracking ──
+    // Delivery boy joins a tracking room for a specific order
+    socket.on('join_tracking_room', (orderId) => {
+        socket.join(`track_${orderId}`);
+        console.log(`Socket ${socket.id} joined tracking room: track_${orderId}`);
+    });
+
+    // Customer joins tracking room to watch a delivery
+    socket.on('watch_order', (orderId) => {
+        socket.join(`track_${orderId}`);
+        console.log(`Customer socket ${socket.id} watching order: ${orderId}`);
+    });
+
+    // Delivery boy broadcasts his live location (fires every 3-5 sec from GPS)
+    socket.on('delivery_location_update', (data) => {
+        // data: { orderId, latitude, longitude, heading, speed }
+        if (!data.orderId) return;
+        io.to(`track_${data.orderId}`).emit('rider_location', {
+            ...data,
+            timestamp: new Date().toISOString()
+        });
+    });
+
+    // Legacy handler — kept for backward compat
     socket.on('update_location', (data) => {
         io.to(`track_${data.orderId}`).emit('location_update', data);
     });
