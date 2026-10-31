@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Shop = require('../models/Shop');
 const Order = require('../models/Order');
@@ -6,6 +7,11 @@ const Order = require('../models/Order');
 exports.addReview = async (req, res) => {
     try {
         const { shopId, orderId, rating, review } = req.body;
+
+        const numericRating = Number(rating);
+        if (!numericRating || isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+            return res.status(400).json({ success: false, message: 'Rating must be an integer between 1 and 5' });
+        }
 
         // 1. Verify that the order exists and belongs to the user
         const order = await Order.findOne({

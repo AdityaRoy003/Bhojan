@@ -7,6 +7,13 @@ exports.getPredictiveSales = async (req, res) => {
     try {
         const { shopId } = req.params;
 
+        // Verify that requester is the shop owner or an Admin
+        const shop = await Shop.findById(shopId);
+        if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
+        if (shop.owner.toString() !== req.user.id && req.user.role !== 'Admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized to view sales analytics for this shop' });
+        }
+
         // Get historical order data
         const orders = await Order.find({ shop: shopId })
             .sort({ createdAt: -1 })

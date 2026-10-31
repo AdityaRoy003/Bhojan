@@ -51,7 +51,14 @@ exports.editItem = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized to edit this item' });
         }
 
-        item = await Item.findByIdAndUpdate(req.params.id, req.body, {
+        // Whitelist allowed update fields to prevent mass assignment of item fields
+        const allowedItemFields = ['name', 'description', 'price', 'category', 'image', 'foodType', 'dietaryTags', 'spiceLevel', 'isAvailable'];
+        const safeItemUpdates = {};
+        for (const f of allowedItemFields) {
+            if (req.body[f] !== undefined) safeItemUpdates[f] = req.body[f];
+        }
+
+        item = await Item.findByIdAndUpdate(req.params.id, { $set: safeItemUpdates }, {
             new: true,
             runValidators: true
         });

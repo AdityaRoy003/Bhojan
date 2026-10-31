@@ -54,6 +54,12 @@ exports.createPackagedGood = async (req, res) => {
     try {
         const { name, description, price, category, image, shopId, shelfLife, packaging } = req.body;
 
+        // Verify shop ownership
+        const shop = await Shop.findById(shopId);
+        if (!shop || (shop.owner.toString() !== req.user.id && req.user.role !== 'Admin')) {
+            return res.status(403).json({ success: false, message: 'Not authorized to add packaged goods to this shop' });
+        }
+
         const item = new Item({
             name,
             description,

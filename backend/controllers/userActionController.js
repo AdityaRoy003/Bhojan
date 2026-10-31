@@ -33,6 +33,11 @@ exports.toggleWishlist = async (req, res) => {
 exports.initiateTopUp = async (req, res) => {
     try {
         const { amount } = req.body;
+        // Validate amount strictly
+        const parsedAmount = Number(amount);
+        if (!parsedAmount || isNaN(parsedAmount) || parsedAmount < 10 || parsedAmount > 50000) {
+            return res.status(400).json({ success: false, message: 'Invalid top-up amount. Minimum is ₹10 and maximum is ₹50,000.' });
+        }
 
         const options = {
             amount: amount * 100, // in paise
@@ -92,32 +97,60 @@ exports.confirmTopUp = async (req, res) => {
     }
 };
 
-// Redeem Gift Card (Mock implementation)
+// Redeem Gift Card
 exports.redeemGiftCard = async (req, res) => {
     try {
         const { code } = req.body;
-
-        // Simple mock: if code starts with BHOJAN it adds 500 balance
-        if (code.startsWith('BHOJAN')) {
-            const amount = 500;
-            const userId = req.user.id || req.user._id;
-            const user = await User.findById(userId);
-            user.walletBalance += amount;
-            await user.save();
-
-            await Transaction.create({
-                user: userId,
-                type: 'GiftCard',
-                amount,
-                status: 'Completed',
-                paymentMethod: 'GiftCard',
-                description: `Gift card redeemed: ${code}`
-            });
-
-            return res.status(200).json({ success: true, message: 'Gift card redeemed!', balance: user.walletBalance });
+        if (!code || typeof code !== 'string') {
+            return res.status(400).json({ success: false, message: 'Valid gift card code is required' });
         }
 
-        res.status(400).json({ success: false, message: 'Invalid or expired gift card code' });
+        const normalizedCode = code.trim().toUpperCase();
+        const userId = req.user.id || req.user._id;
+
+        // Verify if this gift card was already redeemed by ANY user
+        const existingTxn = await Transaction.findOne({
+            type: 'GiftCard',
+            description: new RegExp(normalizedCode, 'i')
+        });
+
+        if (existingTxn) {
+            return res.status(400).json({ success: false, message: 'This gift card has already been redeemed' });
+        }
+
+        // Whitelisted promotional gift cards with set denominations
+        const VALID_GIFT_CARDS = {
+            'BHOJAN50': 50,
+            'BHOJAN100': 100,
+            'BHOJANWELCOME': 100,
+            'BHOJANFESTIVAL': 200,
+            'BHOJAN500': 500
+        };
+
+        const amount = VALID_GIFT_CARDS[normalizedCode];
+        if (!amount) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired gift card code' });
+        }
+
+        const user = await User.findById(userId);
+        user.walletBalance = (user.walletBalance || 0) + amount;
+        user.bhojanMoney = (user.bhojanMoney || 0) + amount;
+        await user.save();
+
+        await Transaction.create({
+            user: userId,
+            type: 'GiftCard',
+            amount,
+            status: 'Completed',
+            paymentMethod: 'GiftCard',
+            description: `Gift card redeemed: ${normalizedCode}`
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `🎉 ₹${amount} added to your wallet!`,
+            balance: user.walletBalance
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

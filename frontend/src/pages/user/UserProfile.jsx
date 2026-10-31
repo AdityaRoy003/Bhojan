@@ -14,6 +14,54 @@ import { toast } from 'react-toastify';
 import { updateUser, logoutUser } from '../../redux/userSlice';
 import { addToCart, reorder } from '../../redux/cartSlice';
 
+const customerTabs = [
+    { id: 'personal', label: 'Personal Info', icon: '👤' },
+    { id: 'orders', label: 'Order History', icon: '🧾' },
+    { id: 'quests', label: 'Food Quests', icon: '🎮' },
+    { id: 'meal-planner', label: 'AI Meal Planner', icon: '🧠' },
+    { id: 'wishlist', label: 'My Wishlist', icon: '❤️' },
+    { id: 'payments', label: 'Payments & Wallet', icon: '💳' },
+    { id: 'analytics', label: 'My Analytics', icon: '📊' },
+    { id: 'security', label: 'Security', icon: '🔒' },
+    { id: 'preferences', label: 'Preferences', icon: '🍴' },
+    { id: 'loyalty', label: 'Loyalty & Rewards', icon: '💎' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'support', label: 'Support', icon: '🎧' }
+];
+
+const ownerTabs = [
+    { id: 'owner-shops', label: 'Shop Info', icon: '🏪' },
+    { id: 'owner-menu', label: 'Menu Management', icon: '🍳' },
+    { id: 'owner-overview', label: 'Orders & Analytics', icon: '📊' },
+    { id: 'owner-promotions', label: 'Promotions', icon: '🎟️' },
+    { id: 'owner-financials', label: 'Financials', icon: '💰' },
+    { id: 'owner-settings', label: 'Settings', icon: '⚙️' },
+    { id: 'owner-personal', label: 'Personal Info', icon: '👤' }
+];
+
+const adminTabs = [
+    { id: 'admin-overview', label: 'Platform Overview', icon: '🌐' },
+    { id: 'admin-users', label: 'User Hub', icon: '👥' },
+    { id: 'admin-shops', label: 'Shop Control', icon: '🏪' },
+    { id: 'admin-items', label: 'Inventory', icon: '🍳' },
+    { id: 'admin-orders', label: 'Order Central', icon: '🧾' },
+    { id: 'admin-delivery', label: 'Delivery Fleet', icon: '🚚' },
+    { id: 'admin-financials', label: 'Financials', icon: '💰' },
+    { id: 'admin-settings', label: 'Platform Settings', icon: '⚙️' },
+    { id: 'admin-moderation', label: 'Moderation', icon: '🛡️' },
+    { id: 'admin-support', label: 'Support', icon: '🎫' },
+    { id: 'admin-emails', label: 'Email Campaigns', icon: '✉️' },
+    { id: 'personal', label: 'Account', icon: '👤' }
+];
+
+const deliveryTabs = [
+    { id: 'delivery-available', label: 'Available Orders', icon: '🛵' },
+    { id: 'delivery-active', label: 'My Deliveries', icon: '📦' },
+    { id: 'delivery-earnings', label: 'Earnings', icon: '💰' },
+    { id: 'personal', label: 'Account Info', icon: '👤' },
+    { id: 'support', label: 'Support', icon: '🎧' }
+];
+
 const UserProfile = () => {
     const { user, isAuthenticated } = useSelector(state => state.user);
     const dispatch = useDispatch();
@@ -23,15 +71,32 @@ const UserProfile = () => {
     const isOwner = user?.role === 'Owner';
     const isAdmin = user?.role === 'Admin';
     const isDelivery = user?.role === 'Delivery';
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || (isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal'));
+
+    const getInitialTab = () => {
+        const queryTab = searchParams.get('tab');
+        if (queryTab) {
+            const allowedTabs = isAdmin ? adminTabs : isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
+            if (allowedTabs.some(t => t.id === queryTab)) {
+                return queryTab;
+            }
+        }
+        return isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal';
+    };
+
+    const [activeTab, setActiveTab] = useState(getInitialTab());
     const [isMobileMain, setIsMobileMain] = useState(!searchParams.get('tab'));
 
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab) {
-            setActiveTab(tab);
+            const allowedTabs = isAdmin ? adminTabs : isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
+            if (allowedTabs.some(t => t.id === tab)) {
+                setActiveTab(tab);
+            } else {
+                setActiveTab(isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal');
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, isAdmin, isOwner, isDelivery]);
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
@@ -176,54 +241,6 @@ const UserProfile = () => {
     };
 
     const filteredOrders = getFilteredOrders();
-
-    const customerTabs = [
-        { id: 'personal', label: 'Personal Info', icon: '👤' },
-        { id: 'orders', label: 'Order History', icon: '🧾' },
-        { id: 'quests', label: 'Food Quests', icon: '🎮' },
-        { id: 'meal-planner', label: 'AI Meal Planner', icon: '🧠' },
-        { id: 'wishlist', label: 'My Wishlist', icon: '❤️' },
-        { id: 'payments', label: 'Payments & Wallet', icon: '💳' },
-        { id: 'analytics', label: 'My Analytics', icon: '📊' },
-        { id: 'security', label: 'Security', icon: '🔒' },
-        { id: 'preferences', label: 'Preferences', icon: '🍴' },
-        { id: 'loyalty', label: 'Loyalty & Rewards', icon: '💎' },
-        { id: 'settings', label: 'Settings', icon: '⚙️' },
-        { id: 'support', label: 'Support', icon: '🎧' }
-    ];
-
-    const ownerTabs = [
-        { id: 'owner-shops', label: 'Shop Info', icon: '🏪' },
-        { id: 'owner-menu', label: 'Menu Management', icon: '🍳' },
-        { id: 'owner-overview', label: 'Orders & Analytics', icon: '📊' },
-        { id: 'owner-promotions', label: 'Promotions', icon: '🎟️' },
-        { id: 'owner-financials', label: 'Financials', icon: '💰' },
-        { id: 'owner-settings', label: 'Settings', icon: '⚙️' },
-        { id: 'owner-personal', label: 'Personal Info', icon: '👤' }
-    ];
-
-    const adminTabs = [
-        { id: 'admin-overview', label: 'Platform Overview', icon: '🌐' },
-        { id: 'admin-users', label: 'User Hub', icon: '👥' },
-        { id: 'admin-shops', label: 'Shop Control', icon: '🏪' },
-        { id: 'admin-items', label: 'Inventory', icon: '🍳' },
-        { id: 'admin-orders', label: 'Order Central', icon: '🧾' },
-        { id: 'admin-delivery', label: 'Delivery Fleet', icon: '🚚' },
-        { id: 'admin-financials', label: 'Financials', icon: '💰' },
-        { id: 'admin-settings', label: 'Platform Settings', icon: '⚙️' },
-        { id: 'admin-moderation', label: 'Moderation', icon: '🛡️' },
-        { id: 'admin-support', label: 'Support', icon: '🎫' },
-        { id: 'admin-emails', label: 'Email Campaigns', icon: '✉️' },
-        { id: 'personal', label: 'Account', icon: '👤' }
-    ];
-
-    const deliveryTabs = [
-        { id: 'delivery-available', label: 'Available Orders', icon: '🛵' },
-        { id: 'delivery-active', label: 'My Deliveries', icon: '📦' },
-        { id: 'delivery-earnings', label: 'Earnings', icon: '💰' },
-        { id: 'personal', label: 'Account Info', icon: '👤' },
-        { id: 'support', label: 'Support', icon: '🎧' }
-    ];
 
     const tabs = isAdmin ? adminTabs : isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
 
@@ -417,15 +434,17 @@ const UserProfile = () => {
             }
             if (isDelivery || isAdmin) {
                 try {
-                    const [availableRes, myDeliveriesRes, zonesRes, disputesRes] = await Promise.all([
-                        api.get('/order/delivery/available'),
-                        api.get('/order/delivery/my'),
+                    const promises = [
+                        isDelivery ? api.get('/order/delivery/available') : Promise.resolve({ data: { success: true, orders: [] } }),
+                        isDelivery ? api.get('/order/delivery/my') : Promise.resolve({ data: { success: true, orders: [] } }),
                         api.get('/order/zones'),
                         isAdmin ? api.get('/admin/delivery/disputes') : Promise.resolve({ data: { success: true, disputes: [] } })
-                    ]);
+                    ];
 
-                    if (availableRes.data.success) setAvailableOrders(availableRes.data.orders || []);
-                    if (myDeliveriesRes.data.success) {
+                    const [availableRes, myDeliveriesRes, zonesRes, disputesRes] = await Promise.all(promises);
+
+                    if (isDelivery && availableRes.data.success) setAvailableOrders(availableRes.data.orders || []);
+                    if (isDelivery && myDeliveriesRes.data.success) {
                         setOrders(myDeliveriesRes.data.orders || []);
                         const completed = myDeliveriesRes.data.orders.filter(o => o.orderStatus === 'Delivered');
                         const earnings = completed.reduce((sum, o) => sum + (o.deliveryFee || 40), 0);
@@ -562,11 +581,17 @@ const UserProfile = () => {
         if (e) e.preventDefault();
         setUpdating(true);
         try {
-            await api.put('/admin/config', adminData.config);
-            alert('System configuration updated globally!');
-            fetchInitialData();
+            const { data } = await api.put('/admin/config', adminData.config);
+            if (data.success) {
+                const maintenanceMsg = adminData.config?.maintenanceMode
+                    ? '🛠️ Maintenance Mode ACTIVATED! All users are now blocked.'
+                    : '✅ Maintenance Mode is OFF. Platform is live for users.';
+                alert(`System configuration saved!\n\n${maintenanceMsg}`);
+                fetchInitialData();
+            }
         } catch (error) {
-            alert('Failed to update system config');
+            console.error('Failed to update system config', error);
+            alert('Failed to update system config. Check your login (must be Admin).');
         } finally {
             setUpdating(false);
         }
@@ -3740,12 +3765,21 @@ const UserProfile = () => {
                 <section className="bg-white dark:bg-gray-800 p-8 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
                     <h4 className="text-sm font-black uppercase tracking-widest text-indigo-600">System Controls</h4>
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
+                        <div className={`flex items-center justify-between p-4 rounded-2xl transition-all ${adminData.config?.maintenanceMode ? 'bg-red-50 dark:bg-red-900/20 ring-2 ring-red-400/40' : 'bg-gray-50 dark:bg-gray-900'}`}>
                             <div>
-                                <h5 className="font-black text-sm dark:text-white">Maintenance Mode</h5>
-                                <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Redirect users to 'Under Construction' page</p>
+                                <h5 className="font-black text-sm dark:text-white flex items-center gap-2">
+                                    🛠️ Maintenance Mode
+                                    {adminData.config?.maintenanceMode && (
+                                        <span className="text-[9px] font-black uppercase tracking-wider bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">ACTIVE</span>
+                                    )}
+                                </h5>
+                                <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                                    {adminData.config?.maintenanceMode
+                                        ? '⚠️ All users are blocked. Only you (Admin) can browse.'
+                                        : 'Enable to block all logins & orders — shows maintenance page.'}
+                                </p>
                             </div>
-                            <input type="checkbox" className="w-6 h-6 rounded-lg text-indigo-600 focus:ring-indigo-500"
+                            <input type="checkbox" className="w-6 h-6 rounded-lg text-red-600 focus:ring-red-500 cursor-pointer"
                                 checked={adminData.config?.maintenanceMode || false} onChange={e => setAdminData({ ...adminData, config: { ...adminData.config, maintenanceMode: e.target.checked } })} />
                         </div>
                         <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
@@ -3763,8 +3797,8 @@ const UserProfile = () => {
                         <textarea
                             className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-xs font-bold min-h-[80px] focus:ring-2 ring-indigo-600/20 dark:text-white"
                             placeholder="Type platform announcement here..."
-                            value={adminData.config?.announcementBanner || ''}
-                            onChange={e => setAdminData({ ...adminData, config: { ...adminData.config, announcementBanner: e.target.value } })}
+                            value={adminData.config?.globalBanner || adminData.config?.announcementBanner || ''}
+                            onChange={e => setAdminData({ ...adminData, config: { ...adminData.config, globalBanner: e.target.value, announcementBanner: e.target.value } })}
                         />
                     </div>
 
@@ -4117,7 +4151,7 @@ const UserProfile = () => {
                             className="md:hidden flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="C15 19l-7-7 7-7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
                             </svg>
                             Back to Account
                         </button>

@@ -3,7 +3,6 @@ const User = require('../models/User');
 // Spin the wheel and get reward
 exports.spinWheel = async (req, res) => {
     try {
-        const { prize } = req.body;
         const user = await User.findById(req.user.id);
 
         // Check if user has spun today
@@ -14,6 +13,20 @@ exports.spinWheel = async (req, res) => {
             return res.status(400).json({ success: false, message: 'You can only spin once per day!' });
         }
 
+        // SECURITY: Server-side determined prizes ONLY. Never trust client-provided reward values!
+        const ALLOWED_PRIZES = [
+            { text: '10% OFF', value: 10, type: 'discount' },
+            { text: '₹50 OFF', value: 50, type: 'discount' },
+            { text: 'Free Delivery', value: 'free_delivery', type: 'free_delivery' },
+            { text: '₹20 OFF', value: 20, type: 'discount' },
+            { text: '₹30 OFF', value: 30, type: 'discount' },
+            { text: '15% OFF', value: 15, type: 'discount' },
+        ];
+
+        // Randomly select prize on server
+        const prizeIndex = Math.floor(Math.random() * ALLOWED_PRIZES.length);
+        const prize = ALLOWED_PRIZES[prizeIndex];
+
         // Generate coupon code
         const couponCode = `SPIN${Date.now()}`;
 
@@ -22,11 +35,10 @@ exports.spinWheel = async (req, res) => {
         user.gamification.lastSpinDate = new Date();
         user.gamification.totalSpins = (user.gamification.totalSpins || 0) + 1;
 
-        // Add coupon to user (simplified - in production, create a Coupon model)
         if (!user.coupons) user.coupons = [];
         user.coupons.push({
             code: couponCode,
-            type: prize.value === 'free_delivery' ? 'free_delivery' : 'discount',
+            type: prize.type,
             value: prize.value,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
         });

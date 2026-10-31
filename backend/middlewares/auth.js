@@ -23,6 +23,14 @@ exports.isAuthenticated = async (req, res, next) => {
             return res.status(401).json({ success: false, message: "User not found" });
         }
 
+        if (req.user.status === 'Suspended' || req.user.status === 'Banned') {
+            logger.warn(`[AUTH] Blocked access for ${req.user.status} user: ${req.user._id}`);
+            return res.status(403).json({
+                success: false,
+                message: `Your account has been ${req.user.status.toLowerCase()}. Please contact support.`
+            });
+        }
+
         req.user.id = req.user._id.toString();
         logger.info(`[AUTH] Authenticated user: ${req.user.fullname} | Role: ${req.user.role}`);
 
@@ -39,7 +47,9 @@ exports.isAuthenticated = async (req, res, next) => {
 
 exports.authorizeRoles = (...roles) => {
     return (req, res, next) => {
+        logger.info(`[AUTH] authorizeRoles check: Roles required: ${JSON.stringify(roles)} | User role: ${req.user?.role}`);
         if (!roles.includes(req.user.role)) {
+            logger.warn(`[AUTH] Access Forbidden: Role (${req.user.role}) is not in ${JSON.stringify(roles)}`);
             return res.status(403).json({
                 success: false,
                 message: `Role (${req.user.role}) is not allowed to acccess this resource`

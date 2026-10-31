@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const FestivalModeToggle = ({ onThemeChange }) => {
+const FestivalModeToggle = ({ onThemeChange, compact = false }) => {
     const [activeFestival, setActiveFestival] = useState(null);
     const canvasRef = useRef(null);
     const particlesRef = useRef([]);
@@ -313,49 +313,70 @@ const FestivalModeToggle = ({ onThemeChange }) => {
 
     return (
         <>
-            {/* Full-screen overlay canvas */}
+            {/* Full-screen overlay canvas — always present */}
             <canvas
                 ref={canvasRef}
                 className="fixed inset-0 pointer-events-none z-[180] w-full h-full"
             />
 
-            <div className="fixed bottom-6 left-6 z-[190]">
-                <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="bg-white dark:bg-gray-900 rounded-[32px] shadow-2xl p-4 border-2 border-gray-100 dark:border-gray-800 transition-colors"
-                >
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-2.5 text-center">
-                        🎉 Festival Mode
-                    </p>
-                    <div className="flex gap-2">
-                        {festivals.map((festival) => (
-                            <button
-                                key={festival.id}
-                                onClick={() => handleToggle(festival)}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all cursor-pointer ${activeFestival?.id === festival.id
+            {compact ? (
+                /* Inline compact row for inside filter panel */
+                <div className="flex gap-2">
+                    {festivals.map((festival) => (
+                        <button
+                            key={festival.id}
+                            onClick={() => handleToggle(festival)}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all cursor-pointer ${
+                                activeFestival?.id === festival.id
                                     ? `bg-gradient-to-br ${festival.colors.bg} scale-110 shadow-lg border-2 border-primary`
                                     : 'bg-gray-100 dark:bg-gray-800 hover:scale-105'
-                                    }`}
-                                title={festival.name}
-                            >
-                                {festival.emoji}
-                            </button>
-                        ))}
-                    </div>
-                    {activeFestival && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-3 p-3 rounded-2xl bg-gradient-to-r from-red-50 to-orange-50 dark:from-gray-800 dark:to-gray-800 text-center"
+                            }`}
+                            title={festival.name}
                         >
-                            <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-500 uppercase tracking-tight">
-                                {activeFestival.greeting}
-                            </p>
-                        </motion.div>
-                    )}
-                </motion.div>
-            </div>
+                            {festival.emoji}
+                        </button>
+                    ))}
+                </div>
+            ) : (
+                /* Default: floating bottom-left widget */
+                <div className="fixed bottom-6 left-6 z-[190]">
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="bg-white dark:bg-gray-900 rounded-[32px] shadow-2xl p-4 border-2 border-gray-100 dark:border-gray-800 transition-colors"
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-2.5 text-center">
+                            🎉 Festival Mode
+                        </p>
+                        <div className="flex gap-2">
+                            {festivals.map((festival) => (
+                                <button
+                                    key={festival.id}
+                                    onClick={() => handleToggle(festival)}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all cursor-pointer ${activeFestival?.id === festival.id
+                                        ? `bg-gradient-to-br ${festival.colors.bg} scale-110 shadow-lg border-2 border-primary`
+                                        : 'bg-gray-100 dark:bg-gray-800 hover:scale-105'
+                                        }`}
+                                    title={festival.name}
+                                >
+                                    {festival.emoji}
+                                </button>
+                            ))}
+                        </div>
+                        {activeFestival && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-3 p-3 rounded-2xl bg-gradient-to-r from-red-50 to-orange-50 dark:from-gray-800 dark:to-gray-800 text-center"
+                            >
+                                <p className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-500 uppercase tracking-tight">
+                                    {activeFestival.greeting}
+                                </p>
+                            </motion.div>
+                        )}
+                    </motion.div>
+                </div>
+            )}
         </>
     );
 };

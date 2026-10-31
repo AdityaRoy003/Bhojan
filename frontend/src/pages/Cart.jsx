@@ -356,7 +356,7 @@ const Cart = () => {
                     {/* Right Column: Checkout Info */}
                     <div className="w-full lg:w-96 space-y-6">
                         {/* Group Ordering Panel */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
                             <h3 className="font-black text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-2">
                                 <span>👥</span> Group Ordering
                             </h3>
@@ -448,7 +448,7 @@ const Cart = () => {
                         </div>
 
                         {/* Coupon Section */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
                             <h3 className="font-black text-sm uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-2">
                                 <span>🎟️</span> Apply Promo Code
                             </h3>
@@ -456,14 +456,14 @@ const Cart = () => {
                                 <input
                                     type="text"
                                     placeholder="Enter Code"
-                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border-none rounded-2xl px-4 py-3 text-sm font-black uppercase tracking-widest focus:ring-2 ring-primary/20 outline-none dark:text-white dark:placeholder-gray-500 transition-all"
+                                    className="flex-1 bg-gray-50 dark:bg-gray-700 border-none rounded-2xl px-3 md:px-4 py-3 text-sm font-black uppercase tracking-widest focus:ring-2 ring-primary/20 outline-none dark:text-white dark:placeholder-gray-500 transition-all"
                                     value={couponCode}
                                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                 />
                                 <button
                                     onClick={handleApplyCoupon}
                                     disabled={couponLoading || !couponCode}
-                                    className="bg-primary text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 transition-all shadow-lg shadow-red-100"
+                                    className="bg-primary text-white px-4 md:px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest disabled:opacity-50 transition-all shadow-lg shadow-red-100 dark:shadow-none shrink-0"
                                 >
                                     {couponLoading ? '...' : 'Apply'}
                                 </button>
@@ -481,7 +481,7 @@ const Cart = () => {
                         </div>
 
                         {/* Bill Breakdown */}
-                        <div className="bg-white dark:bg-gray-800 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 transition-all">
+                        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 transition-all">
                             <h3 className="font-black text-xl mb-4 dark:text-white">
                                 {isGroupMode ? 'Combined Group Bill' : 'Total Bill'}
                             </h3>

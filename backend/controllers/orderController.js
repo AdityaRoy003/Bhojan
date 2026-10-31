@@ -42,10 +42,53 @@ exports.placeOrder = async (req, res) => {
         } = req.body;
 
         const User = require('../models/User');
+        const Item = require('../models/Item');
         const user = await User.findById(req.user.id);
 
         if (!['Customer', 'User', 'Admin'].includes(user.role)) {
             return res.status(403).json({ success: false, message: 'Only customers can place orders' });
+        }
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'Order must contain at least one item' });
+        }
+
+        // Validate items against DB prices to prevent client-side price tampering
+        const itemIds = items.map(i => i.item || i._id).filter(Boolean);
+        const dbItems = await Item.find({ _id: { $in: itemIds } });
+        const dbItemMap = {};
+        dbItems.forEach(di => { dbItemMap[di._id.toString()] = di; });
+
+        let calculatedSubtotal = 0;
+        const verifiedItems = [];
+
+        for (const it of items) {
+            const itId = (it.item || it._id)?.toString();
+            const dbItem = dbItemMap[itId];
+            if (!dbItem) {
+                return res.status(400).json({ success: false, message: `Item ${it.name || itId} is no longer available` });
+            }
+            const qty = Math.max(1, parseInt(it.quantity) || 1);
+            calculatedSubtotal += dbItem.price * qty;
+            verifiedItems.push({
+                item: dbItem._id,
+                name: dbItem.name,
+                price: dbItem.price,
+                quantity: qty,
+                image: dbItem.image
+            });
+        }
+
+        // Verify Razorpay payment signature for Online payments if signature provided
+        if (paymentMethod === 'Online' && req.body.razorpay_signature && orderId && paymentId) {
+            const secret = process.env.RAZORPAY_KEY_SECRET;
+            if (secret && secret !== 'secret_placeholder') {
+                const body = orderId + '|' + paymentId;
+                const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
+                if (expectedSignature !== req.body.razorpay_signature) {
+                    return res.status(400).json({ success: false, message: 'Payment verification failed: invalid signature' });
+                }
+            }
         }
 
         let finalAmount = totalAmount;
@@ -135,7 +178,7 @@ exports.placeOrder = async (req, res) => {
         const newOrder = await Order.create({
             user: req.user.id,
             shop: shopId,
-            items,
+            items: verifiedItems,
             totalAmount: finalAmount, // Use discounted amount
             razorpayOrderId: orderId,
             razorpayPaymentId: paymentId,
@@ -187,6 +230,9 @@ exports.placeOrder = async (req, res) => {
                 newBalance: user.loyaltyPoints
             }
         });
+
+        // Populate user details for socket emission
+        await newOrder.populate('user', 'fullname email mobile');
 
         // Notify Shop owner via Socket
         req.io.to(`shop_${shopId}`).emit('new_order', newOrder);

@@ -247,6 +247,13 @@ exports.updateSystemConfig = async (req, res) => {
 
         Object.assign(config, req.body);
         await config.save();
+
+        // Immediately bust the maintenance mode cache so the new setting takes effect at once
+        try {
+            const maintenanceModeMiddleware = require('../middlewares/maintenanceMode');
+            maintenanceModeMiddleware.bustCache();
+        } catch (_) { /* ignore if not loaded */ }
+
         res.status(200).json({ success: true, message: 'System configuration updated', config });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

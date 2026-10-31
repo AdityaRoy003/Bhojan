@@ -27,6 +27,17 @@ const updateLocation = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
+        // Verify authorization: only the customer, assigned delivery partner, shop owner, or Admin
+        const requesterId = (req.user._id || req.user.id).toString();
+        const orderUserId = (order.user?._id || order.user)?.toString();
+        const partnerId = (order.deliveryPartner?._id || order.deliveryPartner)?.toString();
+        const shopOwnerId = (order.shop?.owner?._id || order.shop?.owner)?.toString();
+        const isAdmin = req.user.role === 'Admin';
+
+        if (requesterId !== orderUserId && requesterId !== partnerId && requesterId !== shopOwnerId && !isAdmin) {
+            return res.status(403).json({ success: false, message: 'Not authorized to view tracking details for this order' });
+        }
+
         // Verify the user is the assigned delivery partner
         if (order.deliveryPartner?.toString() !== deliveryPartnerId) {
             return res.status(403).json({ success: false, message: 'Not authorized' });

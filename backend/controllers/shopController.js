@@ -205,7 +205,14 @@ exports.updateShop = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
-        shop = await Shop.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        // Whitelist allowed update fields to prevent mass assignment of sensitive shop fields
+        const allowedShopFields = ['name', 'image', 'city', 'state', 'address', 'shopType', 'fssaiRegistrationType', 'story', 'specialTags', 'costForTwo', 'timing', 'minOrderValue', 'settings', 'logo', 'banner', 'gstin', 'fssai'];
+        const safeUpdates = {};
+        for (const f of allowedShopFields) {
+            if (req.body[f] !== undefined) safeUpdates[f] = req.body[f];
+        }
+
+        shop = await Shop.findByIdAndUpdate(req.params.id, { $set: safeUpdates }, { new: true, runValidators: true });
         res.status(200).json({ success: true, shop });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

@@ -16,27 +16,45 @@ body {
   font-family: var(--font-sans);
   @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
   overflow-x: hidden;
+  /* Eliminate 300ms tap delay on mobile — makes every tap feel instant */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-}
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
 
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
-}
-
-/* Custom Range Input Styling */
+/* ── Range Input ────────────────────────────────────────────── */
 input[type="range"] {
   height: 6px;
   @apply bg-gray-200 dark:bg-gray-800 rounded-full accent-primary transition-all;
 }
-
 input[type="range"]::-webkit-slider-thumb {
   @apply w-4 h-4 bg-primary rounded-full shadow-lg border-2 border-white dark:border-gray-900 cursor-pointer hover:scale-125 transition-transform;
   -webkit-appearance: none;
+}
+
+/* ── Page content bottom clearance for fixed BottomNav ──────── */
+/* Apply .page-content on the <main> wrapper so all pages clear the nav */
+.page-content {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .page-content { padding-bottom: 0; }
+}
+
+/* ── BottomNav safe area padding (notched/Home-button-less phones) */
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+
+/* ── Minimum WCAG 2.5.5 touch target ───────────────────────── */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

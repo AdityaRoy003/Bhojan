@@ -10,6 +10,19 @@ const Login = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    const redirectUser = (userObj) => {
+        const role = userObj?.role;
+        if (role === 'Admin') {
+            navigate('/profile');
+        } else if (role === 'Owner') {
+            navigate('/owner/dashboard');
+        } else if (role === 'Delivery') {
+            navigate('/delivery/dashboard');
+        } else {
+            navigate('/');
+        }
+    };
+
     // Toggle between Phone OTP Login (default) and traditional Password Login
     const [usePasswordLogin, setUsePasswordLogin] = useState(false);
 
@@ -64,7 +77,7 @@ const Login = () => {
             } else if (data.success) {
                 dispatch(setUser(data.user));
                 toast.success('Logged in successfully!');
-                navigate('/');
+                redirectUser(data.user);
             }
         } catch (error) {
             console.error(error);
@@ -116,7 +129,7 @@ const Login = () => {
             } else if (data.success) {
                 dispatch(setUser(data.user));
                 toast.success("Logged in successfully!");
-                navigate('/');
+                redirectUser(data.user);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Invalid or expired OTP");
@@ -138,7 +151,7 @@ const Login = () => {
             if (data.success) {
                 dispatch(setUser(data.user));
                 toast.success("Verification successful! Welcome back.");
-                navigate('/');
+                redirectUser(data.user);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Invalid or expired 2FA code");

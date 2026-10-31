@@ -6,8 +6,11 @@ import { detectLocation } from '../redux/locationSlice';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import socket from '../utils/socket';
+import { toast } from 'react-toastify';
 
 const Navbar = () => {
+    const [showLocationModal, setShowLocationModal] = useState(false);
+    const [manualCity, setManualCity] = useState('');
     const { user, isAuthenticated } = useSelector((state) => state.user);
     const cartItems = useSelector((state) => state.cart.cartItems);
     const { city, state: locationState, loading: locationLoading } = useSelector((state) => state.location);
@@ -30,7 +33,20 @@ const Navbar = () => {
         }
     }, [darkMode]);
 
+    // Listen for admin idle-logout event and show a toast notification
+    useEffect(() => {
+        const handler = () => {
+            toast.warn('🔒 You were automatically logged out due to 30 minutes of inactivity.', {
+                position: 'top-center',
+                autoClose: 6000,
+            });
+        };
+        window.addEventListener('bhojan:idle-logout', handler);
+        return () => window.removeEventListener('bhojan:idle-logout', handler);
+    }, []);
+
     const toggleDarkMode = () => setDarkMode(!darkMode);
+
 
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -125,6 +141,23 @@ const Navbar = () => {
 
         const handleNewNotification = (data) => {
             fetchNotifications(); // Refresh list to get the new DB entry
+
+            // Display visible toast notification
+            toast.info(
+                <div className="flex flex-col">
+                    <span className="font-bold text-sm text-gray-900 dark:text-white">{data.title || "Order Update"}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300 mt-1">{data.message}</span>
+                </div>,
+                {
+                    position: "top-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    icon: "🔔"
+                }
+            );
 
             // Audio Beep Alert
             const context = new (window.AudioContext || window.webkitAudioContext)();
@@ -221,15 +254,140 @@ const Navbar = () => {
             transition={{ type: 'spring', stiffness: 120 }}
             className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 transition-all duration-300"
         >
+            {/* Location Modal */}
+            <AnimatePresence>
+                {showLocationModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200]"
+                            onClick={() => setShowLocationModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: -20, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -20, scale: 0.96 }}
+                            className="fixed top-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[420px] bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl z-[210] p-6 border border-gray-100 dark:border-gray-800"
+                        >
+                            <div className="flex justify-between items-center mb-5">
+                                <div>
+                                    <h3 className="font-black text-lg text-gray-900 dark:text-white">Select Location</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Where should we deliver?</p>
+                                </div>
+                                <button onClick={() => setShowLocationModal(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500">
+                                    ✕
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => { dispatch(detectLocation()); setShowLocationModal(false); }}
+                                className="w-full flex items-center gap-3 p-4 bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-2xl mb-4 transition-all group"
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform">📍</div>
+                                <div className="text-left">
+                                    <p className="font-black text-sm text-gray-900 dark:text-white">Use Current Location</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{locationLoading ? 'Detecting...' : city ? `Currently: ${city}` : 'Auto-detect with GPS'}</p>
+                                </div>
+                                <span className="ml-auto text-primary text-sm">→</span>
+                            </button>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Enter city name..."
+                                    value={manualCity}
+                                    onChange={(e) => setManualCity(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && manualCity.trim()) {
+                                            // dispatch a manual city set
+                                            setShowLocationModal(false);
+                                        }
+                                    }}
+                                    className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 ring-primary/20 dark:text-white"
+                                />
+                                <button
+                                    onClick={() => { if (manualCity.trim()) setShowLocationModal(false); }}
+                                    className="bg-primary text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shrink-0"
+                                >
+                                    Set
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
+                {/* MOBILE TOP BAR: Logo | Location (flex-1) | Notif | Profile */}
+                <div className="md:hidden flex items-center h-14 gap-3">
+                    {/* Logo */}
+                    <Link to="/home" className="font-bold text-primary flex items-center gap-1.5 shrink-0 group">
+                        <motion.img 
+                            whileHover={{ rotate: 12, scale: 1.08 }} 
+                            whileTap={{ scale: 0.95 }}
+                            src="/bhojan-logo.svg" 
+                            alt="Bhojan" 
+                            className="w-7 h-7 rounded-lg object-contain shadow-sm" 
+                        />
+                        <span className="text-lg tracking-tight font-black bg-gradient-to-r from-orange-600 to-red-500 bg-clip-text text-transparent">Bhojan</span>
+                    </Link>
+
+                    {/* Location — takes up all available space */}
+                    <div
+                        className="flex-1 flex items-center gap-1.5 cursor-pointer overflow-hidden px-2 py-1.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => setShowLocationModal(true)}
+                    >
+                        <span className="text-primary text-sm shrink-0">📍</span>
+                        <div className="flex flex-col min-w-0 leading-none">
+                            <span className="text-[8px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Delivering to</span>
+                            <p className="text-xs font-black text-gray-900 dark:text-white truncate mt-0.5">
+                                {locationLoading ? 'Detecting...' : city ? `${city}` : 'Select location'}
+                            </p>
+                        </div>
+                        <span className="text-gray-400 text-[10px] ml-auto shrink-0">▾</span>
+                    </div>
+
+                    {/* Right: Notif + Profile */}
+                    <div className="flex items-center gap-1 shrink-0">
+                        {isAuthenticated && (
+                            <Link to="/notifications" className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors flex items-center justify-center">
+                                <span className="text-xl">🔔</span>
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-900 shadow-sm animate-pulse"></span>
+                                )}
+                            </Link>
+                        )}
+                        {isAuthenticated ? (
+                            <div
+                                className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 p-[1.5px] cursor-pointer shrink-0"
+                                onClick={() => navigate('/profile')}
+                            >
+                                <div className="w-full h-full rounded-full bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                                    {user?.avatar ? (
+                                        <img src={user.avatar} alt="" className="w-full h-full object-cover rounded-full" />
+                                    ) : (
+                                        <span className="text-[10px] font-black text-amber-600">{user?.fullname?.charAt(0).toUpperCase()}</span>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <Link to="/login" className="text-[10px] font-black text-primary border border-primary px-3 py-1.5 rounded-full uppercase tracking-widest">Login</Link>
+                        )}
+                    </div>
+                </div>
+
+                {/* DESKTOP TOP BAR (original) */}
+                <div className="hidden md:flex justify-between h-16">
                     <div className="flex items-center gap-2 md:gap-6">
-                        <Link to="/" className="text-xl md:text-2xl font-bold text-primary flex items-center gap-1 md:gap-2">
-                            <motion.span
-                                whileHover={{ rotate: 20 }}
-                                className="text-xl md:text-3xl"
-                            >🥣</motion.span>
-                            <span className="text-lg md:text-2xl tracking-tighter">Bhojan</span>
+                        <Link to="/" className="text-xl md:text-2xl font-bold text-primary flex items-center gap-2 group">
+                            <motion.img 
+                                whileHover={{ rotate: 12, scale: 1.08 }} 
+                                whileTap={{ scale: 0.95 }}
+                                src="/bhojan-logo.svg" 
+                                alt="Bhojan" 
+                                className="w-8 h-8 md:w-9 md:h-9 rounded-xl object-contain shadow-sm" 
+                            />
+                            <span className="text-lg md:text-2xl tracking-tight font-black bg-gradient-to-r from-orange-600 to-red-500 bg-clip-text text-transparent">Bhojan</span>
                         </Link>
 
                         {/* Desktop Location Selector */}
@@ -238,7 +396,7 @@ const Navbar = () => {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 className="hidden lg:flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-all shadow-sm"
-                                onClick={() => dispatch(detectLocation())}
+                                onClick={() => setShowLocationModal(true)}
                             >
                                 <span className="text-primary">📍</span>
                                 {locationLoading ? (
@@ -528,44 +686,8 @@ const Navbar = () => {
                 </div>
             </div>
 
-            {/* Mobile Sub-Header: Location Selector (Swiggy Style) */}
-            {location.pathname !== '/profile' && (
-                <div className="md:hidden border-t border-gray-50 dark:border-gray-800/50 px-4 py-3 flex items-center justify-between bg-white dark:bg-gray-900 transition-colors">
-                    <div
-                        className="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer"
-                        onClick={() => dispatch(detectLocation())}
-                    >
-                        <span className="text-primary text-sm shrink-0">📍</span>
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none">Delivering to</span>
-                            <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate leading-tight mt-0.5">
-                                {locationLoading ? 'Detecting Location...' : city ? `${city}, ${locationState?.split(' ')[0]}` : 'Select your location'}
-                            </p>
-                        </div>
-                    </div>
 
-                    <div className="flex items-center gap-1 ml-2">
-                        <Link to="/search" className="p-2 text-gray-500 dark:text-gray-400">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </Link>
-                        {isAuthenticated && (
-                            <motion.div
-                                whileTap={{ scale: 0.9 }}
-                                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700 p-0.5"
-                                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                            >
-                                {user?.avatar ? (
-                                    <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                                ) : (
-                                    <span className="text-[10px] font-black text-primary">{user?.fullname?.charAt(0).toUpperCase()}</span>
-                                )}
-                            </motion.div>
-                        )}
-                    </div>
-                </div>
-            )}
+
 
             {/* Mobile Navigation Drawer */}
             <AnimatePresence>

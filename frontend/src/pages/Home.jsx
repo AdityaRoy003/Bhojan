@@ -9,7 +9,6 @@ import FestivalModeToggle from '../components/FestivalModeToggle';
 import ActiveOrderDrawer from '../components/ActiveOrderDrawer';
 import MoodBanner from '../components/MoodBanner';
 import EventBanner from '../components/EventBanner';
-import ChatbotWidget from '../components/ChatbotWidget';
 import BhojanAI from '../components/BhojanAI';
 import PostStoryModal from '../components/PostStoryModal';
 import FriendsActivity from '../components/FriendsActivity';
@@ -17,15 +16,19 @@ import FriendsActivity from '../components/FriendsActivity';
 import { useSelector } from 'react-redux';
 
 const categories = [
-    { name: 'Snacks', image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=200&auto=format' },
-    { name: 'Pizza', image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=200&auto=format' },
-    { name: 'Burger', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&auto=format' },
-    { name: 'Chinese', image: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?q=80&w=200&auto=format' },
-    { name: 'Main Course', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&auto=format' },
-    { name: 'Dessert', image: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?q=80&w=200&auto=format' },
-    { name: 'South Indian', image: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?q=80&w=200&auto=format' },
-    { name: 'Fast Food', image: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=200&auto=format' },
+    { name: 'Biryani', emoji: '🍛', image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=60&w=120&auto=format' },
+    { name: 'Pizza', emoji: '🍕', image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=60&w=120&auto=format' },
+    { name: 'Burger', emoji: '🍔', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=60&w=120&auto=format' },
+    { name: 'Snacks', emoji: '🍿', image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=60&w=120&auto=format' },
+    { name: 'Chinese', emoji: '🥢', image: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?q=60&w=120&auto=format' },
+    { name: 'South Indian', emoji: '🫓', image: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?q=60&w=120&auto=format' },
+    { name: 'Rolls', emoji: '🌯', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?q=60&w=120&auto=format' },
+    { name: 'Dessert', emoji: '🍧', image: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?q=60&w=120&auto=format' },
+    { name: 'Main Course', emoji: '🍲', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=60&w=120&auto=format' },
+    { name: 'Fast Food', emoji: '🍟', image: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=60&w=120&auto=format' },
+    { name: 'Thali', emoji: '🍱', image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?q=60&w=120&auto=format' },
 ];
+
 
 const dietaryOptions = [
     { name: 'Vegan', icon: '🌱', color: 'bg-green-100 text-green-700 border-green-300' },
@@ -55,6 +58,8 @@ const Home = () => {
     const [isListening, setIsListening] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [showPostStory, setShowPostStory] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+
 
     // Filters State
     const [showFilters, setShowFilters] = useState(false);
@@ -63,6 +68,14 @@ const Home = () => {
     const [filterRating, setFilterRating] = useState(0);
     const [filterVeg, setFilterVeg] = useState(false);
     const [activeFestival, setActiveFestival] = useState(null);
+
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const fetchActiveOrder = async () => {
         if (!isAuthenticated) return;
@@ -85,9 +98,26 @@ const Home = () => {
     useEffect(() => {
         if (isAuthenticated) {
             fetchActiveOrder();
-            // Poll every 10 seconds to keep it fresh
-            const interval = setInterval(fetchActiveOrder, 10000);
-            return () => clearInterval(interval);
+            // Poll every 30 seconds to keep it fresh
+            const interval = setInterval(() => {
+                // Skip API calls if the tab is backgrounded
+                if (document.visibilityState === 'visible') {
+                    fetchActiveOrder();
+                }
+            }, 30000);
+
+            // Fetch immediately when user re-focuses tab
+            const handleVisibilityChange = () => {
+                if (document.visibilityState === 'visible') {
+                    fetchActiveOrder();
+                }
+            };
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            return () => {
+                clearInterval(interval);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
         }
     }, [isAuthenticated]);
 
@@ -402,94 +432,115 @@ const Home = () => {
                                     <span className="md:hidden text-lg">🔍</span>
                                     <span className="hidden md:inline">Search</span>
                                 </button>
-                            </div>
 
-                            {/* Filter Modal/Popover */}
-                            <AnimatePresence>
-                                {showFilters && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                                        className="absolute top-full mt-6 right-0 md:left-auto w-full md:w-96 bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl rounded-[32px] shadow-3xl p-8 z-[60] text-left border border-white/40 dark:border-gray-800 transition-all shadow-primary/5"
-                                    >
-                                        <div className="flex justify-between items-center mb-8">
-                                            <div>
-                                                <h3 className="text-xl font-black text-gray-900 dark:text-white">Refine Search</h3>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Customize your results</p>
-                                            </div>
-                                            <button onClick={() => setShowFilters(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-primary transition-colors">✕</button>
-                                        </div>
+                                {/* Filter Modal/Popover */}
+                                <AnimatePresence>
+                                    {showFilters && (
+                                        <>
+                                            {/* Mobile Backdrop Overlay */}
+                                            <div 
+                                                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180] md:hidden"
+                                                onClick={() => setShowFilters(false)}
+                                            />
 
-                                        <div className="space-y-8">
-                                            <div>
-                                                <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block">Price Range (₹{filterMinPrice} - ₹{filterMaxPrice})</label>
-                                                <div className="flex gap-4">
-                                                    <input
-                                                        type="range" min="0" max="500" value={filterMinPrice}
-                                                        onChange={(e) => setFilterMinPrice(Number(e.target.value))}
-                                                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                                                    />
-                                                    <input
-                                                        type="range" min="500" max="2000" value={filterMaxPrice}
-                                                        onChange={(e) => setFilterMaxPrice(Number(e.target.value))}
-                                                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                                                    />
+                                            <motion.div
+                                                initial={isMobile ? { y: '100%', opacity: 1 } : { opacity: 0, y: 20, scale: 0.95 }}
+                                                animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+                                                exit={isMobile ? { y: '100%', opacity: 1 } : { opacity: 0, y: 20, scale: 0.95 }}
+                                                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                                                className="fixed bottom-0 left-0 right-0 z-[190] rounded-t-[32px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] border-t border-gray-100 dark:border-gray-800 shadow-2xl text-left md:absolute md:top-full md:bottom-auto md:left-auto md:right-0 md:w-96 md:rounded-[32px] md:mt-6 md:p-8 md:z-[60] md:border md:shadow-3xl md:max-h-none md:overflow-visible transition-all"
+                                            >
+                                                {/* Top drag handle indicator for mobile bottom sheet */}
+                                                <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-6 md:hidden" />
+
+                                                <div className="flex justify-between items-center mb-6 md:mb-8">
+                                                    <div>
+                                                        <h3 className="text-lg md:text-xl font-black text-gray-900 dark:text-white">Refine Search</h3>
+                                                        <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Customize your results</p>
+                                                    </div>
+                                                    <button onClick={() => setShowFilters(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-primary transition-colors">✕</button>
                                                 </div>
-                                            </div>
 
-                                            <div>
-                                                <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block">Min Rating ({filterRating}+)</label>
-                                                <div className="flex justify-between">
-                                                    {[0, 3, 3.5, 4, 4.5].map(r => (
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1, translateY: -2 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            key={r}
-                                                            onClick={() => setFilterRating(r)}
-                                                            className={`w-12 h-12 rounded-2xl font-black flex items-center justify-center transition-all ${filterRating === r ? 'bg-primary text-white shadow-xl shadow-primary/30 dark:shadow-none scale-110 z-10' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                                                <div className="space-y-6 md:space-y-8">
+                                                    <div>
+                                                        <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block">Price Range (₹{filterMinPrice} - ₹{filterMaxPrice})</label>
+                                                        <div className="flex gap-4">
+                                                            <input
+                                                                type="range" min="0" max="500" value={filterMinPrice}
+                                                                onChange={(e) => setFilterMinPrice(Number(e.target.value))}
+                                                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                            />
+                                                            <input
+                                                                type="range" min="500" max="2000" value={filterMaxPrice}
+                                                                onChange={(e) => setFilterMaxPrice(Number(e.target.value))}
+                                                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block">Min Rating ({filterRating}+)</label>
+                                                        <div className="flex justify-between">
+                                                            {[0, 3, 3.5, 4, 4.5].map(r => (
+                                                                <motion.button
+                                                                    whileHover={{ scale: 1.1, translateY: -2 }}
+                                                                    whileTap={{ scale: 0.9 }}
+                                                                    key={r}
+                                                                    onClick={() => setFilterRating(r)}
+                                                                    className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl font-black flex items-center justify-center transition-all ${filterRating === r ? 'bg-primary text-white shadow-xl shadow-primary/30 dark:shadow-none scale-110 z-10' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                                                                >
+                                                                    {r === 0 ? 'All' : r}
+                                                                </motion.button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30 p-4 rounded-3xl border border-gray-100 dark:border-gray-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg">🥬</span>
+                                                            <span className="text-sm font-black text-gray-700 dark:text-gray-300">Vegetarian Only</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setFilterVeg(!filterVeg)}
+                                                            className={`w-14 h-8 rounded-full transition-all duration-300 flex items-center px-1 group ${filterVeg ? 'bg-green-500 shadow-lg shadow-green-200 dark:shadow-none' : 'bg-gray-300 dark:bg-gray-700'}`}
                                                         >
-                                                            {r === 0 ? 'All' : r}
-                                                        </motion.button>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                                            <motion.span
+                                                                animate={{ x: filterVeg ? 24 : 0 }}
+                                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                                                className="w-6 h-6 bg-white rounded-full shadow-md"
+                                                            ></motion.span>
+                                                        </button>
+                                                    </div>
 
-                                            <div className="flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30 p-4 rounded-3xl border border-gray-100 dark:border-gray-800">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-lg">🥬</span>
-                                                    <span className="text-sm font-black text-gray-700 dark:text-gray-300">Vegetarian Only</span>
-                                                </div>
-                                                <button
-                                                    onClick={() => setFilterVeg(!filterVeg)}
-                                                    className={`w-14 h-8 rounded-full transition-all duration-300 flex items-center px-1 group ${filterVeg ? 'bg-green-500 shadow-lg shadow-green-200 dark:shadow-none' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                                >
-                                                    <motion.span
-                                                        animate={{ x: filterVeg ? 24 : 0 }}
-                                                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                                        className="w-6 h-6 bg-white rounded-full shadow-md"
-                                                    ></motion.span>
-                                                </button>
-                                            </div>
+                                                    {/* Festival Mode inside filters */}
+                                                    <div className="flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30 p-4 rounded-3xl border border-gray-100 dark:border-gray-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg">🎉</span>
+                                                            <span className="text-sm font-black text-gray-700 dark:text-gray-300">Festival Mode</span>
+                                                        </div>
+                                                        <FestivalModeToggle onThemeChange={setActiveFestival} compact />
+                                                    </div>
 
-                                            <div className="pt-6 flex gap-3 border-t border-gray-100 dark:border-gray-800">
-                                                <button
-                                                    onClick={handleClearFilters}
-                                                    className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-800"
-                                                >
-                                                    Clear All
-                                                </button>
-                                                <button
-                                                    onClick={() => { handleSearch(); setShowFilters(false); }}
-                                                    className="flex-[2] py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all"
-                                                >
-                                                    Apply Filters
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                                    <div className="pt-6 flex gap-3 border-t border-gray-100 dark:border-gray-800">
+                                                        <button
+                                                            onClick={handleClearFilters}
+                                                            className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-800"
+                                                        >
+                                                            Clear All
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { handleSearch(); setShowFilters(false); }}
+                                                            className="flex-[2] py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all"
+                                                        >
+                                                            Apply Filters
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        </>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </motion.div>
                 </motion.div>
@@ -507,8 +558,47 @@ const Home = () => {
                 ></motion.div>
             </div>
 
-            {/* Mood Banner - Time & Weather Contextual Suggestions */}
+            {/* ── STICKY SWIGGY-STYLE CATEGORY CHIPS BAR ── */}
+            <div className="sticky top-[56px] md:top-[64px] z-40 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="flex overflow-x-auto no-scrollbar px-3 py-2 gap-2 touch-pan-x">
+                    {categories.map((cat, idx) => (
+                        <motion.button
+                            key={idx}
+                            whileTap={{ scale: 0.92 }}
+                            onClick={() => {
+                                const newCat = selectedCategory === cat.name ? null : cat.name;
+                                setSelectedCategory(newCat);
+                                setSearchQuery(newCat || '');
+                                fetchShops(newCat || '');
+                            }}
+                            className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 pt-2 pb-1.5 rounded-2xl transition-all duration-200 border-b-2 ${
+                                selectedCategory === cat.name
+                                    ? 'border-primary bg-primary/5'
+                                    : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+                            }`}
+                        >
+                            <div className={`w-14 h-14 rounded-2xl overflow-hidden border-2 transition-all duration-200 ${
+                                selectedCategory === cat.name
+                                    ? 'border-primary scale-105 shadow-md shadow-primary/20'
+                                    : 'border-gray-100 dark:border-gray-800'
+                            }`}>
+                                <img src={cat.image} alt={cat.name} loading="lazy" className="w-full h-full object-cover" />
+                            </div>
+                            <span className={`text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-colors ${
+                                selectedCategory === cat.name
+                                    ? 'text-primary'
+                                    : 'text-gray-500 dark:text-gray-400'
+                            }`}>
+                                {cat.name}
+                            </span>
+                        </motion.button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Mood Banner */}
             <MoodBanner onSearch={(term) => { setSearchQuery(term); fetchShops(term); }} />
+
 
             {/* Stories Section */}
             <div className="relative">
@@ -563,7 +653,7 @@ const Home = () => {
                                     transition={{ duration: 0.2 }}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-full -z-1" />
-                                <img src={cat.image} alt={cat.name} className="relative w-full h-full object-cover rounded-full shadow-sm border-2 border-white dark:border-gray-800 z-10" />
+                                <img src={cat.image} alt={cat.name} loading="lazy" className="relative w-full h-full object-cover rounded-full shadow-sm border-2 border-white dark:border-gray-800 z-10" />
                             </div>
                             <span className="text-[10px] md:text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest hover:text-red-500 transition-colors block">{cat.name}</span>
                         </motion.div>
@@ -673,7 +763,7 @@ const Home = () => {
                     </div>
                     <div className="relative">
                         <div className="w-64 h-48 bg-white dark:bg-gray-800 p-2 rounded-xl shadow-xl transform rotate-3 hover:rotate-0 transition duration-300">
-                            <img src="https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=80&w=400&auto=format" className="w-full h-full object-cover rounded-lg" alt="Local Vendor" />
+                            <img src="https://images.unsplash.com/photo-1556910103-1c02745a30bf?q=60&w=250&auto=format" loading="lazy" className="w-full h-full object-cover rounded-lg" alt="Local Vendor" />
                             <div className="absolute -bottom-4 -left-4 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg">
                                 <p className="font-bold text-gray-800 dark:text-gray-100 text-xs">Bhalla Da Dhaba</p>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400">Since 1985</p>
@@ -733,8 +823,9 @@ const Home = () => {
                                     {/* Image Container */}
                                     <div className="relative w-28 h-28 shrink-0 md:w-full md:h-52 overflow-hidden rounded-2xl md:rounded-none">
                                         <img
-                                            src={shop.image || "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=600&auto=format"}
+                                            src={shop.image || "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=60&w=350&auto=format"}
                                             alt={shop.name}
+                                            loading="lazy"
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity" />
@@ -792,53 +883,46 @@ const Home = () => {
                 )}
             </div>
 
-            {/* Gamification - Loyalty Progress */}
+            {/* Gamification - Inline Spin & Win + Loyalty card (replaces floating buttons) */}
             {
                 isAuthenticated && user?.role === 'Customer' && (
-                    <div className="fixed bottom-48 right-6 z-[50] group md:bottom-50 md:right-8">
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-64 transform translate-y-32 group-hover:translate-y-0 transition-transform duration-300 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
-                            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">🎁 Loyalty Rewards</h4>
-                            <p className="text-sm font-bold text-gray-800 dark:text-white mb-3">You're just <span className="text-primary font-black">2 orders</span> away from a Free Delivery!</p>
-                            <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 w-[70%] rounded-full shadow-sm"></div>
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Spin & Win Card */}
+                            <motion.button
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setShowSpinWheel(true)}
+                                className="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[20px] p-4 text-left shadow-lg shadow-purple-200 dark:shadow-purple-900/20 flex flex-col justify-between min-h-[96px]"
+                            >
+                                <div className="absolute -top-3 -right-3 text-5xl opacity-20 pointer-events-none">🎰</div>
+                                <p className="text-white/70 text-[9px] font-black uppercase tracking-widest">Spin & Win</p>
+                                <div>
+                                    <p className="text-white font-black text-sm leading-tight">Free coupons await!</p>
+                                    <p className="text-indigo-200 text-[10px] font-bold mt-0.5">Tap to spin 🎡</p>
+                                </div>
+                            </motion.button>
+
+                            {/* Loyalty Rewards Card */}
+                            <div className="relative overflow-hidden bg-gradient-to-br from-amber-400 to-orange-500 rounded-[20px] p-4 shadow-lg shadow-amber-200 dark:shadow-amber-900/20 flex flex-col justify-between min-h-[96px]">
+                                <div className="absolute -top-3 -right-3 text-5xl opacity-20 pointer-events-none">🎁</div>
+                                <p className="text-white/70 text-[9px] font-black uppercase tracking-widest">Loyalty Rewards</p>
+                                <div>
+                                    <p className="text-white font-black text-sm leading-tight">2 orders to Free Delivery!</p>
+                                    <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
+                                        <div className="h-full bg-white w-[70%] rounded-full" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <button
-                            className="absolute bottom-0 right-0 w-14 h-14 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl hover:scale-110 transition-transform animate-bounce group-hover:animate-none"
-                        >
-                            🎁
-                        </button>
+                        {showSpinWheel && <SpinTheWheel onClose={() => setShowSpinWheel(false)} />}
                     </div>
-                )
-            }
-
-            {/* Gamification - Spin the Wheel (Button moved combined with Loyalty or kept separate) */}
-            {
-                isAuthenticated && user?.role === 'Customer' && (
-                    <>
-                        <button
-                            onClick={() => setShowSpinWheel(true)}
-                            className="fixed bottom-28 right-6 z-[60] md:bottom-30 md:right-8 bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform"
-                            title="Spin & Win"
-                        >
-                            <span className="text-2xl">🎰</span>
-                        </button>
-                        {showSpinWheel && (
-                            <SpinTheWheel onClose={() => setShowSpinWheel(false)} />
-                        )}
-                    </>
                 )
             }
 
             {/* Refined Mobile Tracking Drawer */}
             <ActiveOrderDrawer order={activeOrder} />
 
-            {/* Festival Mode Toggle */}
-            <FestivalModeToggle onThemeChange={setActiveFestival} />
-
-            {/* AI Chatbot Concierge */}
-            <ChatbotWidget />
+            {/* AI Concierge - unified single FAB */}
             <BhojanAI />
 
             {/* Post Story Modal */}

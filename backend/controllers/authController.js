@@ -89,26 +89,40 @@ const handleDeviceSessionAndAlert = async (user, req) => {
 // Generate JWT Token
 // Generate JWT Tokens
 const sendToken = (user, statusCode, res) => {
-    // Extended Access Token for stability
+    const isSystemAdmin = user?.role === 'Admin';
+
+    // Admins get a short-lived 2-hour token — forces re-login after 2h inactivity.
+    // Regular users get a 24-hour access token for convenience.
+    const accessTokenExpiry = isSystemAdmin ? '2h' : '24h';
+
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '24h',
+        expiresIn: accessTokenExpiry,
     });
 
-    // Long-lived Refresh Token
+    // Long-lived Refresh Token (non-admins only — admins use session cookies)
     const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: '7d',
     });
 
-    const options = {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+    const baseOptions = {
+        httpOnly: true,                                            // Not accessible via JS
+        secure: process.env.NODE_ENV === 'production',            // HTTPS only in production
+        sameSite: 'lax',                                          // Lax: protects against CSRF while allowing top-level navigations
     };
 
+    // Admin: session cookies (expire when browser closes) + short JWT lifetime
+    // Prevents auto-login when opening a fresh browser tab after a session
+    const accessCookieOptions = isSystemAdmin
+        ? { ...baseOptions }                                               // No expires = session cookie
+        : { ...baseOptions, expires: new Date(Date.now() + 2 * 60 * 60 * 1000) }; // 2h for access
+
+    const refreshCookieOptions = isSystemAdmin
+        ? { ...baseOptions }                                               // No expires = session cookie
+        : { ...baseOptions, expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }; // 7d refresh
+
     res.status(statusCode)
-        .cookie('refreshToken', refreshToken, options)
-        .cookie('token', accessToken, { ...options, expires: new Date(Date.now() + 24 * 60 * 60 * 1000) })
+        .cookie('refreshToken', refreshToken, refreshCookieOptions)
+        .cookie('token', accessToken, accessCookieOptions)
         .json({
             success: true,
             user,
@@ -205,6 +219,19 @@ exports.signin = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
             return res.status(401).json({ success: false, message: 'Invalid email or password' });
+        }
+
+        // Check if platform is under maintenance and user is not an Admin
+        if (user.role !== 'Admin') {
+            const SystemConfig = require('../models/SystemConfig');
+            const config = await SystemConfig.findOne().select('maintenanceMode').lean();
+            if (config?.maintenanceMode) {
+                return res.status(503).json({
+                    success: false,
+                    maintenance: true,
+                    message: 'The platform is currently under maintenance. Only administrators can log in.'
+                });
+            }
         }
 
         // Check if account is locked
@@ -332,13 +359,23 @@ exports.logout = async (req, res) => {
 // Forgot Password
 exports.forgotPassword = async (req, res) => {
     try {
-        const user = await User.findOne({ email: req.body.email });
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Please provide an email address' });
         }
 
-        // Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const user = await User.findOne({ email });
+        // Prevent user enumeration: always return 200 with generic message even if user doesn't exist
+        if (!user) {
+            return res.status(200).json({
+                success: true,
+                message: 'If an account exists with this email, a password reset code has been sent.'
+            });
+        }
+
+        // Generate cryptographically secure OTP
+        const crypto = require('crypto');
+        const otp = crypto.randomInt(100000, 999999).toString();
         user.otp = otp;
         user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins
 
@@ -354,28 +391,21 @@ exports.forgotPassword = async (req, res) => {
                     html: emailTemplates.forgotPassword(otp),
                     message,
                 });
-                res.status(200).json({ success: true, message: `Email sent to ${user.email}` });
-            } else {
-                console.log(`\n==================================================`);
-                console.log(`[DEVELOPMENT MODE] Password Reset OTP for ${user.email}: ${otp}`);
-                console.log(`==================================================\n`);
-                res.status(200).json({
-                    success: true,
-                    message: `OTP sent to console in development mode (OTP: ${otp})`,
-                    otp
-                });
+            } else if (process.env.NODE_ENV !== 'production') {
+                console.log(`[DEVELOPMENT ONLY] Password Reset OTP for ${user.email}: ${otp}`);
             }
         } catch (error) {
             console.error('Email send error:', error);
-            console.log(`\n==================================================`);
-            console.log(`[FALLBACK MODE] Password Reset OTP for ${user.email}: ${otp}`);
-            console.log(`==================================================\n`);
-            res.status(200).json({
-                success: true,
-                message: `Email failed but OTP sent to console (OTP: ${otp})`,
-                otp
-            });
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`[FALLBACK - DEV ONLY] Password Reset OTP for ${user.email}: ${otp}`);
+            }
         }
+
+        // SECURITY: Never return OTP in HTTP response to prevent account takeover
+        res.status(200).json({
+            success: true,
+            message: 'If an account exists with this email, a password reset code has been sent.'
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -776,6 +806,19 @@ exports.sendMobileOTP = async (req, res) => {
             return res.status(404).json({ success: false, message: 'No registered account found with this mobile number' });
         }
 
+        // Check if platform is under maintenance and user is not an Admin
+        if (user.role !== 'Admin') {
+            const SystemConfig = require('../models/SystemConfig');
+            const config = await SystemConfig.findOne().select('maintenanceMode').lean();
+            if (config?.maintenanceMode) {
+                return res.status(503).json({
+                    success: false,
+                    maintenance: true,
+                    message: 'The platform is currently under maintenance. Only administrators can log in.'
+                });
+            }
+        }
+
         // Generate OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         user.otp = otp;
@@ -828,6 +871,19 @@ exports.verifyMobileOTP = async (req, res) => {
 
         if (!user) {
             return res.status(400).json({ success: false, message: 'OTP is invalid or has expired' });
+        }
+
+        // Check if platform is under maintenance and user is not an Admin
+        if (user.role !== 'Admin') {
+            const SystemConfig = require('../models/SystemConfig');
+            const config = await SystemConfig.findOne().select('maintenanceMode').lean();
+            if (config?.maintenanceMode) {
+                return res.status(503).json({
+                    success: false,
+                    maintenance: true,
+                    message: 'The platform is currently under maintenance. Only administrators can log in.'
+                });
+            }
         }
 
         // Clear OTP fields
@@ -893,6 +949,19 @@ exports.verify2FA = async (req, res) => {
         const user = await User.findById(userId).select('+password');
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Check if platform is under maintenance and user is not an Admin
+        if (user.role !== 'Admin') {
+            const SystemConfig = require('../models/SystemConfig');
+            const config = await SystemConfig.findOne().select('maintenanceMode').lean();
+            if (config?.maintenanceMode) {
+                return res.status(503).json({
+                    success: false,
+                    maintenance: true,
+                    message: 'The platform is currently under maintenance. Only administrators can log in.'
+                });
+            }
         }
 
         if (user.lockUntil && user.lockUntil > Date.now()) {

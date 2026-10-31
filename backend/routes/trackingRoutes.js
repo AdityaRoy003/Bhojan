@@ -5,6 +5,6 @@ const { isAuthenticated } = require('../middlewares/auth');
 const router = express.Router();
 
 router.put('/:orderId/location', isAuthenticated, updateLocation);
-router.get('/:orderId', getTrackingDetails);
+router.get('/:orderId', isAuthenticated, getTrackingDetails);
 
 module.exports = router;

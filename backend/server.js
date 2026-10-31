@@ -7,6 +7,7 @@ const connectDB = require('./config/db');
 
 const helmet = require('helmet');
 const xss = require('xss-clean');
+const maintenanceModeMiddleware = require('./middlewares/maintenanceMode');
 const sanitize = require('mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 
@@ -50,24 +51,59 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Security Middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com", "https://accounts.google.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+            imgSrc: ["'self'", "data:", "blob:", "https:"],
+            connectSrc: ["'self'", "http://localhost:8000", "ws://localhost:8000", process.env.FRONTEND_URL || ''].filter(Boolean),
+            frameSrc: ["'none'"],                       // block iframing entirely
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    },
+    // Prevent clickjacking
+    frameguard: { action: 'deny' },
+    // Force HTTPS in production
+    hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+    // Prevent MIME sniffing
+    noSniff: true,
+    // Disable X-Powered-By header (hides Express)
+    hidePoweredBy: true,
+    // XSS Filter
+    xssFilter: true,
+}));
 app.use((req, res, next) => {
     if (req.body) req.body = sanitize(req.body);
     if (req.params) req.params = sanitize(req.params);
     if (req.query && typeof req.query === 'object') {
         const sanitized = sanitize(req.query);
-        // Modify keys in-place to avoid reassigning the read-only property
         Object.keys(req.query).forEach(key => delete req.query[key]);
         Object.assign(req.query, sanitized);
     }
     next();
 });
-// app.use(xss()); // Temporarily disabled for Express 5 compatibility
+
+// Strip any HTML/script tags from string body fields to prevent XSS
+const stripXSS = (obj) => {
+    if (typeof obj === 'string') return obj.replace(/<[^>]*>/g, '');
+    if (typeof obj === 'object' && obj !== null) {
+        Object.keys(obj).forEach(k => { obj[k] = stripXSS(obj[k]); });
+    }
+    return obj;
+};
+app.use((req, res, next) => {
+    if (req.body) req.body = stripXSS(req.body);
+    next();
+});
 
 // Logging Middleware
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
@@ -87,29 +123,47 @@ app.get('/health', async (req, res) => {
     }
 });
 
-// Rate Limiting
+// Environment-aware rate limits — strict in production, generous in development
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Global API limiter
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5000, // Limit each IP to 5000 requests per windowMs (increased specifically for development frequency)
+    windowMs: 15 * 60 * 1000,
+    max: isDev ? 5000 : 200,
     standardHeaders: true,
     legacyHeaders: false,
+    message: { success: false, message: 'Too many requests from this IP, please slow down.' },
 });
 app.use('/api', limiter);
 
-// Strict Rate Limiting for Authentication endpoints
+// Auth endpoints limiter — skip passive session-check and logout calls
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 authentication requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: isDev ? 500 : 50,
     message: { success: false, message: 'Too many authentication requests, please try again after 15 minutes' },
     standardHeaders: true,
     legacyHeaders: false,
+    // /me = passive session check on every page load; /logout = housekeeping — neither should eat quota
+    skip: (req) => req.path === '/me' || req.path === '/logout',
 });
 app.use('/api/auth', authLimiter);
 
-// Extra-Strict Rate Limiting for OTP and Password Resets (spammer protection)
+// Login/Signup limiter — strict in production, relaxed in development
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isDev ? 100 : 10,
+    message: { success: false, message: 'Too many login attempts. Please wait 15 minutes and try again.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => isDev && process.env.BYPASS_RATE_LIMIT === 'true',
+});
+app.use('/api/auth/signin', loginLimiter);
+app.use('/api/auth/signup', loginLimiter);
+
+// OTP and Password Reset limiter
 const otpLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Limit each IP to 10 password recovery requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: isDev ? 30 : 5,
     message: { success: false, message: 'Too many password recovery attempts, please try again after 15 minutes' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -120,6 +174,24 @@ app.use('/api/auth/reset-password', otpLimiter);
 
 // Database Connection
 connectDB();
+
+// Public status endpoint — returns maintenance mode flag so the frontend can show the maintenance page
+app.get('/api/status', async (req, res) => {
+    try {
+        const SystemConfig = require('./models/SystemConfig');
+        const config = await SystemConfig.findOne().select('maintenanceMode globalBanner').lean();
+        res.status(200).json({
+            success: true,
+            maintenanceMode: config?.maintenanceMode ?? false,
+            globalBanner: config?.globalBanner ?? ''
+        });
+    } catch (err) {
+        res.status(200).json({ success: true, maintenanceMode: false, globalBanner: '' });
+    }
+});
+
+// Apply maintenance mode gate BEFORE all other /api routes
+app.use('/api', maintenanceModeMiddleware);
 
 // Socket.io Real-time Logic
 io.on('connection', (socket) => {
@@ -181,8 +253,18 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_chat_message', ({ orderId, message, senderName, senderRole, timestamp }) => {
-        // Broadcast to everyone in the chat room (customer + courier)
-        io.to(`chat_${orderId}`).emit('chat_message', { message, senderName, senderRole, timestamp });
+        if (!orderId || !message || typeof message !== 'string') return;
+        // Strip HTML / script tags from socket chat messages to prevent Stored & DOM XSS
+        const sanitizedMessage = message.replace(/<[^>]*>/g, '').trim().slice(0, 1000);
+        const safeSenderName = typeof senderName === 'string' ? senderName.replace(/<[^>]*>/g, '').slice(0, 50) : 'Anonymous';
+        const safeRole = ['Customer', 'Delivery', 'Owner', 'Admin'].includes(senderRole) ? senderRole : 'Customer';
+
+        io.to(`chat_${orderId}`).emit('chat_message', {
+            message: sanitizedMessage,
+            senderName: safeSenderName,
+            senderRole: safeRole,
+            timestamp: timestamp || new Date().toISOString()
+        });
     });
 
     socket.on('disconnect', () => {
