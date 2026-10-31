@@ -191,6 +191,9 @@ app.get('/api/status', async (req, res) => {
         if (cachedStatus && (now - lastStatusFetch < STATUS_CACHE_TTL_MS)) {
             return res.status(200).json(cachedStatus);
         }
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(200).json(cachedStatus || { success: true, maintenanceMode: false, globalBanner: '' });
+        }
         const SystemConfig = require('./models/SystemConfig');
         const config = await SystemConfig.findOne().select('maintenanceMode globalBanner').lean();
         cachedStatus = {
@@ -338,6 +341,15 @@ app.use(errorHandler);
 // Initialize Jobs
 const initRetentionJob = require('./jobs/retentionJob');
 initRetentionJob();
+
+// Global Process Safety Handlers
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught Exception: ' + (err && err.message ? err.message : err), { stack: err ? err.stack : '' });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection at: ' + promise + ', reason: ' + reason);
+});
 
 server.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
