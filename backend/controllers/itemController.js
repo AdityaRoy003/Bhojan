@@ -97,7 +97,7 @@ exports.deleteItem = async (req, res) => {
 // Get Items by Shop
 exports.getShopItems = async (req, res) => {
     try {
-        const items = await Item.find({ shop: req.params.shopId });
+        const items = await Item.find({ shop: req.params.shopId }).lean();
         res.status(200).json({ success: true, items });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

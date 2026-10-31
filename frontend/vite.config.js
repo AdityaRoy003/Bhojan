@@ -28,6 +28,14 @@ export default defineConfig({
             if (id.includes('framer-motion')) {
               return 'vendor-animations';
             }
+            // Put heavy PDF export tools in their own on-demand chunk
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'vendor-export';
+            }
+            // Put mapping engines in a separate chunk
+            if (id.includes('leaflet')) {
+              return 'vendor-maps';
+            }
           }
         }
       }
@@ -64,6 +72,30 @@ export default defineConfig({
       },
       workbox: {
         runtimeCaching: [
+          {
+            // Cache static images with StaleWhileRevalidate for instant render
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'images-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 Days
+              }
+            }
+          },
+          {
+            // Cache Google Web Fonts
+            urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 365 * 24 * 60 * 60
+              }
+            }
+          },
           {
             // Cache production API endpoints
             urlPattern: /^https:\/\/api\.bhojan\.com\/api\/.*$/,

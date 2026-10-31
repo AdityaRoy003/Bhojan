@@ -87,6 +87,26 @@ function AppContent() {
     }
   }, [dispatch]);
 
+  // ── Background Idle Preloading for Zero-Latency Navigation ─────────────────
+  useEffect(() => {
+    const idleFn = window.requestIdleCallback || ((cb) => setTimeout(cb, 600));
+    const handle = idleFn(() => {
+      // Preload critical customer routes into browser module cache
+      import('./pages/Home');
+      import('./pages/ShopDetails');
+      import('./pages/Cart');
+      import('./pages/Checkout');
+      import('./pages/user/UserProfile');
+      import('./pages/Notifications');
+    });
+
+    return () => {
+      if (window.cancelIdleCallback && typeof handle === 'number') {
+        window.cancelIdleCallback(handle);
+      }
+    };
+  }, []);
+
   // ── Admin Idle Session Timeout ────────────────────────────────────────────
   // If the admin is inactive for 30 minutes, they are automatically signed out.
   // This prevents stale admin sessions persisting in the browser.

@@ -1,3 +1,4 @@
+const compression = require('compression');
 const express = require('express');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -50,6 +51,10 @@ app.use(cors({
         }
     },
     credentials: true
+}));
+app.use(compression({
+    level: 6, // Optimal speed-to-compression ratio
+    threshold: 1024 // Only compress payloads > 1KB
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -175,16 +180,26 @@ app.use('/api/auth/reset-password', otpLimiter);
 // Database Connection
 connectDB();
 
-// Public status endpoint — returns maintenance mode flag so the frontend can show the maintenance page
+// In-memory status cache for ultra-low latency (< 1ms response)
+let cachedStatus = null;
+let lastStatusFetch = 0;
+const STATUS_CACHE_TTL_MS = 15000; // 15 seconds cache
+
 app.get('/api/status', async (req, res) => {
     try {
+        const now = Date.now();
+        if (cachedStatus && (now - lastStatusFetch < STATUS_CACHE_TTL_MS)) {
+            return res.status(200).json(cachedStatus);
+        }
         const SystemConfig = require('./models/SystemConfig');
         const config = await SystemConfig.findOne().select('maintenanceMode globalBanner').lean();
-        res.status(200).json({
+        cachedStatus = {
             success: true,
             maintenanceMode: config?.maintenanceMode ?? false,
             globalBanner: config?.globalBanner ?? ''
-        });
+        };
+        lastStatusFetch = now;
+        res.status(200).json(cachedStatus);
     } catch (err) {
         res.status(200).json({ success: true, maintenanceMode: false, globalBanner: '' });
     }

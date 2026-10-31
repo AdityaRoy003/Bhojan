@@ -67,7 +67,7 @@ exports.getAIRecommendations = async (req, res) => {
         const items = await Item.find(mongoQuery)
             .populate('shop', 'name city image')
             .sort({ rating: -1, isPopular: -1 })
-            .limit(12);
+            .limit(12).lean();
 
         // Build a human-readable response summary
         let summary = `Found ${items.length} result${items.length !== 1 ? 's' : ''}`;
@@ -130,7 +130,7 @@ exports.getPersonalizedRecommendations = async (req, res) => {
         const recommendations = await Item.find(query)
             .populate('shop')
             .limit(10)
-            .sort({ rating: -1, isPopular: -1 });
+            .sort({ rating: -1, isPopular: -1 }).lean();
 
         res.status(200).json({
             success: true,

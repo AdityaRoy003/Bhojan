@@ -41,7 +41,7 @@ exports.getAllShops = async (req, res) => {
             query.shopType = shopType;
         }
 
-        let shops = await Shop.find(query).populate('items');
+        let shops = await Shop.find(query).populate('items').lean();
 
         // Apply dietary filters if provided
         if (dietaryTags) {
@@ -83,7 +83,7 @@ exports.getAllShops = async (req, res) => {
 // Get Shop Details
 exports.getShopDetails = async (req, res) => {
     try {
-        const shop = await Shop.findById(req.params.id).populate('items');
+        const shop = await Shop.findById(req.params.id).populate('items').lean();
         if (!shop) {
             return res.status(404).json({ success: false, message: 'Shop not found' });
         }
@@ -102,23 +102,13 @@ exports.searchShops = async (req, res) => {
         // Case-insensitive regex search on Name, City, or Address
         const searchRegex = new RegExp(query, 'i');
 
-        const shops = await Shop.find({
-            $or: [
-                { name: searchRegex },
-                { city: searchRegex },
-                { address: searchRegex },
-                { 'items.name': searchRegex } // If we want to search via items (requires aggregation or population, simplified for now)
-            ]
-        });
-        // Note: Simple find won't search populated items easily. Let's stick to Shop fields first.
-
         const refinedShops = await Shop.find({
             $or: [
                 { name: searchRegex },
                 { city: searchRegex },
                 { address: searchRegex }
             ]
-        });
+        }).lean();
 
         res.status(200).json({ success: true, shops: refinedShops });
     } catch (error) {

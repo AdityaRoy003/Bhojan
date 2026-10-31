@@ -259,8 +259,9 @@ const Home = () => {
 
     const handlePullToRefresh = async () => {
         setIsRefreshing(true);
+        if (api.clearCache) api.clearCache();
         await Promise.all([fetchShops(), fetchRecommendations()]);
-        setTimeout(() => setIsRefreshing(false), 1000);
+        setTimeout(() => setIsRefreshing(false), 500);
     };
 
     const toggleDietaryTag = (tagName) => {
