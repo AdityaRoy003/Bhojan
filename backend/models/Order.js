@@ -9,10 +9,23 @@ const orderSchema = new mongoose.Schema({
             name: { type: String, required: true }, // Store snapshot
             price: { type: Number, required: true }, // Store snapshot
             quantity: { type: Number, required: true, default: 1 },
-            note: { type: String }
+            note: { type: String },
+            selectedVariant: {
+                name: { type: String },
+                option: { type: String },
+                price: { type: Number, default: 0 }
+            },
+            selectedAddOns: [
+                {
+                    name: { type: String },
+                    price: { type: Number, default: 0 }
+                }
+            ],
+            cookingInstructions: { type: String }
         }
     ],
     totalAmount: { type: Number, required: true },
+    tipAmount: { type: Number, default: 0 },
     paymentStatus: {
         type: String,
         enum: ['Pending', 'Paid', 'Failed'],
@@ -30,6 +43,16 @@ const orderSchema = new mongoose.Schema({
         status: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' }
     }],
     optOutCutlery: { type: Boolean, default: false },
+    deliveryPreset: {
+        type: String,
+        enum: ['none', 'leave_at_door', 'dont_ring_bell', 'call_at_gate', 'hand_to_security', 'contactless'],
+        default: 'none'
+    },
+    isScheduled: { type: Boolean, default: false },
+    scheduledSlot: {
+        date: { type: String },
+        time: { type: String }
+    },
     prepVideoUrl: { type: String },
     isPaid: {
         type: Boolean,
@@ -97,6 +120,12 @@ const orderSchema = new mongoose.Schema({
         status: { type: String },
         timestamp: { type: Date, default: Date.now },
         updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
+    chatMessages: [{
+        senderName: { type: String },
+        senderRole: { type: String },
+        message: { type: String },
+        timestamp: { type: Date, default: Date.now }
     }]
 }, { timestamps: true });
 

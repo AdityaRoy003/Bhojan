@@ -24,6 +24,30 @@ const DeliveryDashboard = () => {
     const [profileStrength, setProfileStrength] = useState(0);
     const [kycData, setKycData] = useState(user?.deliverySpecs?.kyc || { aadhaar: '', pan: '', dl: '', status: 'Not Started' });
     const [vehicleData, setVehicleData] = useState(user?.deliverySpecs?.vehicle || { model: '', number: '', vehicleType: 'Bike', mileage: 0 });
+    const [riderChatOrder, setRiderChatOrder] = useState(null);
+    const [riderChatMessages, setRiderChatMessages] = useState([]);
+    const [riderChatInput, setRiderChatInput] = useState('');
+
+    useEffect(() => {
+        if (!riderChatOrder) return;
+        socket.emit('join_chat', riderChatOrder._id);
+        const handleMsg = (msg) => setRiderChatMessages(prev => [...prev, msg]);
+        socket.on('chat_message', handleMsg);
+        return () => socket.off('chat_message', handleMsg);
+    }, [riderChatOrder]);
+
+    const sendRiderMessage = () => {
+        if (!riderChatInput.trim() || !riderChatOrder) return;
+        socket.emit('send_chat_message', {
+            orderId: riderChatOrder._id,
+            message: riderChatInput.trim(),
+            senderName: user?.fullname || 'Courier Partner',
+            senderRole: 'Delivery',
+            timestamp: new Date().toISOString()
+        });
+        setRiderChatInput('');
+    };
+    
     const [wellness, setWellness] = useState(user?.deliverySpecs?.health || { dailySteps: 0, waterIntake: 0 });
 
     const translations = {
@@ -494,6 +518,31 @@ const DeliveryDashboard = () => {
                                             </div>
                                         </div>
 
+                                        {(order.deliveryPreset && order.deliveryPreset !== 'none') || order.instructions || order.optOutCutlery || order.tipAmount > 0 ? (
+                                            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
+                                                <p className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Customer Delivery Instructions</p>
+                                                <div className="flex flex-wrap gap-2 pt-1">
+                                                    {order.deliveryPreset && order.deliveryPreset !== 'none' && (
+                                                        <span className="bg-amber-200 text-amber-900 font-black text-xs px-2.5 py-0.5 rounded-full">
+                                                            📌 {order.deliveryPreset.replace(/_/g, ' ').toUpperCase()}
+                                                        </span>
+                                                    )}
+                                                    {order.optOutCutlery && (
+                                                        <span className="bg-emerald-100 text-emerald-800 font-black text-xs px-2.5 py-0.5 rounded-full">
+                                                            🌿 NO CUTLERY
+                                                        </span>
+                                                    )}
+                                                    {order.tipAmount > 0 && (
+                                                        <span className="bg-emerald-100 text-emerald-800 font-black text-xs px-2.5 py-0.5 rounded-full">
+                                                            💰 ₹{order.tipAmount} TIP FOR YOU
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {order.instructions && (
+                                                    <p className="text-xs text-amber-950 font-bold italic pt-1">"{order.instructions}"</p>
+                                                )}
+                                            </div>
+                                        ) : null}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                             <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100 group-hover:bg-amber-50/50 transition-colors">
                                                 <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">From Restaurant</p>

@@ -41,7 +41,19 @@ const itemSchema = new mongoose.Schema({
     },
     isPopular: { type: Boolean, default: false },
     rating: { type: Number, default: 0 },
-    ratingCount: { type: Number, default: 0 }
+    ratingCount: { type: Number, default: 0 },
+    variants: [{
+        name: { type: String, default: 'Size' },
+        options: [{
+            name: { type: String, required: true },
+            price: { type: Number, default: 0 },
+            isDefault: { type: Boolean, default: false }
+        }]
+    }],
+    addOns: [{
+        name: { type: String, required: true },
+        price: { type: Number, required: true }
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Item', itemSchema);

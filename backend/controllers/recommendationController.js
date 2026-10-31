@@ -304,3 +304,112 @@ exports.getPredictiveMealPlan = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+
+// --- MULTILINGUAL VOICE ORDER PROCESSOR ---
+exports.processVoiceOrder = async (req, res) => {
+    try {
+        const { transcript } = req.body;
+        if (!transcript || typeof transcript !== 'string' || !transcript.trim()) {
+            return res.status(400).json({ success: false, message: 'Transcript required' });
+        }
+
+        const t = transcript.trim().toLowerCase();
+
+        // Hindi and English number mapping
+        const numMap = {
+            '1': 1, 'one': 1, 'ek': 1, 'a': 1,
+            '2': 2, 'two': 2, 'do': 2,
+            '3': 3, 'three': 3, 'teen': 3,
+            '4': 4, 'four': 4, 'char': 4,
+            '5': 5, 'five': 5, 'paanch': 5
+        };
+
+        // Split speech by common conjunctions: "aur", "and", ",", "+"
+        const segments = t.split(/\baur\b|\band\b|,|\+/gi);
+        const matchedItems = [];
+
+        for (const seg of segments) {
+            const cleanSeg = seg.trim();
+            if (!cleanSeg) continue;
+
+            // Detect quantity
+            let qty = 1;
+            const words = cleanSeg.split(/\s+/);
+            for (const w of words) {
+                if (numMap[w]) {
+                    qty = numMap[w];
+                    break;
+                }
+                const parsedInt = parseInt(w);
+                if (!isNaN(parsedInt) && parsedInt > 0 && parsedInt < 20) {
+                    qty = parsedInt;
+                    break;
+                }
+            }
+
+            // Remove filler / stopwords to find food item search term
+            const foodTerm = cleanSeg
+                .replace(/\b(ek|do|teen|char|paanch|one|two|three|four|five|plate|plates|portion|portions|order|kardo|lao|chahiye|add|karo|bhej|de|dena|please|bowl|cups?|pack|piece|pieces)\b/gi, '')
+                .replace(/[^a-zA-Z0-9\s]/g, '')
+                .trim();
+
+            if (!foodTerm || foodTerm.length < 2) continue;
+
+            // Query items by name or description or category regex
+            const item = await Item.findOne({
+                moderationStatus: 'Approved',
+                $or: [
+                    { name: { $regex: foodTerm, $options: 'i' } },
+                    { category: { $regex: foodTerm, $options: 'i' } },
+                    { description: { $regex: foodTerm, $options: 'i' } }
+                ]
+            })
+            .populate('shop', 'name logo address isDeliveryActive city')
+            .lean();
+
+            if (item) {
+                matchedItems.push({
+                    item,
+                    quantity: qty,
+                    restaurant: item.shop
+                });
+            }
+        }
+
+        // If no segment match, try general keyword match
+        if (matchedItems.length === 0) {
+            const generalItems = await Item.find({
+                moderationStatus: 'Approved',
+                $or: [
+                    { name: { $regex: t.slice(0, 30), $options: 'i' } },
+                    { category: { $regex: t.slice(0, 30), $options: 'i' } }
+                ]
+            })
+            .populate('shop', 'name logo address isDeliveryActive city')
+            .limit(3)
+            .lean();
+
+            for (const item of generalItems) {
+                matchedItems.push({
+                    item,
+                    quantity: 1,
+                    restaurant: item.shop
+                });
+            }
+        }
+
+        const replySpeech = matchedItems.length > 0
+            ? `Found ${matchedItems.map(m => `${m.quantity}× ${m.item.name}`).join(' and ')}. Ready to add to your order!`
+            : `I couldn't find exact matches for "${transcript}". Try saying "2 Biryani aur 1 Coke".`;
+
+        res.status(200).json({
+            success: true,
+            transcript,
+            matchedItems,
+            speechReply: replySpeech
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

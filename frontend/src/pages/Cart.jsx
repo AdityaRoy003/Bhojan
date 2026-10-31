@@ -244,8 +244,10 @@ const Cart = () => {
                         {/* Items List */}
                         <div className="space-y-4">
                             <AnimatePresence>
-                                {cartItems.map((item) => (
-                                    <div key={item._id} className="relative overflow-hidden rounded-[28px] md:rounded-[32px]">
+                                {cartItems.map((item) => {
+                                    const itemId = item.cartItemId || item._id;
+                                    return (
+                                    <div key={itemId} className="relative overflow-hidden rounded-[28px] md:rounded-[32px]">
                                         {/* Swipe-to-delete background */}
                                         <div className="absolute inset-0 bg-red-500 flex items-center justify-end px-6 z-0 rounded-[28px] md:rounded-[32px]">
                                             <span className="text-white font-black text-xs uppercase tracking-widest">Remove</span>
@@ -260,7 +262,7 @@ const Cart = () => {
                                             dragConstraints={{ left: -100, right: 0 }}
                                             onDragEnd={(e, info) => {
                                                 if (info.offset.x < -60) {
-                                                    dispatch(removeFromCart(item._id));
+                                                    dispatch(removeFromCart(itemId));
                                                 }
                                             }}
                                             className="bg-white dark:bg-gray-800 p-3 md:p-4 shadow-sm flex gap-3 md:gap-4 items-center group border border-transparent dark:border-gray-700 hover:border-primary/10 transition-all z-10 relative cursor-grab active:cursor-grabbing"
@@ -276,19 +278,35 @@ const Cart = () => {
                                             <div className="flex-1 min-w-0 pointer-events-none">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <h3 className="font-black text-sm md:text-base text-gray-900 dark:text-white leading-tight truncate">{item.name}</h3>
-                                                    <button onClick={() => dispatch(removeFromCart(item._id))} className="text-gray-300 dark:text-gray-600 hover:text-primary transition-colors p-1 pointer-events-auto">🗑️</button>
+                                                    <button onClick={() => dispatch(removeFromCart(itemId))} className="text-gray-300 dark:text-gray-600 hover:text-primary transition-colors p-1 pointer-events-auto">🗑️</button>
                                                 </div>
-                                                <p className="text-[9px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">{item.category} • ₹{item.price}</p>
+                                                <p className="text-[9px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{item.category} • ₹{item.price}</p>
 
-                                                <div className="flex items-center justify-between">
+                                                {item.selectedVariant && (
+                                                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-bold mb-0.5">
+                                                        Portion: {item.selectedVariant.option} {item.selectedVariant.price > 0 ? `(+₹${item.selectedVariant.price})` : ''}
+                                                    </p>
+                                                )}
+                                                {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                                                    <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium mb-0.5">
+                                                        + {item.selectedAddOns.map(a => `${a.name} (₹${a.price})`).join(', ')}
+                                                    </p>
+                                                )}
+                                                {item.cookingInstructions && (
+                                                    <p className="text-[9px] text-gray-500 dark:text-gray-400 italic mb-1.5">
+                                                        Note: "{item.cookingInstructions}"
+                                                    </p>
+                                                )}
+
+                                                <div className="flex items-center justify-between mt-2">
                                                     <div className="flex items-center gap-2 md:gap-3 bg-gray-50 dark:bg-gray-700 rounded-lg px-1.5 py-0.5 md:px-2 md:py-1 transition-colors pointer-events-auto">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); dispatch(updateQuantity({ id: item._id, quantity: item.quantity - 1 })) }}
+                                                            onClick={(e) => { e.stopPropagation(); dispatch(updateQuantity({ id: itemId, quantity: item.quantity - 1 })) }}
                                                             className="w-6 h-6 md:w-8 md:h-8 rounded-md md:rounded-lg bg-white dark:bg-gray-600 shadow-sm flex items-center justify-center text-xs md:text-sm font-bold hover:bg-primary hover:text-white transition-all"
                                                         >-</button>
                                                         <span className="font-black text-xs md:text-sm w-5 md:w-6 text-center dark:text-white">{item.quantity}</span>
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); dispatch(updateQuantity({ id: item._id, quantity: item.quantity + 1 })) }}
+                                                            onClick={(e) => { e.stopPropagation(); dispatch(updateQuantity({ id: itemId, quantity: item.quantity + 1 })) }}
                                                             className="w-6 h-6 md:w-8 md:h-8 rounded-md md:rounded-lg bg-white dark:bg-gray-600 shadow-sm flex items-center justify-center text-xs md:text-sm font-bold hover:bg-primary hover:text-white transition-all"
                                                         >+</button>
                                                     </div>
@@ -300,7 +318,8 @@ const Cart = () => {
                                             </div>
                                         </motion.div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </AnimatePresence>
                         </div>
 

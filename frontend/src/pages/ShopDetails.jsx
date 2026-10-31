@@ -6,6 +6,7 @@ import { addToCart, replaceCart, updateQuantity, removeFromCart } from '../redux
 import { motion, AnimatePresence } from 'framer-motion';
 import FollowButton from '../components/FollowButton';
 import DishPreviewModal from '../components/DishPreviewModal';
+import ItemCustomizationModal from '../components/ItemCustomizationModal';
 
 const ShopDetails = () => {
     const { id } = useParams();
@@ -26,6 +27,7 @@ const ShopDetails = () => {
 
     const [wishlist, setWishlist] = useState([]);
     const [previewDish, setPreviewDish] = useState(null);
+    const [customizingItem, setCustomizingItem] = useState(null);
 
     useEffect(() => {
         const fetchShopDetails = async () => {
@@ -78,8 +80,8 @@ const ShopDetails = () => {
         }
     };
 
-    if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-    if (!shop) return <div className="flex justify-center items-center h-screen">Shop not found</div>;
+    if (loading) return <div className="flex justify-center items-center h-screen font-black text-gray-500">Loading shop...</div>;
+    if (!shop) return <div className="flex justify-center items-center h-screen font-black text-gray-500">Shop not found</div>;
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -99,59 +101,47 @@ const ShopDetails = () => {
                                     {shop.name}
                                     {shop.isLocal && <span className="text-sm bg-orange-500 text-white px-3 py-1 rounded-full font-bold uppercase tracking-wider shadow-sm align-middle">❤️ Local Gem</span>}
                                 </motion.h1>
-                                <p className="opacity-90">{shop.city}, {shop.state}</p>
-                                <p className="text-sm opacity-80">{shop.address}</p>
-                            </div>
-                            <div className="flex gap-4 items-end">
-                                <FollowButton
-                                    shopId={shop._id}
-                                    followersCount={shop.followers?.length || 0}
-                                    onUpdate={(isFollowing) => {
-                                        // Optional: local state update if needed
-                                    }}
-                                />
-                                <div className="bg-green-600 px-4 py-2 rounded-xl text-white font-bold flex flex-col items-center shadow-lg">
-                                    <span className="text-xl">4.2</span>
-                                    <span className="text-[10px] opacity-80 uppercase tracking-widest">Rating</span>
+                                <p className="text-gray-200 text-sm mb-1">{shop.address}, {shop.city}</p>
+                                <div className="flex items-center gap-4 text-sm mt-3">
+                                    <span className="flex items-center gap-1 bg-green-600 px-2 py-0.5 rounded text-white font-bold">
+                                        ★ {shop.rating || '4.5'}
+                                    </span>
+                                    <span>•</span>
+                                    <span>{shop.deliveryTime || '30-40'} mins</span>
+                                    <span>•</span>
+                                    <span>₹{shop.priceForTwo || '350'} for two</span>
                                 </div>
+                            </div>
+                            <div>
+                                <FollowButton targetUserId={shop.owner?._id || shop.owner} />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Vendor Story Section */}
-            {shop.story && (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 mb-8">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-white p-6 rounded-2xl shadow-lg border-l-4 border-orange-500"
-                    >
-                        <h3 className="text-orange-600 font-black uppercase tracking-widest text-xs mb-2">Our Story</h3>
-                        <p className="text-gray-700 italic text-lg leading-relaxed">"{shop.story}"</p>
-                    </motion.div>
-                </div>
-            )}
-
             {/* Menu Items */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h2 className="text-2xl font-bold mb-6">Menu</h2>
+            <div className="max-w-7xl mx-auto px-4 py-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Full Menu ({items.length})</h2>
+                    <span className="text-xs bg-orange-100 text-orange-700 font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                        ✨ Customisations available
+                    </span>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {items.map((item, index) => {
-                        const cartItem = cartItems.find(i => i._id === item._id);
-                        const quantity = cartItem ? cartItem.quantity : 0;
+                        const quantity = cartItems.filter(ci => ci._id === item._id).reduce((s, ci) => s + ci.quantity, 0);
 
                         return (
                             <motion.div
                                 key={item._id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4 hover:shadow-md transition group"
+                                transition={{ delay: index * 0.05 }}
+                                className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-4 hover:shadow-md transition group"
                             >
-                                <div className="w-32 h-32 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden relative cursor-pointer" onClick={() => setPreviewDish(item)}>
+                                <div className="w-32 h-32 flex-shrink-0 bg-gray-200 rounded-xl overflow-hidden relative cursor-pointer" onClick={() => setPreviewDish(item)}>
                                     <img src={item.image} alt={item.name} className="w-full h-full object-cover transition group-hover:scale-105" />
                                     <div className="absolute top-2 left-2 pointer-events-none">
                                         <span className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center bg-white ${item.foodType === 'Veg' ? 'border-green-600' : 'border-red-600'}`}>
@@ -170,7 +160,7 @@ const ShopDetails = () => {
                                 <div className="flex-1 flex flex-col justify-between">
                                     <div>
                                         <div className="flex items-start justify-between">
-                                            <h3 className="font-semibold text-lg text-gray-800 line-clamp-1">{item.name}</h3>
+                                            <h3 className="font-black text-base text-gray-800 line-clamp-1">{item.name}</h3>
                                         </div>
                                         <div className="flex items-center gap-1 mb-1">
                                             <span className="text-yellow-400 text-sm">★</span>
@@ -178,37 +168,22 @@ const ShopDetails = () => {
                                             <span className="text-xs text-gray-400">({item.ratingCount || '100+'})</span>
                                         </div>
                                         <p className="text-xs text-gray-500 line-clamp-2 mb-2">{item.description || 'Delightful meal prepared with fresh ingredients.'}</p>
-                                        <p className="font-bold text-gray-900">₹{item.price}</p>
+                                        <p className="font-black text-gray-900">₹{item.price}</p>
                                     </div>
 
                                     <div className="mt-3">
-                                        {quantity > 0 ? (
-                                            <div className="flex items-center justify-between bg-primary/10 rounded-lg border border-primary/20 px-2 py-1.5">
-                                                <button
-                                                    onClick={() => (isAuthenticated && user?.role === 'Customer') ? dispatch(updateQuantity({ id: item._id, quantity: quantity - 1 })) : alert("Only customers can adjust quantity")}
-                                                    className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center text-primary font-bold hover:bg-gray-50"
-                                                >
-                                                    -
-                                                </button>
-                                                <span className="text-primary font-bold text-sm mx-3">{quantity}</span>
-                                                <button
-                                                    onClick={() => (isAuthenticated && user?.role === 'Customer') ? dispatch(updateQuantity({ id: item._id, quantity: quantity + 1 })) : alert("Only customers can adjust quantity")}
-                                                    className="w-6 h-6 rounded bg-white shadow-sm flex items-center justify-center text-primary font-bold hover:bg-gray-50"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleAddToCart(item)}
-                                                className={`w-full font-bold py-1.5 rounded-lg transition-all text-sm shadow-sm ${(isAuthenticated && user?.role !== 'Customer')
-                                                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                                                    : 'bg-white text-primary border border-primary/30 hover:bg-primary/5 hover:border-primary'
-                                                    }`}
-                                            >
-                                                {(isAuthenticated && user?.role !== 'Customer') ? 'CUSTOMER ONLY' : 'ADD'}
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => setCustomizingItem(item)}
+                                            className={`w-full font-black py-2 rounded-xl transition-all text-xs tracking-wider shadow-sm ${(isAuthenticated && user?.role !== 'Customer')
+                                                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                                : 'bg-white text-orange-600 border-2 border-orange-200 hover:bg-orange-50 hover:border-orange-500 shadow-sm flex flex-col items-center justify-center'
+                                                }`}
+                                        >
+                                            <span className="text-sm font-black">
+                                                {(isAuthenticated && user?.role !== 'Customer') ? 'CUSTOMER ONLY' : (quantity > 0 ? `ADD MORE (${quantity})` : 'ADD')}
+                                            </span>
+                                            <span className="text-[9px] text-gray-400 uppercase tracking-widest font-black">Customisable</span>
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -217,6 +192,24 @@ const ShopDetails = () => {
                     {items.length === 0 && <p className="col-span-3 text-center text-gray-500">No items available yet.</p>}
                 </div>
             </div>
+
+            {/* Customization Modal */}
+            <ItemCustomizationModal
+                item={customizingItem}
+                isOpen={!!customizingItem}
+                onClose={() => setCustomizingItem(null)}
+                onAddToCart={(customized) => handleAddToCart(customized)}
+            />
+
+            {/* 3D Preview Modal */}
+            {previewDish && (
+                <DishPreviewModal
+                    dish={previewDish}
+                    isOpen={!!previewDish}
+                    onClose={() => setPreviewDish(null)}
+                    onAddToCart={(dish) => setCustomizingItem(dish)}
+                />
+            )}
 
             {/* Sticky Cart Footer (Swiggy Style) - Visible only if cart has items from this shop */}
             <AnimatePresence>

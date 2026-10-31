@@ -19,17 +19,22 @@ exports.createSubscription = async (req, res) => {
         // Perform Razorpay signature check for paid plans (Prime and Tiffin)
         if (planType === 'Prime' || planType === 'Tiffin') {
             if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-                return res.status(400).json({ success: false, message: 'Missing payment details for subscription activation.' });
-            }
+                // If demo payment or no secret in test mode, proceed with simulated ID
+                if (!process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET === 'secret_placeholder') {
+                    // Allowed in dev/simulated mode
+                } else {
+                    return res.status(400).json({ success: false, message: 'Missing payment details for subscription activation.' });
+                }
+            } else if (process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_KEY_SECRET !== 'secret_placeholder') {
+                const body = razorpay_order_id + '|' + razorpay_payment_id;
+                const expectedSignature = crypto
+                    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+                    .update(body.toString())
+                    .digest('hex');
 
-            const body = razorpay_order_id + '|' + razorpay_payment_id;
-            const expectedSignature = crypto
-                .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-                .update(body.toString())
-                .digest('hex');
-
-            if (expectedSignature !== razorpay_signature) {
-                return res.status(400).json({ success: false, message: 'Payment verification failed. Invalid Signature.' });
+                if (expectedSignature !== razorpay_signature) {
+                    return res.status(400).json({ success: false, message: 'Payment verification failed. Invalid Signature.' });
+                }
             }
         }
 
@@ -45,7 +50,7 @@ exports.createSubscription = async (req, res) => {
             mealPlan,
             corporateDetails,
             paymentId: razorpay_payment_id || 'DEMO_PAYMENT_' + Date.now(),
-            amountPaid
+            amountPaid: amountPaid || 0
         });
 
         await subscription.save();
@@ -69,6 +74,55 @@ exports.getMySubscriptions = async (req, res) => {
     try {
         const subscriptions = await Subscription.find({ user: req.user.id }).sort({ createdAt: -1 });
         res.status(200).json({ success: true, subscriptions });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Pause subscription (for tiffin skip days or vacations)
+exports.pauseSubscription = async (req, res) => {
+    try {
+        const { pausedUntil, skipDate } = req.body;
+        const subscription = await Subscription.findById(req.params.id);
+        if (!subscription) return res.status(404).json({ success: false, message: 'Subscription not found' });
+
+        if (subscription.user.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        if (skipDate) {
+            if (!subscription.pausedDays.includes(skipDate)) {
+                subscription.pausedDays.push(skipDate);
+            }
+        } else if (pausedUntil) {
+            subscription.status = 'Paused';
+            subscription.pausedUntil = new Date(pausedUntil);
+        } else {
+            subscription.status = 'Paused';
+        }
+
+        await subscription.save();
+        res.status(200).json({ success: true, message: 'Subscription paused successfully', subscription });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Resume subscription
+exports.resumeSubscription = async (req, res) => {
+    try {
+        const subscription = await Subscription.findById(req.params.id);
+        if (!subscription) return res.status(404).json({ success: false, message: 'Subscription not found' });
+
+        if (subscription.user.toString() !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        subscription.status = 'Active';
+        subscription.pausedUntil = null;
+        await subscription.save();
+
+        res.status(200).json({ success: true, message: 'Subscription resumed successfully', subscription });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

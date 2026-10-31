@@ -18,6 +18,22 @@ const STATUS_CONFIG = {
     Cancelled:      { label: 'Order Cancelled',     icon: '✕',  color: '#ef4444', bg: 'bg-red-100 text-red-700' },
 };
 
+const PRESET_LABELS = {
+    leave_at_door: '🚪 Leave at door',
+    dont_ring_bell: "🔕 Don't ring bell",
+    call_at_gate: '📞 Call at gate',
+    hand_to_security: '👮 Hand to security',
+    contactless: '🚫 Contactless drop-off'
+};
+
+const QUICK_REPLIES = [
+    '🚪 Please leave at the door',
+    '🔕 Please do not ring bell',
+    '📞 Call me when at gate',
+    '🏃 I am coming down right now',
+    '🙏 Thank you so much!'
+];
+
 const OrderTracking = () => {
     const { orderId } = useParams();
     const navigate = useNavigate();
@@ -50,6 +66,20 @@ const OrderTracking = () => {
                 setOrder(data.order);
                 setTracking(data.tracking);
                 setEta(data.eta);
+
+                // Seed messages from order if not already loaded
+                if (data.order?.chatMessages && data.order.chatMessages.length > 0) {
+                    setMessages(prev => {
+                        const existingTimestamps = new Set(prev.map(m => new Date(m.timestamp).getTime()));
+                        const merged = [...prev];
+                        for (const msg of data.order.chatMessages) {
+                            if (!existingTimestamps.has(new Date(msg.timestamp).getTime())) {
+                                merged.push(msg);
+                            }
+                        }
+                        return merged;
+                    });
+                }
 
                 // Seed rider position from DB if live socket hasn't kicked in
                 if (data.tracking.deliveryPartnerLocation?.latitude && !liveMode) {
@@ -96,13 +126,11 @@ const OrderTracking = () => {
             setLiveMode(true);
             setLastPing(new Date());
 
-            // Update ETA from socket payload if available
             if (data.eta) setEta(data.eta);
         };
 
         socket.on('rider_location', handleRiderLocation);
 
-        // Also handle legacy event
         socket.on('location_update', (data) => {
             if (data.lat && data.orderId === orderId) {
                 setRiderPosition([data.lat, data.lng]);
@@ -116,7 +144,7 @@ const OrderTracking = () => {
         };
     }, [orderId]);
 
-    // Detect stale signal (no ping for > 30s → go offline indicator)
+    // Detect stale signal (no ping for > 30s)
     useEffect(() => {
         if (!lastPing) return;
         const timeout = setTimeout(() => setLiveMode(false), 30000);
@@ -125,30 +153,33 @@ const OrderTracking = () => {
 
     // ── Socket: courier chat ───────────────────────────────────────────────
     useEffect(() => {
-        if (!orderId || !order?.deliveryPartner) return;
+        if (!orderId) return;
 
         socket.emit('join_chat', orderId);
 
-        const handleChatMessage = (msg) => setMessages(prev => [...prev, msg]);
+        const handleChatMessage = (msg) => {
+            setMessages(prev => [...prev, msg]);
+        };
         socket.on('chat_message', handleChatMessage);
 
         return () => { socket.off('chat_message', handleChatMessage); };
-    }, [orderId, order?.deliveryPartner]);
+    }, [orderId]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, chatOpen]);
 
-    const sendChatMessage = () => {
-        if (!newMessage.trim() || !orderId) return;
+    const sendChatMessage = (text) => {
+        const msgToSend = (text || newMessage).trim();
+        if (!msgToSend || !orderId) return;
         socket.emit('send_chat_message', {
             orderId,
-            message: newMessage,
+            message: msgToSend,
             senderName: user?.fullname || 'Customer',
             senderRole: 'Customer',
             timestamp: new Date().toISOString()
         });
-        setNewMessage('');
+        if (!text) setNewMessage('');
     };
 
     // ── Cancel order ───────────────────────────────────────────────────────
@@ -200,142 +231,161 @@ const OrderTracking = () => {
     const deliveryCoords = tracking?.deliveryCoords || null;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-
-            {/* ── Top Header ─────────────────────────────────────────────── */}
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-20">
+            {/* ── Top Bar ─────────────────────────────────────────────────── */}
             <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-40">
-                <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
+                <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
                     <button
                         onClick={() => navigate(-1)}
-                        className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-colors"
                     >
                         ←
                     </button>
-                    <div className="flex-1">
-                        <h1 className="text-base font-black text-gray-900 dark:text-white">
+                    <div className="text-center">
+                        <h1 className="font-black text-sm text-gray-900 dark:text-white uppercase tracking-wider">
                             Order #{order._id.slice(-6).toUpperCase()}
                         </h1>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{order.shop?.name}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">
+                            {order.shop?.name || 'Restaurant'}
+                        </p>
                     </div>
-
-                    {/* Status pill */}
-                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${statusCfg.bg}`}>
-                        <span>{statusCfg.icon}</span>
-                        {statusCfg.label}
-                    </span>
+                    {/* View Switcher */}
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
+                        <button
+                            onClick={() => setViewMode('map')}
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${viewMode === 'map' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400'}`}
+                        >
+                            🗺️
+                        </button>
+                        <button
+                            onClick={() => setViewMode('3d')}
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${viewMode === '3d' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400'}`}
+                        >
+                            🎮 3D
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+            {/* ── Visual Canvas / Map ─────────────────────────────────────── */}
+            <div className="relative w-full" style={{ height: '360px' }}>
+                {viewMode === 'map' ? (
+                    <LiveTrackingMap
+                        mode="customer"
+                        riderPosition={riderPosition}
+                        restaurantCoords={restaurantCoords}
+                        deliveryCoords={deliveryCoords}
+                        riderHeading={riderHeading}
+                        riderName={order.deliveryPartner?.fullname || 'Courier'}
+                        shopName={order.shop?.name}
+                        deliveryAddress={order.deliveryAddress}
+                        liveMode={liveMode}
+                        height="100%"
+                    />
+                ) : (
+                    <ThreeDDeliveryCanvas orderStatus={order.orderStatus} />
+                )}
 
-                {/* ── ETA Banner (Out for Delivery) ───────────────────────── */}
-                <AnimatePresence>
-                    {isOutForDelivery && eta && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-xl shadow-orange-200 dark:shadow-none"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs opacity-80 uppercase tracking-widest font-bold mb-1">Estimated Arrival</p>
-                                    <div className="flex items-end gap-2">
-                                        <span className="text-5xl font-black leading-none">{eta.minutes}</span>
-                                        <span className="text-lg font-bold opacity-80 mb-1">min</span>
-                                    </div>
-                                    {eta.distanceKm && (
-                                        <p className="text-xs opacity-70 mt-1">{eta.distanceKm} km away</p>
-                                    )}
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-6xl opacity-20">🏍️</div>
-                                    {liveMode && (
-                                        <span className="flex items-center gap-1.5 text-xs font-black mt-1">
-                                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                            Live tracking active
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* ── Status Timeline ─────────────────────────────────────── */}
-                <StatusTimeline
-                    currentStatus={order.orderStatus}
-                    statusHistory={tracking?.statusHistory || []}
-                />
-
-                {/* ── Map / 3D View ───────────────────────────────────────── */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800">
-
-                    {/* Map header */}
-                    <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex items-center gap-3">
-                            <h3 className="font-black text-gray-900 dark:text-white">Live Tracking</h3>
-                            {liveMode && (
-                                <span className="flex items-center gap-1.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                                    Live
-                                </span>
-                            )}
-                            {isOutForDelivery && riderSpeed > 0 && (
-                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">
-                                    {(riderSpeed * 3.6).toFixed(0)} km/h
-                                </span>
-                            )}
-                        </div>
-
-                        {/* View mode toggle */}
-                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-full p-0.5 text-[10px]">
-                            <button
-                                onClick={() => setViewMode('map')}
-                                className={`px-3 py-1.5 rounded-full font-black transition-all ${viewMode === 'map' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                🗺️ Map
-                            </button>
-                            <button
-                                onClick={() => setViewMode('3d')}
-                                className={`px-3 py-1.5 rounded-full font-black transition-all ${viewMode === '3d' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                🎬 3D
-                            </button>
-                        </div>
-                    </div>
-
-                    {viewMode === 'map' ? (
-                        <div className="h-[420px] lg:h-[500px]">
-                            <LiveTrackingMap
-                                mode="customer"
-                                riderPosition={riderPosition}
-                                restaurantCoords={restaurantCoords}
-                                deliveryCoords={deliveryCoords}
-                                riderHeading={riderHeading}
-                                riderName={order.deliveryPartner?.fullname}
-                                shopName={order.shop?.name}
-                                deliveryAddress={order.deliveryAddress}
-                                liveMode={liveMode}
-                                height="100%"
-                            />
-                        </div>
-                    ) : (
-                        <div className="p-6 bg-gray-950">
-                            <ThreeDDeliveryCanvas currentStatus={order.orderStatus} />
-                            <p className="text-center text-xs text-gray-500 font-bold uppercase tracking-widest mt-3">
-                                {order.orderStatus === 'OutForDelivery' ? 'Courier en route' :
-                                 order.orderStatus === 'Preparing' ? 'Kitchen is preparing food' :
-                                 order.orderStatus === 'Delivered' ? 'Food delivered! 🎉' : 'Waiting for confirmation'}
-                            </p>
-                        </div>
+                {/* Floating Status Pill */}
+                <div className="absolute top-4 left-4 z-10 flex gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black shadow-lg backdrop-blur-md ${statusCfg.bg}`}>
+                        <span>{statusCfg.icon}</span>
+                        <span>{statusCfg.label}</span>
+                    </span>
+                    {liveMode && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-black bg-emerald-500 text-white shadow-lg animate-pulse">
+                            ● Live GPS
+                        </span>
                     )}
                 </div>
 
-                {/* ── Delivery Partner Card ───────────────────────────────── */}
+                {/* ETA badge on canvas */}
+                {eta && isOutForDelivery && (
+                    <div className="absolute bottom-4 right-4 z-10 bg-gray-900/90 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-gray-700">
+                        <p className="text-[9px] uppercase tracking-widest text-orange-400 font-black">Estimated Arrival</p>
+                        <p className="text-xl font-black">{eta.minutes} mins</p>
+                        {eta.distanceKm && (
+                            <p className="text-[10px] text-gray-400">{eta.distanceKm} km away</p>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Main Info Content ────────────────────────────────────────── */}
+            <div className="max-w-2xl mx-auto px-4 mt-6 space-y-4">
+
+                {/* ── Scheduled Delivery Alert (if scheduled) ───────────── */}
+                {order.isScheduled && order.scheduledSlot && (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center gap-3">
+                        <span className="text-2xl">📅</span>
+                        <div>
+                            <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">Scheduled Delivery</p>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 font-bold">
+                                {order.scheduledSlot.date} • {order.scheduledSlot.time}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Proof of Delivery (if Delivered & verified) ─────────── */}
+                {isDelivered && order.proofOfDelivery?.photoUrl && (
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-500/30 rounded-3xl p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl">📸</span>
+                                <h3 className="font-black text-sm text-emerald-900 dark:text-emerald-100">Drop-off Proof of Delivery</h3>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
+                                Verified Drop-off ✅
+                            </span>
+                        </div>
+                        <img
+                            src={order.proofOfDelivery.photoUrl}
+                            alt="Drop-off Proof"
+                            className="w-full h-48 object-cover rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-sm"
+                        />
+                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-2 font-bold">
+                            Photo taken by {order.deliveryPartner?.fullname || 'your courier'} at your doorstep.
+                        </p>
+                    </div>
+                )}
+
+                {/* ── Delivery Instructions & Preset ───────────────────────── */}
+                {(order.deliveryPreset !== 'none' || order.instructions || order.optOutCutlery) && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4 space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Delivery Instructions</p>
+                        <div className="flex flex-wrap gap-2">
+                            {order.deliveryPreset && order.deliveryPreset !== 'none' && (
+                                <span className="px-3 py-1 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl text-xs font-bold border border-orange-200 dark:border-orange-800">
+                                    {PRESET_LABELS[order.deliveryPreset] || order.deliveryPreset}
+                                </span>
+                            )}
+                            {order.optOutCutlery && (
+                                <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800">
+                                    🌿 No Plastic Cutlery
+                                </span>
+                            )}
+                        </div>
+                        {order.instructions && (
+                            <p className="text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 italic">
+                                "{order.instructions}"
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Status Timeline ─────────────────────────────────────── */}
+                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
+                    <StatusTimeline
+                        currentStatus={order.orderStatus}
+                        statusHistory={order.statusHistory || []}
+                    />
+                </div>
+
+                {/* ── Courier Card & Live Chat Button ───────────────────────── */}
                 {order.deliveryPartner && (
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5"
                     >
@@ -348,7 +398,7 @@ const OrderTracking = () => {
                                     <p className="font-black text-gray-900 dark:text-white">{order.deliveryPartner.fullname}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{order.deliveryPartner.mobile}</p>
                                     {liveMode && (
-                                        <p className="text-[10px] text-green-500 font-black uppercase tracking-widest mt-0.5">● Location sharing</p>
+                                        <p className="text-[10px] text-green-500 font-black uppercase tracking-widest mt-0.5">● Location sharing active</p>
                                     )}
                                 </div>
                             </div>
@@ -361,9 +411,14 @@ const OrderTracking = () => {
                                 </a>
                                 <button
                                     onClick={() => setChatOpen(true)}
-                                    className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 transition-colors"
+                                    className="relative w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 transition-colors"
                                 >
                                     💬
+                                    {messages.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                                            {messages.length}
+                                        </span>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -374,12 +429,19 @@ const OrderTracking = () => {
                 <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
                     <h3 className="font-black text-gray-900 dark:text-white mb-4">Order Summary</h3>
                     <div className="space-y-3">
-                        {/* Items */}
                         {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-sm">
-                                <span className="text-gray-700 dark:text-gray-300">
-                                    {item.quantity}× {item.name}
-                                </span>
+                            <div key={idx} className="flex justify-between items-start text-sm">
+                                <div>
+                                    <p className="text-gray-800 dark:text-gray-200 font-bold">
+                                        {item.quantity}× {item.name}
+                                    </p>
+                                    {item.selectedVariant && (
+                                        <p className="text-[10px] text-orange-600 font-semibold">{item.selectedVariant.option}</p>
+                                    )}
+                                    {item.selectedAddOns?.length > 0 && (
+                                        <p className="text-[9px] text-emerald-600">+{item.selectedAddOns.map(a => a.name).join(', ')}</p>
+                                    )}
+                                </div>
                                 <span className="font-bold text-gray-900 dark:text-white">₹{item.price * item.quantity}</span>
                             </div>
                         ))}
@@ -392,6 +454,12 @@ const OrderTracking = () => {
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Delivery fee</span>
                                     <span className="font-bold dark:text-white">₹{order.deliveryFee}</span>
+                                </div>
+                            )}
+                            {order.tipAmount > 0 && (
+                                <div className="flex justify-between text-sm text-emerald-600 font-bold">
+                                    <span>Rider tip</span>
+                                    <span>₹{order.tipAmount}</span>
                                 </div>
                             )}
                             <div className="flex justify-between font-black text-base pt-1 border-t border-gray-100 dark:border-gray-800 mt-1">
@@ -413,7 +481,7 @@ const OrderTracking = () => {
                 )}
             </div>
 
-            {/* ── Courier Chat Drawer ─────────────────────────────────────── */}
+            {/* ── Courier Live Chat Drawer ─────────────────────────────────── */}
             <AnimatePresence>
                 {chatOpen && (
                     <>
@@ -429,7 +497,7 @@ const OrderTracking = () => {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col"
+                            className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white dark:bg-gray-900 shadow-2xl z-[60] flex flex-col"
                         >
                             {/* Header */}
                             <div className="p-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white flex items-center justify-between">
@@ -439,7 +507,7 @@ const OrderTracking = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-black text-sm">{order.deliveryPartner?.fullname || 'Courier'}</h3>
-                                        <p className="text-[9px] uppercase tracking-wider opacity-85">Courier Chat</p>
+                                        <p className="text-[9px] uppercase tracking-wider opacity-85">Live Courier Chat</p>
                                     </div>
                                 </div>
                                 <button
@@ -448,20 +516,34 @@ const OrderTracking = () => {
                                 >✕</button>
                             </div>
 
-                            {/* Messages */}
+                            {/* Pinned Delivery Note in Chat */}
+                            {(order.deliveryPreset !== 'none' || order.instructions) && (
+                                <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900 px-4 py-2.5 flex items-center gap-2">
+                                    <span className="text-sm">📌</span>
+                                    <p className="text-[11px] text-amber-800 dark:text-amber-300 font-bold truncate">
+                                        Note: {PRESET_LABELS[order.deliveryPreset] || ''} {order.instructions ? `• ${order.instructions}` : ''}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Messages Body */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
                                 {messages.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
                                         <span className="text-4xl mb-2">💬</span>
                                         <p className="text-sm font-bold">No messages yet</p>
-                                        <p className="text-xs">Ask the courier about your delivery!</p>
+                                        <p className="text-xs">Ask the courier about your delivery or tap quick presets below!</p>
                                     </div>
                                 ) : (
                                     messages.map((msg, idx) => {
                                         const isMe = msg.senderRole === 'Customer';
                                         return (
                                             <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                                <div className={`max-w-[75%] p-3 rounded-2xl text-sm font-medium shadow-sm ${isMe ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-tr-none' : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'}`}>
+                                                <div className={`max-w-[78%] p-3.5 rounded-2xl text-xs font-semibold shadow-sm ${
+                                                    isMe
+                                                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-tr-none'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
+                                                }`}>
                                                     {msg.message}
                                                 </div>
                                                 <span className="text-[8px] text-gray-400 mt-1 uppercase tracking-widest font-black">
@@ -474,21 +556,36 @@ const OrderTracking = () => {
                                 <div ref={chatEndRef} />
                             </div>
 
-                            {/* Input */}
+                            {/* Quick Presets Carousel Above Input */}
+                            <div className="px-3 py-2 bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex gap-2 overflow-x-auto no-scrollbar">
+                                {QUICK_REPLIES.map((reply, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => sendChatMessage(reply)}
+                                        className="shrink-0 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all whitespace-nowrap active:scale-95"
+                                    >
+                                        {reply}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Input Bar */}
                             <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Type a message..."
+                                    placeholder="Type message to courier..."
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                                    className="flex-1 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-3 text-sm focus:outline-none dark:text-white"
+                                    className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-xs focus:outline-none dark:text-white"
                                 />
                                 <button
-                                    onClick={sendChatMessage}
+                                    onClick={() => sendChatMessage()}
                                     disabled={!newMessage.trim()}
                                     className="bg-primary text-white p-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-40"
-                                >➔</button>
+                                >
+                                    ➔
+                                </button>
                             </div>
                         </motion.div>
                     </>

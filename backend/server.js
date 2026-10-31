@@ -267,19 +267,36 @@ io.on('connection', (socket) => {
         socket.join(`chat_${orderId}`);
     });
 
-    socket.on('send_chat_message', ({ orderId, message, senderName, senderRole, timestamp }) => {
+    socket.on('send_chat_message', async ({ orderId, message, senderName, senderRole, timestamp }) => {
         if (!orderId || !message || typeof message !== 'string') return;
         // Strip HTML / script tags from socket chat messages to prevent Stored & DOM XSS
         const sanitizedMessage = message.replace(/<[^>]*>/g, '').trim().slice(0, 1000);
         const safeSenderName = typeof senderName === 'string' ? senderName.replace(/<[^>]*>/g, '').slice(0, 50) : 'Anonymous';
         const safeRole = ['Customer', 'Delivery', 'Owner', 'Admin'].includes(senderRole) ? senderRole : 'Customer';
+        const msgTime = timestamp || new Date().toISOString();
 
         io.to(`chat_${orderId}`).emit('chat_message', {
             message: sanitizedMessage,
             senderName: safeSenderName,
             senderRole: safeRole,
-            timestamp: timestamp || new Date().toISOString()
+            timestamp: msgTime
         });
+
+        try {
+            const Order = require('./models/Order');
+            await Order.findByIdAndUpdate(orderId, {
+                $push: {
+                    chatMessages: {
+                        senderName: safeSenderName,
+                        senderRole: safeRole,
+                        message: sanitizedMessage,
+                        timestamp: new Date(msgTime)
+                    }
+                }
+            });
+        } catch (err) {
+            // non-fatal chat save error
+        }
     });
 
     socket.on('disconnect', () => {

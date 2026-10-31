@@ -13,7 +13,7 @@ const subscriptionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Active', 'Expired', 'Cancelled'],
+        enum: ['Active', 'Paused', 'Expired', 'Cancelled'],
         default: 'Active'
     },
     startDate: {
@@ -24,6 +24,12 @@ const subscriptionSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    pausedUntil: {
+        type: Date
+    },
+    pausedDays: [{
+        type: String // YYYY-MM-DD
+    }],
     // For Tiffin Services
     mealPlan: {
         frequency: { type: String, enum: ['Daily', 'Weekly', 'Monthly'] },

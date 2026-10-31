@@ -66,7 +66,10 @@ exports.getStats = async (req, res) => {
             updatedAt: { $gte: startOfDay }
         });
 
-        const todaysEarnings = todaysOrders.reduce((sum, order) => sum + (order.totalAmount * 0.1), 0);
+        const todaysEarnings = todaysOrders.reduce((sum, order) => {
+            const tip = Number(order.tipAmount) || 0;
+            return sum + (order.totalAmount * 0.1) + tip;
+        }, 0);
 
         res.status(200).json({
             success: true,
@@ -84,7 +87,7 @@ exports.getStats = async (req, res) => {
     }
 };
 
-// @desc    Complete Delivery & Process Commission
+// @desc    Complete Delivery & Process Commission + Tip + Proof of Delivery
 // @route   PUT /api/delivery/complete/:id
 // @access  Private (Delivery)
 exports.completeDelivery = async (req, res) => {
@@ -99,15 +102,25 @@ exports.completeDelivery = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Not authorized for this order' });
         }
 
+        if (req.body.photoUrl) {
+            order.proofOfDelivery = {
+                photoUrl: req.body.photoUrl,
+                signatureUrl: req.body.signatureUrl || '',
+                verified: true
+            };
+        }
+
         order.orderStatus = 'Delivered';
         order.statusHistory.push({
             status: 'Delivered',
+            timestamp: new Date(),
             updatedBy: req.user._id
         });
         await order.save();
 
-        // Financial processing (10% commission)
-        const commission = order.totalAmount * 0.1;
+        // Financial processing: 10% order commission + 100% rider tip
+        const tip = Number(order.tipAmount) || 0;
+        const commission = (order.totalAmount * 0.1) + tip;
 
         await User.findByIdAndUpdate(req.user._id, {
             $inc: {
@@ -120,7 +133,9 @@ exports.completeDelivery = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Delivery completed successfully',
-            commission: commission.toFixed(2)
+            commission: commission.toFixed(2),
+            tip: tip.toFixed(2),
+            proofOfDelivery: order.proofOfDelivery
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

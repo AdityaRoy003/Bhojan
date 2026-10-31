@@ -1,10 +1,17 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const getItemUniqueKey = (item) => {
+    if (item.cartItemId) return item.cartItemId;
+    const variantKey = item.selectedVariant ? `_var_${item.selectedVariant.option}` : '';
+    const addOnKey = item.selectedAddOns && item.selectedAddOns.length > 0
+        ? `_addons_${item.selectedAddOns.map(a => a.name).sort().join('-')}`
+        : '';
+    return `${item._id}${variantKey}${addOnKey}`;
+};
+
 const initialState = {
     cartItems: localStorage.getItem('cartItems') ? JSON.parse(localStorage.getItem('cartItems')) : [],
-    // Each item: { _id, name, price, image, quantity, shopId }
     restaurant: localStorage.getItem('cartRestaurant') ? JSON.parse(localStorage.getItem('cartRestaurant')) : null,
-    // Store restaurant details to ensure all items are from the same shop
     coupon: localStorage.getItem('cartCoupon') ? JSON.parse(localStorage.getItem('cartCoupon')) : null,
 };
 
@@ -16,33 +23,35 @@ const cartSlice = createSlice({
             const item = action.payload;
 
             // Check if cart is empty or item is from the same shop
-            if (state.cartItems.length > 0 && state.restaurant && state.restaurant._id !== item.shop._id) {
-                // For simplified flow, we'll just alert or replace. 
-                // A better UX would be to ask the user. For now, we'll assume the UI handles the warning.
-                // Here we will just NOT add and let the UI handle the error state if we were returning one.
-                // However, reducers should be pure. Let's allowing replacing for now or just append if we don't enforce strict single-shop.
-                // Strict single-shop rule:
+            if (state.cartItems.length > 0 && state.restaurant && item.shop && state.restaurant._id !== item.shop._id) {
                 return state;
             }
 
             // If first item, set restaurant
-            if (state.cartItems.length === 0) {
+            if (state.cartItems.length === 0 && item.shop) {
                 state.restaurant = item.shop;
             }
 
-            const existItem = state.cartItems.find((x) => x._id === item._id);
+            const itemKey = getItemUniqueKey(item);
+            const existItem = state.cartItems.find((x) => (x.cartItemId || getItemUniqueKey(x)) === itemKey);
 
             if (existItem) {
-                existItem.quantity += 1;
+                existItem.quantity += (item.quantity || 1);
             } else {
-                state.cartItems.push({ ...item, quantity: 1, note: '' });
+                state.cartItems.push({
+                    ...item,
+                    cartItemId: itemKey,
+                    quantity: item.quantity || 1,
+                    note: item.note || ''
+                });
             }
 
             localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
             localStorage.setItem('cartRestaurant', JSON.stringify(state.restaurant));
         },
         removeFromCart: (state, action) => {
-            state.cartItems = state.cartItems.filter((x) => x._id !== action.payload);
+            const idToRemove = action.payload;
+            state.cartItems = state.cartItems.filter((x) => (x.cartItemId || x._id) !== idToRemove && x._id !== idToRemove);
             if (state.cartItems.length === 0) {
                 state.restaurant = null;
                 localStorage.removeItem('cartRestaurant');
@@ -51,11 +60,11 @@ const cartSlice = createSlice({
         },
         updateQuantity: (state, action) => {
             const { id, quantity } = action.payload;
-            const item = state.cartItems.find((x) => x._id === id);
+            const item = state.cartItems.find((x) => (x.cartItemId || x._id) === id || x._id === id);
             if (item) {
                 item.quantity = quantity;
                 if (item.quantity <= 0) {
-                    state.cartItems = state.cartItems.filter((x) => x._id !== id);
+                    state.cartItems = state.cartItems.filter((x) => (x.cartItemId || x._id) !== id && x._id !== id);
                 }
             }
             if (state.cartItems.length === 0) {
@@ -67,27 +76,33 @@ const cartSlice = createSlice({
         clearCart: (state) => {
             state.cartItems = [];
             state.restaurant = null;
+            state.coupon = null;
             localStorage.removeItem('cartItems');
             localStorage.removeItem('cartRestaurant');
+            localStorage.removeItem('cartCoupon');
         },
         // Force replace cart (for "Start new order" flow)
         replaceCart: (state, action) => {
             const item = action.payload;
-            state.cartItems = [{ ...item, quantity: 1, note: '' }];
+            const itemKey = getItemUniqueKey(item);
+            state.cartItems = [{ ...item, cartItemId: itemKey, quantity: item.quantity || 1, note: '' }];
             state.restaurant = item.shop;
             localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
             localStorage.setItem('cartRestaurant', JSON.stringify(state.restaurant));
         },
         reorder: (state, action) => {
             const { items, restaurant } = action.payload;
-            state.cartItems = items.map(item => ({ ...item, quantity: item.quantity || 1, note: '' }));
+            state.cartItems = items.map(item => {
+                const itemKey = getItemUniqueKey(item);
+                return { ...item, cartItemId: itemKey, quantity: item.quantity || 1, note: item.note || '' };
+            });
             state.restaurant = restaurant;
             localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
             localStorage.setItem('cartRestaurant', JSON.stringify(state.restaurant));
         },
         updateItemNote: (state, action) => {
             const { id, note } = action.payload;
-            const item = state.cartItems.find((x) => x._id === id);
+            const item = state.cartItems.find((x) => (x.cartItemId || x._id) === id || x._id === id);
             if (item) {
                 item.note = note;
                 localStorage.setItem('cartItems', JSON.stringify(state.cartItems));
@@ -105,7 +120,15 @@ const cartSlice = createSlice({
 });
 
 export const {
-    addToCart, removeFromCart, updateQuantity, clearCart,
-    replaceCart, reorder, updateItemNote, applyCoupon, removeCoupon
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    replaceCart,
+    reorder,
+    updateItemNote,
+    applyCoupon,
+    removeCoupon
 } = cartSlice.actions;
+
 export default cartSlice.reducer;

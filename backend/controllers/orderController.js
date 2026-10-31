@@ -69,13 +69,29 @@ exports.placeOrder = async (req, res) => {
                 return res.status(400).json({ success: false, message: `Item ${it.name || itId} is no longer available` });
             }
             const qty = Math.max(1, parseInt(it.quantity) || 1);
-            calculatedSubtotal += dbItem.price * qty;
+            
+            // Calculate base price + variant + add-ons
+            let itemPrice = Number(dbItem.price) || 0;
+            if (it.selectedVariant && it.selectedVariant.price) {
+                itemPrice += Number(it.selectedVariant.price) || 0;
+            }
+            if (Array.isArray(it.selectedAddOns)) {
+                for (const addon of it.selectedAddOns) {
+                    itemPrice += Number(addon.price) || 0;
+                }
+            }
+            calculatedSubtotal += itemPrice * qty;
+
             verifiedItems.push({
                 item: dbItem._id,
                 name: dbItem.name,
-                price: dbItem.price,
+                price: itemPrice,
                 quantity: qty,
-                image: dbItem.image
+                image: dbItem.image,
+                note: it.note || '',
+                selectedVariant: it.selectedVariant || null,
+                selectedAddOns: Array.isArray(it.selectedAddOns) ? it.selectedAddOns : [],
+                cookingInstructions: it.cookingInstructions || it.note || ''
             });
         }
 
@@ -180,6 +196,11 @@ exports.placeOrder = async (req, res) => {
             shop: shopId,
             items: verifiedItems,
             totalAmount: finalAmount, // Use discounted amount
+            tipAmount: Number(req.body.tipAmount) || 0,
+            optOutCutlery: Boolean(req.body.optOutCutlery),
+            deliveryPreset: req.body.deliveryPreset || 'none',
+            isScheduled: Boolean(req.body.isScheduled),
+            scheduledSlot: req.body.scheduledSlot || null,
             razorpayOrderId: orderId,
             razorpayPaymentId: paymentId,
             paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Paid',

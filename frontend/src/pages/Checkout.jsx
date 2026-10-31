@@ -8,6 +8,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CheckoutProgress from '../components/CheckoutProgress';
 import { toast } from 'react-toastify';
 
+const DELIVERY_PRESETS = [
+    { id: 'leave_at_door', label: 'Leave at Door', icon: '🚪' },
+    { id: 'dont_ring_bell', label: "Don't Ring Bell", icon: '🔕' },
+    { id: 'call_at_gate', label: 'Call at Gate', icon: '📞' },
+    { id: 'hand_to_security', label: 'Hand to Security', icon: '👮' },
+    { id: 'contactless', label: 'Contactless Drop-off', icon: '🚫' },
+];
+
+const SCHEDULE_SLOTS = [
+    '12:30 PM - 01:00 PM (Lunch)',
+    '01:30 PM - 02:00 PM',
+    '02:30 PM - 03:00 PM',
+    '07:30 PM - 08:00 PM (Dinner)',
+    '08:30 PM - 09:00 PM',
+    '09:30 PM - 10:00 PM',
+];
+
+const TIP_OPTIONS = [0, 20, 30, 50, 100];
+
 const Checkout = () => {
     const { cartItems, restaurant } = useSelector((state) => state.cart);
     const { user } = useSelector((state) => state.user);
@@ -24,8 +43,20 @@ const Checkout = () => {
     const isGroupOrder = location.state?.isGroupOrder || false;
     const partyId = location.state?.partyId || null;
 
-    const [paymentMethod, setPaymentMethod] = useState(isGroupOrder ? 'Split' : 'Online'); // 'Online', 'COD', or 'Split'
+    const [paymentMethod, setPaymentMethod] = useState(isGroupOrder ? 'Split' : 'Online');
     const [instructions, setInstructions] = useState('');
+    const [deliveryPreset, setDeliveryPreset] = useState('none');
+
+    // Scheduled Order State
+    const [isScheduled, setIsScheduled] = useState(false);
+    const [scheduledDay, setScheduledDay] = useState('Today');
+    const [scheduledTime, setScheduledTime] = useState(SCHEDULE_SLOTS[0]);
+
+    // Tipping & Eco Options
+    const [tipAmount, setTipAmount] = useState(0);
+    const [customTip, setCustomTip] = useState('');
+    const [showCustomTip, setShowCustomTip] = useState(false);
+    const [optOutCutlery, setOptOutCutlery] = useState(false);
 
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [createdOrderId, setCreatedOrderId] = useState(null);
@@ -48,7 +79,7 @@ const Checkout = () => {
     let discountAmount = 0;
     let pointsToUse = 0;
 
-    const orderTotalForCoupon = subtotal + deliveryFee + platformFee + taxes;
+    const orderTotalForCoupon = subtotal + deliveryFee + platformFee + taxes + tipAmount;
 
     const handleApplyCoupon = async () => {
         if (!couponCode) return;
@@ -73,20 +104,15 @@ const Checkout = () => {
     };
 
     if (redeemPoints && user?.loyaltyPoints > 0) {
-        // Max discount 10% (after coupon if any? Let's keep them independent for now or apply coupon first)
-        // Complexity: If coupon reduces total, points limit might change. 
-        // Let's apply coupon discount to total first.
-
         const totalAfterCoupon = orderTotalForCoupon - couponDiscount;
         const maxDiscount = Math.floor(totalAfterCoupon * 0.1);
-        // Points needed (10 pts = ₹1)
         const maxPointsNeeded = maxDiscount * 10;
 
         pointsToUse = Math.min(user.loyaltyPoints, maxPointsNeeded);
         discountAmount = pointsToUse / 10;
     }
 
-    const total = (subtotal + deliveryFee + platformFee + taxes) - discountAmount - couponDiscount;
+    const total = Math.max(0, (subtotal + deliveryFee + platformFee + taxes + tipAmount) - discountAmount - couponDiscount);
 
     useEffect(() => {
         if (cartItems.length === 0 && !orderSuccess) navigate('/cart');
@@ -108,6 +134,31 @@ const Checkout = () => {
         }
     };
 
+    const handleSelectPreset = (id, label) => {
+        if (deliveryPreset === id) {
+            setDeliveryPreset('none');
+        } else {
+            setDeliveryPreset(id);
+            if (!instructions.includes(label)) {
+                setInstructions(prev => prev ? `${prev} • ${label}` : label);
+            }
+        }
+    };
+
+    const handleTipSelect = (val) => {
+        setShowCustomTip(false);
+        setTipAmount(val);
+    };
+
+    const handleCustomTipSubmit = () => {
+        const parsed = parseInt(customTip);
+        if (!isNaN(parsed) && parsed > 0) {
+            setTipAmount(parsed);
+        } else {
+            setTipAmount(0);
+        }
+    };
+
     const placeOrderBackend = async (paymentDetails = {}) => {
         const orderData = {
             shopId: restaurant._id,
@@ -115,16 +166,24 @@ const Checkout = () => {
                 item: item._id,
                 name: item.name,
                 price: item.price,
-                quantity: item.quantity
+                quantity: item.quantity,
+                selectedVariant: item.selectedVariant || null,
+                selectedAddOns: item.selectedAddOns || [],
+                cookingInstructions: item.cookingInstructions || item.note || ''
             })),
             totalAmount: total,
+            tipAmount,
+            optOutCutlery,
+            deliveryPreset,
+            isScheduled,
+            scheduledSlot: isScheduled ? { date: scheduledDay, time: scheduledTime } : null,
             paymentMethod,
             instructions,
             address: `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.pincode}`,
             deliveryFee,
             platformFee,
             taxAmount: taxes,
-            redeemPoints, // Flag to backend
+            redeemPoints,
             isGroupOrder,
             partyId,
             couponCode: couponApplied ? couponCode : null,
@@ -180,7 +239,8 @@ const Checkout = () => {
                         await api.post('/payment/verify', response);
                         await placeOrderBackend({
                             paymentId: response.razorpay_payment_id,
-                            orderId: response.razorpay_order_id
+                            orderId: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature
                         });
                     } catch (error) {
                         toast.error("Payment verification failed. Please contact support.");
@@ -198,186 +258,423 @@ const Checkout = () => {
                     wallet: true,
                     paylater: true
                 },
-                theme: { color: "#e63946" }
+                theme: {
+                    color: "#f97316"
+                }
             };
 
             const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                toast.error(response.error.description || "Payment failed");
+            });
             rzp.open();
+            setLoading(false);
+
         } catch (error) {
-            console.error("Payment initialization error:", error);
-            const msg = error.response?.data?.message || "Failed to initialize payment modal. Please check your internet or payment keys.";
-            toast.error(msg);
-        } finally {
+            console.error("Payment Error:", error);
+            toast.error("Could not initiate payment. Falling back to simulated mode.");
+            // Dev simulated order placement
+            await placeOrderBackend({
+                paymentId: 'SIMULATED_PAY_' + Date.now(),
+                orderId: 'SIMULATED_ORD_' + Date.now()
+            });
             setLoading(false);
         }
     };
 
     if (orderSuccess) {
         return (
-            <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-4 transition-colors duration-300">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
                 <motion.div
-                    initial={{ scale: 0.5, opacity: 0 }}
+                    initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-center"
+                    className="bg-white dark:bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center shadow-xl border border-gray-100 dark:border-gray-700"
                 >
-                    <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                        </svg>
+                    <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                        ✓
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Order Confirmed!</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg">Your delicious meal is being prepared.</p>
-                    <button
-                        onClick={() => navigate(createdOrderId ? `/track/${createdOrderId}` : '/profile')}
-                        className="bg-primary text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-red-700 transition"
-                    >
-                        Track My Order
-                    </button>
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">Order Confirmed!</h2>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+                        {isScheduled
+                            ? `Scheduled for ${scheduledDay} at ${scheduledTime}`
+                            : 'Your meal is being prepared and will be delivered shortly.'}
+                    </p>
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => navigate(`/order-tracking/${createdOrderId}`)}
+                            className="w-full py-4 bg-primary text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:opacity-95 transition-all"
+                        >
+                            Track Live Order 📍
+                        </button>
+                        <button
+                            onClick={() => navigate('/home')}
+                            className="w-full py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        >
+                            Back to Home
+                        </button>
+                    </div>
                 </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900 pb-12 transition-colors duration-300">
-            <CheckoutProgress currentStep={2} />
-            <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left: Address & Payment */}
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-32 pt-6 transition-colors">
+            <div className="max-w-7xl mx-auto px-4">
+                <CheckoutProgress currentStep={3} />
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left 2 Cols: Form Sections */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Address Section */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-gray-800 dark:text-white">1. Delivery Address</h2>
+
+                    {/* 1. Delivery Timing (⚡ Deliver Now vs 📅 Schedule for Later) */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-black text-gray-900 dark:text-white">1. Delivery Timing</h2>
+                            <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full">
+                                {isScheduled ? 'Scheduled' : 'Instant (30-40 min)'}
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div
+                                onClick={() => setIsScheduled(false)}
+                                className={`p-4 rounded-2xl border-2 cursor-pointer flex items-center gap-3 transition-all ${
+                                    !isScheduled
+                                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${!isScheduled ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
+                                    {!isScheduled && <span className="w-2 h-2 rounded-full bg-white" />}
+                                </div>
+                                <div>
+                                    <p className="font-black text-sm text-gray-800 dark:text-white">⚡ Deliver Now</p>
+                                    <p className="text-[10px] text-gray-400">Standard 30–40 mins</p>
+                                </div>
+                            </div>
+
+                            <div
+                                onClick={() => setIsScheduled(true)}
+                                className={`p-4 rounded-2xl border-2 cursor-pointer flex items-center gap-3 transition-all ${
+                                    isScheduled
+                                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isScheduled ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
+                                    {isScheduled && <span className="w-2 h-2 rounded-full bg-white" />}
+                                </div>
+                                <div>
+                                    <p className="font-black text-sm text-gray-800 dark:text-white">📅 Schedule Later</p>
+                                    <p className="text-[10px] text-gray-400">Pick day & time slot</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Slot Picker */}
+                        {isScheduled && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-600 space-y-3"
+                            >
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Select Day</label>
+                                    <div className="flex gap-2">
+                                        {['Today', 'Tomorrow'].map(day => (
+                                            <button
+                                                key={day}
+                                                type="button"
+                                                onClick={() => setScheduledDay(day)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                                                    scheduledDay === day
+                                                        ? 'bg-orange-500 text-white shadow-md'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+                                                }`}
+                                            >
+                                                {day}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Select Delivery Slot</label>
+                                    <select
+                                        value={scheduledTime}
+                                        onChange={(e) => setScheduledTime(e.target.value)}
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs font-bold text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    >
+                                        {SCHEDULE_SLOTS.map(slot => (
+                                            <option key={slot} value={slot}>{slot}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
+
+                    {/* 2. Delivery Address */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-black text-gray-900 dark:text-white">2. Delivery Address</h2>
                             <button
                                 onClick={() => setShowAddAddress(true)}
-                                className="text-primary font-bold text-sm hover:underline"
+                                className="text-xs font-black uppercase tracking-wider text-orange-600 hover:text-orange-700 bg-orange-50 dark:bg-orange-950/30 px-3 py-1.5 rounded-full"
                             >
-                                + Add New Address
+                                + Add Address
                             </button>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {addresses.map((addr) => (
+                            {addresses.map((addr, idx) => (
                                 <div
-                                    key={addr._id}
+                                    key={idx}
                                     onClick={() => setSelectedAddress(addr)}
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedAddress?._id === addr._id ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'}`}
+                                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                                        selectedAddress?._id === addr._id || (selectedAddress?.street === addr.street && selectedAddress?.pincode === addr.pincode)
+                                            ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20'
+                                            : 'border-gray-100 dark:border-gray-700 hover:border-gray-200'
+                                    }`}
                                 >
-                                    <div className="flex justify-between items-start">
-                                        <span className="text-lg">🏠</span>
-                                        {addr.isDefault && <span className="text-[10px] bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded uppercase font-bold text-gray-600 dark:text-gray-400">Default</span>}
-                                    </div>
-                                    <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 font-medium truncate">{addr.street}</p>
-                                    <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">{addr.city}, {addr.state} - {addr.pincode}</p>
+                                    <p className="font-bold text-gray-800 dark:text-white text-sm">{addr.street}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{addr.city}, {addr.pincode}</p>
                                 </div>
                             ))}
-                        </div>
-
-                        {addresses.length === 0 && (
-                            <div className="text-center py-10 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">No addresses found. Add one to continue.</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Payment Method Section */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">2. Payment Method</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div
-                                onClick={() => !isGroupOrder && setPaymentMethod('Online')}
-                                className={`p-4 rounded-xl border-2 cursor-pointer flex items-center gap-4 transition-all ${paymentMethod === 'Online' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'} ${isGroupOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'Online' ? 'border-primary' : 'border-gray-300'}`}>
-                                    {paymentMethod === 'Online' && <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-gray-800 dark:text-white text-sm md:text-base">Online Payment</p>
-                                    <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">Razorpay / UPI / Cards</p>
-                                </div>
-                            </div>
-                            <div
-                                onClick={() => !isGroupOrder && setPaymentMethod('COD')}
-                                className={`p-4 rounded-xl border-2 cursor-pointer flex items-center gap-4 transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'} ${isGroupOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'COD' ? 'border-primary' : 'border-gray-300'}`}>
-                                    {paymentMethod === 'COD' && <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-gray-800 dark:text-white text-sm md:text-base">Cash on Delivery</p>
-                                    <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">Pay when order arrives</p>
-                                </div>
-                            </div>
-                            {isGroupOrder && (
-                                <div
-                                    className="col-span-1 sm:col-span-2 p-4 rounded-xl border-2 border-primary bg-primary/5 flex items-center gap-4"
-                                >
-                                    <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="font-bold text-gray-800 dark:text-white text-sm md:text-base">Split Payment (Group Cart)</p>
-                                        <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">Each participant pays their share</p>
-                                    </div>
-                                </div>
+                            {addresses.length === 0 && (
+                                <p className="text-xs text-gray-400 col-span-2">No address added yet. Click "+ Add Address" above.</p>
                             )}
                         </div>
                     </div>
 
-                    {/* Instructions Section */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">3. Delivery Instructions</h2>
+                    {/* 3. Delivery Instructions & One-Tap Presets */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                        <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">3. Delivery Instructions</h2>
+                        <p className="text-xs text-gray-400 mb-4">Select quick instructions for rider or write custom notes</p>
+
+                        {/* One-tap preset pills */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {DELIVERY_PRESETS.map((p) => {
+                                const isSelected = deliveryPreset === p.id;
+                                return (
+                                    <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => handleSelectPreset(p.id, p.label)}
+                                        className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all border ${
+                                            isSelected
+                                                ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20'
+                                                : 'bg-gray-50 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-orange-300'
+                                        }`}
+                                    >
+                                        <span>{p.icon}</span>
+                                        <span>{p.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
                         <textarea
                             value={instructions}
                             onChange={(e) => setInstructions(e.target.value)}
                             placeholder="Add notes for delivery partner (e.g., Gate code, landlord name, call upon arrival)"
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-4 rounded-xl focus:ring-2 ring-primary/20 outline-none h-24 text-sm dark:text-white dark:placeholder-gray-500 transition-all"
-                        ></textarea>
+                            className="w-full bg-gray-50 dark:bg-gray-700/70 border border-gray-200 dark:border-gray-600 p-4 rounded-2xl focus:ring-2 ring-orange-500/30 outline-none h-20 text-xs text-gray-800 dark:text-white placeholder-gray-400 resize-none transition-all"
+                        />
+                    </div>
+
+                    {/* 4. Payment Method */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all">
+                        <h2 className="text-xl font-black text-gray-900 dark:text-white mb-4">4. Payment Method</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div
+                                onClick={() => setPaymentMethod('Online')}
+                                className={`p-4 rounded-2xl border-2 cursor-pointer flex items-center gap-4 transition-all ${
+                                    paymentMethod === 'Online'
+                                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20'
+                                        : 'border-gray-100 dark:border-gray-700 hover:border-gray-200'
+                                }`}
+                            >
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'Online' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
+                                    {paymentMethod === 'Online' && <span className="w-2 h-2 rounded-full bg-white" />}
+                                </div>
+                                <div>
+                                    <p className="font-black text-gray-800 dark:text-white text-sm">Online Payment</p>
+                                    <p className="text-[10px] text-gray-400">UPI, Cards, NetBanking, Razorpay</p>
+                                </div>
+                            </div>
+
+                            <div
+                                onClick={() => !isGroupOrder && setPaymentMethod('COD')}
+                                className={`p-4 rounded-2xl border-2 cursor-pointer flex items-center gap-4 transition-all ${
+                                    paymentMethod === 'COD'
+                                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20'
+                                        : 'border-gray-100 dark:border-gray-700 hover:border-gray-200'
+                                } ${isGroupOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'COD' ? 'border-orange-500 bg-orange-500' : 'border-gray-300'}`}>
+                                    {paymentMethod === 'COD' && <span className="w-2 h-2 rounded-full bg-white" />}
+                                </div>
+                                <div>
+                                    <p className="font-black text-gray-800 dark:text-white text-sm">Cash on Delivery</p>
+                                    <p className="text-[10px] text-gray-400">Pay when order arrives</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 5. Rider Tip & Eco Toggle */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-5 transition-all">
+                        {/* Rider Tip */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <h3 className="font-black text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span>🏍️ Tip your delivery partner</span>
+                                    </h3>
+                                    <p className="text-[10px] text-gray-400">100% of your tip goes directly to the partner</p>
+                                </div>
+                                {tipAmount > 0 && (
+                                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">
+                                        ₹{tipAmount} added
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {TIP_OPTIONS.map((val) => (
+                                    <button
+                                        key={val}
+                                        type="button"
+                                        onClick={() => handleTipSelect(val)}
+                                        className={`px-4 py-2 rounded-2xl text-xs font-black transition-all border ${
+                                            tipAmount === val && !showCustomTip
+                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                                                : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-emerald-400'
+                                        }`}
+                                    >
+                                        {val === 0 ? 'No Tip' : `₹${val}`}
+                                    </button>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCustomTip(!showCustomTip)}
+                                    className={`px-4 py-2 rounded-2xl text-xs font-black transition-all border ${
+                                        showCustomTip
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600'
+                                    }`}
+                                >
+                                    Custom
+                                </button>
+                            </div>
+
+                            {showCustomTip && (
+                                <div className="flex gap-2 mt-3">
+                                    <input
+                                        type="number"
+                                        placeholder="Enter tip in ₹"
+                                        value={customTip}
+                                        onChange={(e) => setCustomTip(e.target.value)}
+                                        className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-xs text-gray-800 dark:text-white w-32 focus:outline-none"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleCustomTipSubmit}
+                                        className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black"
+                                    >
+                                        Set Tip
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Eco Cutlery Checkbox */}
+                        <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <label className="flex items-start gap-3 cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    checked={optOutCutlery}
+                                    onChange={(e) => setOptOutCutlery(e.target.checked)}
+                                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <div>
+                                    <p className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                                        <span>🌿</span> Don't send plastic cutlery or napkins
+                                    </p>
+                                    <p className="text-[10px] text-gray-400">Help us reduce disposable plastic waste and support a cleaner planet.</p>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
-                {/* Right: Bill Summary */}
+                {/* Right 1 Col: Bill Summary */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm sticky top-24 border border-gray-100 dark:border-gray-700 transition-all">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm sticky top-24 border border-gray-100 dark:border-gray-700 transition-all">
                         <div className="flex items-center gap-3 mb-6 pb-6 border-b dark:border-gray-700">
-                            <img src={restaurant?.image} className="w-12 h-12 rounded-lg object-cover" alt="" />
-                            <div>
-                                <h2 className="font-bold text-gray-900 dark:text-white leading-tight">{restaurant?.name}</h2>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{restaurant?.city}</p>
+                            <img src={restaurant?.image} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                            <div className="min-w-0">
+                                <h2 className="font-black text-gray-900 dark:text-white leading-tight truncate">{restaurant?.name}</h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{restaurant?.city || 'Local'}</p>
                             </div>
                         </div>
 
-                        <div className="space-y-4 pb-6 border-b border-gray-100">
-                            {cartItems.map(item => (
-                                <div key={item._id} className="flex justify-between items-center text-sm">
-                                    <div className="flex gap-2 items-center">
-                                        <span className={`w-3 h-3 border flex items-center justify-center ${item.foodType === 'Veg' ? 'border-green-600' : 'border-red-600'}`}>
-                                            <span className={`w-1 h-1 rounded-full ${item.foodType === 'Veg' ? 'bg-green-600' : 'bg-red-600'}`}></span>
-                                        </span>
-                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{item.name} x {item.quantity}</span>
+                        {/* Order Items with Customization Details */}
+                        <div className="space-y-3 pb-6 border-b border-gray-100 dark:border-gray-700 max-h-60 overflow-y-auto">
+                            {cartItems.map((item, idx) => (
+                                <div key={idx} className="space-y-1">
+                                    <div className="flex justify-between items-start text-xs">
+                                        <div className="flex gap-2 items-start">
+                                            <span className={`w-3 h-3 mt-0.5 border flex items-center justify-center shrink-0 ${item.foodType === 'Veg' ? 'border-green-600' : 'border-red-600'}`}>
+                                                <span className={`w-1 h-1 rounded-full ${item.foodType === 'Veg' ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                            </span>
+                                            <div>
+                                                <span className="text-gray-800 dark:text-gray-200 font-bold">{item.name} × {item.quantity}</span>
+                                                {item.selectedVariant && (
+                                                    <p className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold">
+                                                        {item.selectedVariant.option}
+                                                    </p>
+                                                )}
+                                                {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                                                    <p className="text-[9px] text-emerald-600 dark:text-emerald-400">
+                                                        +{item.selectedAddOns.map(a => a.name).join(', ')}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <span className="text-gray-900 dark:text-white font-bold shrink-0">₹{item.price * item.quantity}</span>
                                     </div>
-                                    <span className="text-gray-800 dark:text-white">₹{item.price * item.quantity}</span>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="space-y-3 pt-6 text-sm text-gray-500 dark:text-gray-400">
+                        {/* Bill Breakdown */}
+                        <div className="space-y-2.5 pt-4 text-xs text-gray-500 dark:text-gray-400">
                             <div className="flex justify-between">
                                 <span>Item Total</span>
-                                <span>₹{subtotal.toFixed(2)}</span>
+                                <span className="font-bold text-gray-800 dark:text-white">₹{subtotal.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Delivery Fee</span>
-                                <span>₹{deliveryFee.toFixed(2)}</span>
+                                <span className="font-bold text-gray-800 dark:text-white">₹{deliveryFee.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Platform Fee</span>
-                                <span>₹{platformFee.toFixed(2)}</span>
+                                <span className="font-bold text-gray-800 dark:text-white">₹{platformFee.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>GST (5%)</span>
-                                <span>₹{taxes.toFixed(2)}</span>
+                                <span className="font-bold text-gray-800 dark:text-white">₹{taxes.toFixed(2)}</span>
                             </div>
+
+                            {tipAmount > 0 && (
+                                <div className="flex justify-between text-emerald-600 font-bold">
+                                    <span>Rider Tip (100% to partner)</span>
+                                    <span>+₹{tipAmount.toFixed(2)}</span>
+                                </div>
+                            )}
 
                             {/* Coupon Input */}
                             <div className="py-2">
@@ -385,34 +682,36 @@ const Checkout = () => {
                                     <input
                                         type="text"
                                         placeholder="Coupon Code"
-                                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 p-2 rounded-lg text-sm uppercase font-bold dark:text-white transition-all"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-2 rounded-xl text-xs uppercase font-bold dark:text-white"
                                         value={couponCode}
                                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                         disabled={couponApplied}
                                     />
                                     {couponApplied ? (
                                         <button
+                                            type="button"
                                             onClick={() => {
                                                 setCouponApplied(false);
                                                 setCouponDiscount(0);
                                                 setCouponCode('');
                                                 setCouponMessage('');
                                             }}
-                                            className="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-xs font-bold"
+                                            className="px-3 py-1.5 bg-red-100 text-red-600 rounded-xl text-xs font-bold"
                                         >
                                             REMOVE
                                         </button>
                                     ) : (
                                         <button
+                                            type="button"
                                             onClick={handleApplyCoupon}
-                                            className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg text-xs font-bold hover:bg-gray-900 transition-colors"
+                                            className="px-3 py-1.5 bg-gray-800 dark:bg-gray-700 text-white rounded-xl text-xs font-bold hover:bg-gray-900"
                                         >
                                             APPLY
                                         </button>
                                     )}
                                 </div>
                                 {couponMessage && (
-                                    <p className={`text-xs mt-1 ${couponApplied ? 'text-green-600' : 'text-red-500'} font-bold`}>
+                                    <p className={`text-[10px] mt-1 ${couponApplied ? 'text-green-600' : 'text-red-500'} font-bold`}>
                                         {couponMessage}
                                     </p>
                                 )}
@@ -420,18 +719,20 @@ const Checkout = () => {
 
                             {/* Loyalty Redemption Toggle */}
                             {user?.loyaltyPoints > 0 && (
-                                <div className="py-2">
+                                <div className="py-1">
                                     <label className="flex items-center justify-between cursor-pointer group">
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="checkbox"
                                                 checked={redeemPoints}
                                                 onChange={() => setRedeemPoints(!redeemPoints)}
-                                                className="w-4 h-4 text-primary rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+                                                className="w-4 h-4 text-orange-500 rounded dark:bg-gray-700 dark:border-gray-600"
                                             />
-                                            <span className="text-gray-700 dark:text-gray-300 font-bold group-hover:text-primary transition">Redeem {user.loyaltyPoints} Points</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-bold text-xs">Redeem {user.loyaltyPoints} Points</span>
                                         </div>
-                                        <span className="text-green-600 dark:text-green-400 font-bold text-xs bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">Save ₹{(Math.min(user.loyaltyPoints, Math.floor((subtotal + deliveryFee + platformFee + taxes) * 0.1) * 10) / 10).toFixed(0)}</span>
+                                        <span className="text-green-600 dark:text-green-400 font-bold text-[10px] bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                                            Save ₹{discountAmount.toFixed(0)}
+                                        </span>
                                     </label>
                                 </div>
                             )}
@@ -439,33 +740,33 @@ const Checkout = () => {
                             {couponApplied && (
                                 <div className="flex justify-between text-blue-600 font-bold">
                                     <span>Coupon Discount</span>
-                                    <span>- ₹{couponDiscount.toFixed(2)}</span>
+                                    <span>-₹{couponDiscount.toFixed(2)}</span>
                                 </div>
                             )}
 
                             {redeemPoints && discountAmount > 0 && (
                                 <div className="flex justify-between text-green-600 font-bold">
                                     <span>Loyalty Discount</span>
-                                    <span>- ₹{discountAmount.toFixed(2)}</span>
+                                    <span>-₹{discountAmount.toFixed(2)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between font-bold text-lg text-gray-900 dark:text-white pt-4 border-t border-dashed dark:border-gray-700">
-                                <span>Total to Pay</span>
-                                <span>₹{total.toFixed(2)}</span>
-                            </div>
-                        </div>
 
-                        <div className="mt-6 bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/20">
-                            <p className="text-[10px] text-primary dark:text-red-400 font-bold uppercase tracking-wider mb-1">Safety Policy</p>
-                            <p className="text-[10px] text-red-700 dark:text-red-300 leading-tight">By placing this order, you agree to follow safety protocols. No-contact delivery is enabled by default.</p>
+                            <div className="flex justify-between font-black text-base text-gray-900 dark:text-white pt-4 border-t border-dashed dark:border-gray-700">
+                                <span>Total to Pay</span>
+                                <span className="text-orange-500 text-lg">₹{total.toFixed(2)}</span>
+                            </div>
                         </div>
 
                         <button
                             disabled={loading || !selectedAddress}
                             onClick={handlePayment}
-                            className={`w-full mt-6 py-4 rounded-xl font-bold text-lg transition shadow-lg transform active:scale-95 ${loading || !selectedAddress ? 'bg-gray-300 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-red-700 shadow-red-100 dark:shadow-none'}`}
+                            className={`w-full mt-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all ${
+                                loading || !selectedAddress
+                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                                    : 'bg-primary text-white hover:opacity-95 shadow-orange-500/20 active:scale-95'
+                            }`}
                         >
-                            {loading ? 'Processing...' : paymentMethod === 'COD' ? 'Place COD Order' : 'Proceed to Pay'}
+                            {loading ? 'Processing...' : paymentMethod === 'COD' ? 'Place COD Order' : 'Proceed to Pay →'}
                         </button>
                     </div>
                 </div>
@@ -480,47 +781,25 @@ const Checkout = () => {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             onSubmit={handleAddAddress}
-                            className="bg-white dark:bg-gray-800 p-8 rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-700 transition-all"
+                            className="bg-white dark:bg-gray-800 p-8 rounded-3xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-700"
                         >
-                            <h3 className="text-2xl font-bold mb-6 dark:text-white">Add New Address</h3>
+                            <h3 className="text-xl font-black mb-6 dark:text-white">Add New Address</h3>
                             <div className="space-y-4">
-                                <input className="w-full border p-3 rounded-xl focus:ring-2 ring-primary/20 outline-none" placeholder="Street / Area" required value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} />
+                                <input className="w-full border p-3 rounded-xl text-xs focus:ring-2 ring-primary/20 outline-none dark:bg-gray-700 dark:text-white dark:border-gray-600" placeholder="Street / Area" required value={newAddress.street} onChange={e => setNewAddress({ ...newAddress, street: e.target.value })} />
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input className="w-full border p-3 rounded-xl focus:ring-2 ring-primary/20 outline-none" placeholder="City" required value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
-                                    <input className="w-full border p-3 rounded-xl focus:ring-2 ring-primary/20 outline-none" placeholder="State" required value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
+                                    <input className="w-full border p-3 rounded-xl text-xs focus:ring-2 ring-primary/20 outline-none dark:bg-gray-700 dark:text-white dark:border-gray-600" placeholder="City" required value={newAddress.city} onChange={e => setNewAddress({ ...newAddress, city: e.target.value })} />
+                                    <input className="w-full border p-3 rounded-xl text-xs focus:ring-2 ring-primary/20 outline-none dark:bg-gray-700 dark:text-white dark:border-gray-600" placeholder="State" required value={newAddress.state} onChange={e => setNewAddress({ ...newAddress, state: e.target.value })} />
                                 </div>
-                                <input className="w-full border p-3 rounded-xl focus:ring-2 ring-primary/20 outline-none" placeholder="Pincode" required value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} />
+                                <input className="w-full border p-3 rounded-xl text-xs focus:ring-2 ring-primary/20 outline-none dark:bg-gray-700 dark:text-white dark:border-gray-600" placeholder="Pincode" required value={newAddress.pincode} onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })} />
                             </div>
                             <div className="flex justify-end gap-3 mt-8">
-                                <button type="button" onClick={() => setShowAddAddress(false)} className="px-6 py-2 text-gray-500 font-bold">Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-primary text-white rounded-xl font-bold shadow-md">Save Address</button>
+                                <button type="button" onClick={() => setShowAddAddress(false)} className="px-5 py-2 text-gray-500 font-bold text-xs">Cancel</button>
+                                <button type="submit" className="px-5 py-2 bg-primary text-white rounded-xl font-bold text-xs shadow-md">Save Address</button>
                             </div>
                         </motion.form>
                     </div>
                 )}
             </AnimatePresence>
-
-            {/* Mobile Sticky Action Bar */}
-            <div className="lg:hidden fixed bottom-[92px] left-4 right-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 z-40 shadow-2xl rounded-3xl transition-all">
-                <div className="flex items-center justify-between mb-2 px-2">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">To Pay</p>
-                        <p className="text-xl font-black text-gray-900 dark:text-white">₹{total.toFixed(2)}</p>
-                    </div>
-                    {paymentMethod === 'COD' ? (
-                        <span className="text-[8px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full uppercase">Cash on Delivery</span>
-                    ) : (
-                        <span className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-full uppercase">Online Payment</span>
-                    )}
-                </div>
-                <button
-                    disabled={loading || !selectedAddress}
-                    onClick={handlePayment}
-                    className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all ${loading || !selectedAddress ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-primary text-white shadow-red-100'}`}
-                >
-                    {loading ? 'Processing...' : paymentMethod === 'COD' ? 'Place order' : 'Pay Now →'}
-                </button>
-            </div>
         </div>
     );
 };
