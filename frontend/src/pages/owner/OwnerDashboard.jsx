@@ -75,6 +75,8 @@ const OrdersList = ({ shopId }) => {
             setOrders(orders.map(o => o._id === id ? { ...o, orderStatus: status } : o));
             if (status === 'Preparing') {
                 toast.success(`🎉 Order accepted & cooking started!`);
+            } else if (status === 'Ready') {
+                toast.success(`🍲 Food marked Ready! Delivery riders alerted for pickup.`);
             } else if (status === 'Cancelled') {
                 toast.error(`❌ Order rejected & cancelled.`);
             } else {
@@ -95,7 +97,7 @@ const OrdersList = ({ shopId }) => {
         <div>
             {/* Filter buttons */}
             <div className="flex gap-2 mb-6 flex-wrap">
-                {['all', 'Placed', 'Preparing', 'OutForDelivery', 'Delivered'].map(status => (
+                {['all', 'Placed', 'Preparing', 'Ready', 'OutForDelivery', 'Delivered'].map(status => (
                     <button
                         key={status}
                         onClick={() => setFilter(status)}
@@ -218,6 +220,32 @@ const OrdersList = ({ shopId }) => {
                                 >
                                     <span>✗</span> Reject Order
                                 </button>
+                            </div>
+                        )}
+
+                        {/* One-tap Food Ready Action for Preparing Orders */}
+                        {order.orderStatus === 'Preparing' && (
+                            <div className="mt-4 pt-3 border-t border-blue-100 dark:border-blue-900/30">
+                                <button
+                                    onClick={() => updateStatus(order._id, 'Ready')}
+                                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98] text-white font-black py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-200 dark:shadow-none"
+                                >
+                                    <span>🍲</span> Mark Food Ready for Pickup (Alert Riders) ⚡
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Assigned Rider Info Banner */}
+                        {order.deliveryPartner && (
+                            <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/30 rounded-xl flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base">🛵</span>
+                                    <div>
+                                        <p className="font-black text-emerald-900 dark:text-emerald-300">Rider: {order.deliveryPartner.fullname || 'Courier Assigned'}</p>
+                                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">{order.deliveryPartner.mobile || 'Reaching restaurant for pickup'}</p>
+                                    </div>
+                                </div>
+                                <span className="bg-emerald-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded-full">Assigned</span>
                             </div>
                         )}
                     </div>

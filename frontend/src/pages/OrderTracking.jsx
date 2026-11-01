@@ -12,7 +12,7 @@ import socket, { watchOrder } from '../utils/socket';
 const STATUS_CONFIG = {
     Placed:         { label: 'Order Placed',        icon: '📋', color: '#6b7280', bg: 'bg-gray-100 text-gray-600' },
     Preparing:      { label: 'Preparing Your Food', icon: '👨‍🍳', color: '#f59e0b', bg: 'bg-amber-100 text-amber-700' },
-    Ready:          { label: 'Ready for Pickup',    icon: '✅', color: '#3b82f6', bg: 'bg-blue-100 text-blue-700' },
+    Ready:          { label: 'Food Ready! Courier Assigned', icon: '🍲', color: '#3b82f6', bg: 'bg-blue-100 text-blue-700' },
     OutForDelivery: { label: 'Rider is on the way!',icon: '🏍️', color: '#f97316', bg: 'bg-orange-100 text-orange-700' },
     Delivered:      { label: 'Delivered! Enjoy 🎉', icon: '🎊', color: '#10b981', bg: 'bg-green-100 text-green-700' },
     Cancelled:      { label: 'Order Cancelled',     icon: '✕',  color: '#ef4444', bg: 'bg-red-100 text-red-700' },
@@ -129,7 +129,22 @@ const OrderTracking = () => {
             if (data.eta) setEta(data.eta);
         };
 
+        const handleStatusUpdate = (data) => {
+            if (data.orderId === orderId) {
+                setOrder(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        orderStatus: data.status || data.orderStatus || prev.orderStatus,
+                        deliveryPartner: data.deliveryPartner || prev.deliveryPartner
+                    };
+                });
+                fetchTrackingDetails();
+            }
+        };
+
         socket.on('rider_location', handleRiderLocation);
+        socket.on('status_update', handleStatusUpdate);
 
         socket.on('location_update', (data) => {
             if (data.lat && data.orderId === orderId) {
@@ -140,6 +155,7 @@ const OrderTracking = () => {
 
         return () => {
             socket.off('rider_location', handleRiderLocation);
+            socket.off('status_update', handleStatusUpdate);
             socket.off('location_update');
         };
     }, [orderId]);

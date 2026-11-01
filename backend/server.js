@@ -230,6 +230,7 @@ io.on('connection', (socket) => {
     // Customer joins tracking room to watch a delivery
     socket.on('watch_order', (orderId) => {
         socket.join(`track_${orderId}`);
+        socket.join(`order_${orderId}`);
         console.log(`Customer socket ${socket.id} watching order: ${orderId}`);
     });
 

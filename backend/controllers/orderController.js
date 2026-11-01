@@ -377,7 +377,16 @@ exports.updateOrderStatus = async (req, res) => {
         await sendNotification(order.user, title, message, 'order');
 
         // Emit socket events for Order Tracking screen
-        req.io.to(`order_${order._id}`).emit('status_update', { status, orderId: order._id });
+        await order.populate('deliveryPartner', 'fullname mobile');
+        const statusPayload = {
+            orderId: order._id,
+            status,
+            orderStatus: status,
+            deliveryPartner: order.deliveryPartner
+        };
+        req.io.to(`order_${order._id}`).emit('status_update', statusPayload);
+        req.io.to(`track_${order._id}`).emit('status_update', statusPayload);
+        req.io.to(`user_${order.user}`).emit('status_update', statusPayload);
 
         // Notify all online delivery partners if order is Ready
         if (status === 'Ready') {
@@ -461,7 +470,10 @@ exports.getAvailableDeliveryOrders = async (req, res) => {
         // Fetch orders that are 'Prepared' or 'Preparing' (Ready for pickup) and not rejected
         const orders = await Order.find({
             orderStatus: { $in: ['Preparing', 'Ready'] },
-            deliveryPartner: { $exists: false },
+            $or: [
+                { deliveryPartner: { $exists: false } },
+                { deliveryPartner: null }
+            ],
             _id: { $nin: rejectedIds }
         })
             .populate('shop', 'name address city')
@@ -502,35 +514,57 @@ exports.acceptOrder = async (req, res) => {
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
         if (order.deliveryPartner) {
-            return res.status(400).json({ success: false, message: 'Order already assigned' });
+            return res.status(400).json({ success: false, message: 'Order already assigned to another partner' });
         }
 
         order.deliveryPartner = req.user._id;
-        // Only set to 'Preparing' if it's currently 'Placed'
-        if (order.orderStatus === 'Placed') {
-            order.orderStatus = 'Preparing';
+        if (!order.statusHistory) {
+            order.statusHistory = [];
         }
-        await order.save();
-
-        // Update totalOffered implicitly based on unique orders seen
-        // Notify user that a partner has accepted
-        req.io.to(`user_${order.user}`).emit('order_notification', {
-            message: 'A delivery partner has been assigned to your order.',
-            orderId: order._id
+        order.statusHistory.push({
+            status: order.orderStatus,
+            timestamp: new Date(),
+            updatedBy: req.user._id
         });
+        await order.save();
 
         const User = require('../models/User');
         const user = await User.findById(req.user._id);
         if (user) {
             user.deliverySpecs.totalOffered = (user.deliverySpecs.totalOffered || 0) + 1;
-            // recalculate acceptance rate
             const rejectedCount = user.deliverySpecs.rejectedOrders?.length || 0;
-            const acceptedCount = (user.deliverySpecs.totalOffered - rejectedCount);
+            const acceptedCount = Math.max(0, user.deliverySpecs.totalOffered - rejectedCount);
             if (user.deliverySpecs.totalOffered > 0) {
                 user.deliverySpecs.acceptanceRate = Math.round((acceptedCount / user.deliverySpecs.totalOffered) * 100);
             }
             await user.save();
         }
+
+        await order.populate('deliveryPartner', 'fullname mobile');
+        await order.populate('shop', 'name address city location');
+        await order.populate('user', 'fullname mobile');
+
+        const partnerInfo = {
+            _id: req.user._id,
+            fullname: user?.fullname || 'Courier Partner',
+            mobile: user?.mobile || ''
+        };
+
+        const updatePayload = {
+            orderId: order._id,
+            status: order.orderStatus,
+            orderStatus: order.orderStatus,
+            deliveryPartner: partnerInfo
+        };
+
+        // Emit real-time updates to Order Tracking room, tracking channel, and customer
+        req.io.to(`order_${order._id}`).emit('status_update', updatePayload);
+        req.io.to(`track_${order._id}`).emit('status_update', updatePayload);
+        req.io.to(`user_${order.user?._id || order.user}`).emit('order_notification', {
+            message: `Delivery partner ${user?.fullname || 'Courier'} has been assigned to your order.`,
+            orderId: order._id,
+            deliveryPartner: partnerInfo
+        });
 
         res.status(200).json({ success: true, order });
     } catch (error) {
