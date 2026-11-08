@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,6 +8,7 @@ const HIDDEN_ON_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/reset-
 
 const BottomNav = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { isAuthenticated, user } = useSelector((state) => state.user);
     const cartItems = useSelector((state) => state.cart.cartItems);
 
@@ -16,6 +17,11 @@ const BottomNav = () => {
 
     const role = user?.role;
     const isCustomer = !role || role === 'Customer';
+
+    // Calculate cart totals
+    const totalCartItems = cartItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
+    const totalCartAmount = cartItems.reduce((acc, item) => acc + (item.price * (item.quantity || 1)), 0);
+    const showFloatingCart = isCustomer && totalCartItems > 0 && !['/cart', '/checkout'].includes(location.pathname);
 
     // --- ADMIN bottom nav ---
     const adminNavItems = [
@@ -46,7 +52,7 @@ const BottomNav = () => {
     // --- CUSTOMER bottom nav ---
     const customerNavItems = [
         { label: 'Home', icon: '🏠', to: '/home' },
-        { label: 'Cart', icon: '🛒', to: '/cart', badge: cartItems.length },
+        { label: 'Cart', icon: '🛒', to: '/cart', badge: totalCartItems },
         { label: 'Orders', icon: '📋', to: '/profile?tab=orders', show: isAuthenticated },
         { label: 'Profile', icon: '👤', to: '/profile' },
     ];
@@ -56,52 +62,122 @@ const BottomNav = () => {
             : role === 'Delivery' ? deliveryNavItems
                 : customerNavItems).filter(item => item.show !== false);
 
-    const roleColor = role === 'Admin' ? 'text-indigo-500'
-        : role === 'Owner' ? 'text-red-500'
-            : role === 'Delivery' ? 'text-emerald-500'
+    const roleColor = role === 'Admin' ? 'text-indigo-500 dark:text-indigo-400'
+        : role === 'Owner' ? 'text-amber-500 dark:text-amber-400'
+            : role === 'Delivery' ? 'text-emerald-500 dark:text-emerald-400'
                 : 'text-primary';
 
-    return (
-        <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-100 dark:border-gray-800/80 px-4 pt-2 pb-safe bottom-nav-safe md:hidden z-[100] flex justify-around items-center shadow-[0_-8px_30px_rgba(0,0,0,0.06)]"
-        >
-            {navItems.map((item, idx) => {
-                const isActive = location.pathname === item.to.split('?')[0]
-                    || location.search === `?tab=${item.to.split('?tab=')[1]}`;
+    const handleTap = () => {
+        if (window.navigator?.vibrate) {
+            try { window.navigator.vibrate(10); } catch (e) {}
+        }
+    };
 
-                return (
-                    <Link
-                        key={idx}
-                        to={item.to}
-                        className="relative flex flex-col items-center justify-center gap-0.5 min-h-[56px] min-w-[58px] px-2 py-1 rounded-2xl transition-all duration-300"
+    return (
+        <div className="fixed bottom-2 left-2 right-2 sm:left-4 sm:right-4 z-[100] md:hidden pointer-events-none">
+            {/* ── 3D Floating Quick Cart Bar ─────────────────────────────── */}
+            <AnimatePresence>
+                {showFloatingCart && (
+                    <motion.div
+                        initial={{ y: 30, opacity: 0, scale: 0.94 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 30, opacity: 0, scale: 0.94 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 260 }}
+                        onClick={() => {
+                            handleTap();
+                            navigate('/cart');
+                        }}
+                        className="pointer-events-auto mb-2 w-full bg-gradient-to-r from-orange-600 via-primary to-rose-600 text-white rounded-2xl p-3 px-4 shadow-[0_12px_30px_rgba(230,57,70,0.4)] flex items-center justify-between cursor-pointer border border-white/25 active:scale-[0.98] transition-all"
                     >
-                        <motion.span
-                            whileTap={{ scale: 0.8 }}
-                            className={`text-xl transition-all duration-300 ${isActive ? 'scale-110' : 'opacity-40 grayscale'}`}
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-sm shadow-inner">
+                                🛒
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-black tracking-widest text-orange-200 leading-none">
+                                    {totalCartItems} {totalCartItems === 1 ? 'Item' : 'Items'} Added
+                                </p>
+                                <p className="text-sm font-black text-white leading-none mt-1">
+                                    ₹{totalCartAmount.toFixed(0)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 font-black text-xs uppercase tracking-wider bg-white/20 hover:bg-white/30 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-sm transition-colors">
+                            <span>View Cart</span>
+                            <span className="text-sm">➔</span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── 3D Floating Glassmorphic Dock ──────────────────────────── */}
+            <motion.nav
+                initial={{ y: 80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+                className="pointer-events-auto glass-3d-dock rounded-[28px] px-2 py-1.5 flex justify-around items-center"
+            >
+                {navItems.map((item, idx) => {
+                    const isActive = location.pathname === item.to.split('?')[0]
+                        || (item.to.includes('?tab=') && location.search === `?tab=${item.to.split('?tab=')[1]}`);
+
+                    return (
+                        <Link
+                            key={idx}
+                            to={item.to}
+                            onClick={handleTap}
+                            className="relative flex-1 flex flex-col items-center justify-center min-h-[50px] py-1 rounded-2xl transition-all duration-300"
                         >
-                            {item.icon}
-                        </motion.span>
-                        <span className={`text-[8px] font-black uppercase tracking-widest transition-colors duration-300 ${isActive ? roleColor : 'text-gray-400 dark:text-gray-500'}`}>
-                            {item.label}
-                        </span>
-                        {(item.badge > 0) && (
-                            <span className="absolute top-1 right-2 bg-primary text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-sm">
-                                {item.badge}
+                            <motion.span
+                                whileTap={{ scale: 0.75, y: -2 }}
+                                transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                                className={`text-xl transition-all duration-300 ${
+                                    isActive
+                                        ? 'scale-110 drop-shadow-[0_4px_8px_rgba(230,57,70,0.35)]'
+                                        : 'opacity-50 grayscale hover:opacity-80'
+                                }`}
+                            >
+                                {item.icon}
+                            </motion.span>
+
+                            <span
+                                className={`text-[8.5px] font-black uppercase tracking-wider transition-all duration-300 mt-0.5 ${
+                                    isActive ? `${roleColor} font-black` : 'text-gray-400 dark:text-gray-500'
+                                }`}
+                            >
+                                {item.label}
                             </span>
-                        )}
-                        {isActive && (
-                            <motion.div
-                                layoutId="bottomNavActiveBg"
-                                className="absolute inset-0 bg-gray-100/70 dark:bg-gray-800/60 rounded-[20px] -z-10"
-                                transition={{ type: 'spring', stiffness: 350, damping: 26 }}
-                            />
-                        )}
-                    </Link>
-                );
-            })}
-        </motion.div>
+
+                            {/* 3D Active Illuminated Dot */}
+                            {isActive && (
+                                <motion.span
+                                    layoutId="bottomNavDot"
+                                    className="w-1 h-1 rounded-full bg-primary shadow-[0_0_6px_#e63946] mt-0.5"
+                                    transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+                                />
+                            )}
+
+                            {/* Badge Indicator */}
+                            {item.badge > 0 && (
+                                <span className="absolute top-0.5 right-[22%] bg-gradient-to-r from-orange-500 to-rose-600 text-white text-[8px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-md animate-pulse">
+                                    {item.badge}
+                                </span>
+                            )}
+
+                            {/* 3D Active Capsule Pill */}
+                            {isActive && (
+                                <motion.div
+                                    layoutId="bottomNavActiveBg"
+                                    className="absolute inset-0 bg-primary/10 dark:bg-white/10 rounded-[22px] -z-10 border border-primary/20 dark:border-white/10 shadow-inner"
+                                    transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+                                />
+                            )}
+                        </Link>
+                    );
+                })}
+            </motion.nav>
+        </div>
     );
 };
 

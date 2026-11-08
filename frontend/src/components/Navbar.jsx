@@ -318,8 +318,8 @@ const Navbar = () => {
             </AnimatePresence>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* MOBILE TOP BAR: Logo | Location (flex-1) | Notif | Profile */}
-                <div className="md:hidden flex items-center h-14 gap-3">
+                {/* MOBILE TOP BAR: Logo | Location (flex-1) | Dark Mode | Notif | Profile */}
+                <div className="md:hidden flex items-center h-14 gap-2.5">
                     {/* Logo */}
                     <Link to="/home" className="font-bold text-primary flex items-center gap-1.5 shrink-0 group">
                         <motion.img 
@@ -329,37 +329,49 @@ const Navbar = () => {
                             alt="Bhojan" 
                             className="w-7 h-7 rounded-lg object-contain shadow-sm" 
                         />
-                        <span className="text-lg tracking-tight font-black bg-gradient-to-r from-orange-600 to-red-500 bg-clip-text text-transparent">Bhojan</span>
+                        <span className="text-lg tracking-tight font-black bg-gradient-to-r from-orange-600 via-primary to-rose-500 bg-clip-text text-transparent">Bhojan</span>
                     </Link>
 
-                    {/* Location — takes up all available space */}
-                    <div
-                        className="flex-1 flex items-center gap-1.5 cursor-pointer overflow-hidden px-2 py-1.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    {/* Location Pill with 3D tactile feel */}
+                    <motion.div
+                        whileTap={{ scale: 0.96 }}
+                        className="flex-1 flex items-center gap-1.5 cursor-pointer overflow-hidden px-2.5 py-1.5 rounded-2xl bg-gray-100/80 dark:bg-gray-800/80 border border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-all shadow-inner"
                         onClick={() => setShowLocationModal(true)}
                     >
-                        <span className="text-primary text-sm shrink-0">📍</span>
+                        <span className="text-primary text-xs shrink-0">📍</span>
                         <div className="flex flex-col min-w-0 leading-none">
-                            <span className="text-[8px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Delivering to</span>
-                            <p className="text-xs font-black text-gray-900 dark:text-white truncate mt-0.5">
+                            <span className="text-[7.5px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Delivering to</span>
+                            <p className="text-[11px] font-black text-gray-900 dark:text-white truncate mt-0.5">
                                 {locationLoading ? 'Detecting...' : city ? `${city}` : 'Select location'}
                             </p>
                         </div>
                         <span className="text-gray-400 text-[10px] ml-auto shrink-0">▾</span>
-                    </div>
+                    </motion.div>
 
-                    {/* Right: Notif + Profile */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    {/* Right: Dark Mode + Notif + Profile */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {/* 3D Dark Mode Quick Toggle */}
+                        <motion.button
+                            whileTap={{ scale: 0.85, rotate: 180 }}
+                            onClick={toggleDarkMode}
+                            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
+                            title="Toggle Theme"
+                        >
+                            {darkMode ? '☀️' : '🌙'}
+                        </motion.button>
+
                         {isAuthenticated && (
-                            <Link to="/notifications" className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-primary transition-colors flex items-center justify-center">
-                                <span className="text-xl">🔔</span>
+                            <Link to="/notifications" className="relative w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+                                <span className="text-sm">🔔</span>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-900 shadow-sm animate-pulse"></span>
+                                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-pulse"></span>
                                 )}
                             </Link>
                         )}
                         {isAuthenticated ? (
-                            <div
-                                className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 p-[1.5px] cursor-pointer shrink-0"
+                            <motion.div
+                                whileTap={{ scale: 0.92 }}
+                                className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-orange-500 to-rose-500 p-[1.5px] cursor-pointer shrink-0 shadow-sm"
                                 onClick={() => navigate('/profile')}
                             >
                                 <div className="w-full h-full rounded-full bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden">
@@ -369,9 +381,9 @@ const Navbar = () => {
                                         <span className="text-[10px] font-black text-amber-600">{user?.fullname?.charAt(0).toUpperCase()}</span>
                                     )}
                                 </div>
-                            </div>
+                            </motion.div>
                         ) : (
-                            <Link to="/login" className="text-[10px] font-black text-primary border border-primary px-3 py-1.5 rounded-full uppercase tracking-widest">Login</Link>
+                            <Link to="/login" className="text-[9px] font-black text-white bg-gradient-to-r from-orange-500 to-primary px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">Login</Link>
                         )}
                     </div>
                 </div>

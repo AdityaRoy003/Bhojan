@@ -44,7 +44,7 @@ const ActiveOrderDrawer = ({ order }) => {
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: 100, opacity: 0 }}
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-[100px] left-4 right-4 z-[90] md:hidden bg-white dark:bg-gray-900 rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border border-gray-100 dark:border-gray-800 p-4 transition-all active:scale-[0.98] cursor-pointer"
+                    className="fixed bottom-[84px] left-3 right-3 sm:left-4 sm:right-4 z-[90] md:hidden glass-3d-dock rounded-[24px] p-3.5 transition-all active:scale-[0.98] cursor-pointer shadow-[0_16px_35px_rgba(0,0,0,0.15)]"
                 >
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">

@@ -544,6 +544,145 @@ const Home = () => {
                             </div>
                         </div>
                     </motion.div>
+
+                    {/* ── 3D AI Voice Assistant Banner on Mobile ── */}
+                    <div className="md:hidden mt-4 max-w-2xl mx-auto px-1">
+                        <motion.div
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => document.getElementById('bhojan-ai-trigger')?.click()}
+                            className="w-full bg-gradient-to-r from-orange-500/10 via-red-500/10 to-purple-500/10 dark:from-orange-500/20 dark:to-purple-500/20 border border-orange-400/30 dark:border-orange-500/30 rounded-2xl p-2.5 px-3.5 flex items-center justify-between shadow-sm cursor-pointer card-3d"
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-500 to-rose-500 text-white flex items-center justify-center text-sm shadow-sm shrink-0">
+                                    🎙️
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-[9.5px] font-black uppercase tracking-widest bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                                        Bhojan AI Voice Concierge
+                                    </p>
+                                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">
+                                        "2 Butter Chicken aur 4 Garlic Naan mangwa do"
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-[9.5px] font-black uppercase tracking-wider text-primary bg-white dark:bg-gray-800 px-2.5 py-1 rounded-xl shadow-xs shrink-0 ml-2 border border-gray-200/50 dark:border-gray-700/50">
+                                Speak ⚡
+                            </span>
+                        </motion.div>
+                    </div>
+
+                    {/* ── 3D MOBILE PROMOTIONAL SHOWCASE CAROUSEL ── */}
+                    <div className="md:hidden mt-5">
+                        <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory touch-pan-x pb-2">
+                            {/* Card 1: 15-Min Express */}
+                            <motion.div
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => { setSearchQuery('Fast'); fetchShops('Fast'); }}
+                                className="snap-center shrink-0 w-[84vw] sm:w-[320px] rounded-[24px] p-4 bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 text-white relative overflow-hidden shadow-[0_12px_28px_rgba(234,88,12,0.3)] border border-white/20 card-3d cursor-pointer"
+                            >
+                                <div className="relative z-10">
+                                    <span className="inline-flex items-center gap-1 bg-white/25 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 border border-white/20">
+                                        <span>⚡</span> 15-MIN EXPRESS
+                                    </span>
+                                    <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm">
+                                        Craving Fast Food?
+                                    </h3>
+                                    <p className="text-[11px] font-semibold text-orange-100 mt-0.5 line-clamp-1">
+                                        Lightning fast delivery to your door
+                                    </p>
+                                    <div className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-orange-600 px-3 py-1 rounded-xl w-fit shadow-md">
+                                        <span>Order Now</span>
+                                        <span>➔</span>
+                                    </div>
+                                </div>
+                                <div className="absolute -right-2 -bottom-3 text-7xl opacity-90 drop-shadow-lg transform rotate-6 pointer-events-none">
+                                    🛵
+                                </div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                            </motion.div>
+
+                            {/* Card 2: Prime VIP */}
+                            <motion.div
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => navigate('/prime-membership')}
+                                className="snap-center shrink-0 w-[84vw] sm:w-[320px] rounded-[24px] p-4 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 text-slate-950 relative overflow-hidden shadow-[0_12px_28px_rgba(245,158,11,0.3)] border border-white/40 card-3d cursor-pointer"
+                            >
+                                <div className="relative z-10">
+                                    <span className="inline-flex items-center gap-1 bg-black/20 text-slate-900 text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2">
+                                        <span>👑</span> PRIME CLUB VIP
+                                    </span>
+                                    <h3 className="text-xl font-black leading-tight text-slate-950">
+                                        Free Delivery Always
+                                    </h3>
+                                    <p className="text-[11px] font-bold text-slate-800 mt-0.5 line-clamp-1">
+                                        Plus extra 15% OFF on every order
+                                    </p>
+                                    <div className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-slate-950 text-amber-300 px-3 py-1 rounded-xl w-fit shadow-md">
+                                        <span>Explore Prime</span>
+                                        <span>➔</span>
+                                    </div>
+                                </div>
+                                <div className="absolute -right-1 -bottom-2 text-7xl opacity-90 drop-shadow-lg transform -rotate-12 pointer-events-none">
+                                    👑
+                                </div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 rounded-full blur-2xl pointer-events-none" />
+                            </motion.div>
+
+                            {/* Card 3: Home Chefs */}
+                            <motion.div
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => navigate('/home-chefs')}
+                                className="snap-center shrink-0 w-[84vw] sm:w-[320px] rounded-[24px] p-4 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white relative overflow-hidden shadow-[0_12px_28px_rgba(13,148,136,0.3)] border border-white/20 card-3d cursor-pointer"
+                            >
+                                <div className="relative z-10">
+                                    <span className="inline-flex items-center gap-1 bg-white/25 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 border border-white/20">
+                                        <span>🥘</span> GHAR KA KHANA
+                                    </span>
+                                    <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm">
+                                        Authentic Home Chefs
+                                    </h3>
+                                    <p className="text-[11px] font-semibold text-teal-100 mt-0.5 line-clamp-1">
+                                        Pure hygienic home-cooked regional thalis
+                                    </p>
+                                    <div className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-teal-700 px-3 py-1 rounded-xl w-fit shadow-md">
+                                        <span>View Chefs</span>
+                                        <span>➔</span>
+                                    </div>
+                                </div>
+                                <div className="absolute -right-2 -bottom-3 text-7xl opacity-90 drop-shadow-lg transform rotate-3 pointer-events-none">
+                                    🍱
+                                </div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                            </motion.div>
+
+                            {/* Card 4: Flat 50% OFF */}
+                            <motion.div
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => { setSearchQuery('Pizza'); fetchShops('Pizza'); }}
+                                className="snap-center shrink-0 w-[84vw] sm:w-[320px] rounded-[24px] p-4 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700 text-white relative overflow-hidden shadow-[0_12px_28px_rgba(99,102,241,0.3)] border border-white/20 card-3d cursor-pointer"
+                            >
+                                <div className="relative z-10">
+                                    <span className="inline-flex items-center gap-1 bg-white/25 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 border border-white/20">
+                                        <span>🔥</span> LIMITED OFFER
+                                    </span>
+                                    <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm">
+                                        Flat 50% OFF Feast
+                                    </h3>
+                                    <p className="text-[11px] font-semibold text-purple-100 mt-0.5 line-clamp-1">
+                                        Use code BHOJAN50 on first 3 orders
+                                    </p>
+                                    <div className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white text-indigo-700 px-3 py-1 rounded-xl w-fit shadow-md">
+                                        <span>Claim Offer</span>
+                                        <span>➔</span>
+                                    </div>
+                                </div>
+                                <div className="absolute -right-2 -bottom-2 text-7xl opacity-90 drop-shadow-lg transform -rotate-6 pointer-events-none">
+                                    🍕
+                                </div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                            </motion.div>
+                        </div>
+                    </div>
                 </motion.div>
 
                 {/* Decorative Circles */}
@@ -819,62 +958,58 @@ const Home = () => {
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: index * 0.05 }}
-                                    className="flex md:flex-col gap-4 md:gap-0 bg-white dark:bg-gray-950 md:rounded-[24px] md:shadow-sm md:border border-gray-100 dark:border-gray-800/50 md:overflow-hidden md:hover:shadow-2xl md:hover:-translate-y-1 transition-all duration-300"
+                                    className="card-3d flex flex-col bg-white dark:bg-gray-900 rounded-[26px] p-3 md:p-0 shadow-[0_8px_25px_rgba(0,0,0,0.06)] border border-gray-100/90 dark:border-gray-800/80 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
                                 >
-                                    {/* Image Container */}
-                                    <div className="relative w-28 h-28 shrink-0 md:w-full md:h-52 overflow-hidden rounded-2xl md:rounded-none">
+                                    {/* Image Container with 3D depth */}
+                                    <div className="relative w-full h-44 sm:h-48 md:h-52 overflow-hidden rounded-[20px] md:rounded-none">
                                         <img
                                             src={shop.image || "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=60&w=350&auto=format"}
                                             alt={shop.name}
                                             loading="lazy"
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-                                        {/* Offer Badge Overlay (Modern Style) */}
-                                        <div className="absolute bottom-2 left-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm border border-white/20 dark:border-gray-800 flex gap-1">
-                                            {shop.shopType === 'Home Chef' && (
-                                                <span className="text-[10px] font-black uppercase text-emerald-600 border-r border-gray-300 pr-1 mr-1">Home Cooked</span>
+                                        {/* 3D Floating Rating Badge on Image */}
+                                        <div className="absolute top-2.5 right-2.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-2.5 py-1 rounded-xl shadow-md border border-white/30 dark:border-gray-800 flex items-center gap-1">
+                                            <span className="text-xs font-black text-gray-900 dark:text-white">{shop.rating || '4.2'}</span>
+                                            <span className="text-xs text-amber-500">★</span>
+                                        </div>
+
+                                        {/* 3D Delivery Time & Tag Badges on Image */}
+                                        <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
+                                            <div className="bg-slate-900/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-xl shadow-md border border-white/20 flex items-center gap-1">
+                                                <span>⚡</span> {shop.deliveryTime || '25-30'} MINS
+                                            </div>
+                                            {shop.shopType === 'Home Chef' ? (
+                                                <div className="bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-xl shadow-md">
+                                                    Home Cooked
+                                                </div>
+                                            ) : (
+                                                <div className="bg-primary/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-xl shadow-md">
+                                                    Flat 20% OFF
+                                                </div>
                                             )}
-                                            <span className="text-[10px] font-black uppercase tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-500">20% OFF</span>
                                         </div>
                                     </div>
 
                                     {/* Content Container */}
-                                    <div className="flex-1 py-1 md:p-6 flex flex-col justify-center md:justify-start">
-                                        <div className="flex justify-between items-start mb-1 md:mb-2">
+                                    <div className="p-3 md:p-6 flex flex-col justify-between">
+                                        <div className="flex justify-between items-start mb-1">
                                             <h3 className="text-base md:text-xl font-black text-gray-900 dark:text-gray-100 line-clamp-1 tracking-tight group-hover:text-primary transition-colors">
                                                 {shop.name}
                                             </h3>
-                                            <div className="flex items-center gap-1 bg-emerald-600 text-white px-1.5 py-0.5 rounded-md shadow-sm">
-                                                <span className="text-[10px] md:text-xs font-black">{shop.rating || '4.2'}</span>
-                                                <span className="text-[8px]">★</span>
-                                            </div>
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5 md:mb-3">
-                                            <p className="text-[11px] md:text-sm font-bold text-gray-400 dark:text-gray-500 line-clamp-1">
-                                                {shop.description || "North Indian, Continental, Chinese"}
-                                            </p>
-                                        </div>
+                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 line-clamp-1 mb-2.5">
+                                            {shop.description || "North Indian, Continental, Chinese, Fast Food"}
+                                        </p>
 
-                                        <div className="flex items-center gap-3 text-[10px] md:text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest pt-1 md:pt-4 border-t border-gray-50 dark:border-gray-900 md:border-t-0">
-                                            <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-500">
-                                                <span>🚲</span>
-                                                <span>{shop.deliveryTime || '25-30'} MINS</span>
-                                            </div>
-                                            <span className="w-1 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
-                                            <div className="flex items-center gap-1">
-                                                <span>₹{shop.costForTwo || 250} FOR TWO</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Mobile Tags (Visible only on mobile) */}
-                                        <div className="flex md:hidden gap-2 mt-3 overflow-x-auto no-scrollbar">
-                                            {shop.isLocal && (
-                                                <span className="bg-orange-50 dark:bg-orange-950/30 text-orange-600 border border-orange-100 dark:border-orange-900/50 px-2 py-0.5 rounded-md text-[9px] font-black uppercase">Local Gem</span>
-                                            )}
-                                            <span className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 border border-blue-100 dark:border-blue-900/50 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight">Free Delivery</span>
+                                        <div className="flex items-center justify-between pt-2.5 border-t border-gray-100 dark:border-gray-800/80 text-[11px] font-black uppercase tracking-wider">
+                                            <span className="text-gray-500 dark:text-gray-400">₹{shop.costForTwo || 250} FOR TWO</span>
+                                            <span className="text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                                Explore Menu ➔
+                                            </span>
                                         </div>
                                     </div>
                                 </motion.div>
