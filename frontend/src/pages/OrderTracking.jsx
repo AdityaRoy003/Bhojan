@@ -7,6 +7,8 @@ import StatusTimeline from '../components/StatusTimeline';
 import ThreeDDeliveryCanvas from '../components/ThreeDDeliveryCanvas';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import socket, { watchOrder } from '../utils/socket';
+import KitchenPrepTimeline from '../components/KitchenPrepTimeline';
+import RiderSafetyModal from '../components/RiderSafetyModal';
 
 // ── Status config ──────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -66,6 +68,7 @@ const OrderTracking = () => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const chatEndRef = useRef(null);
+    const [showSafetyModal, setShowSafetyModal] = useState(false);
 
     // ── Fetch order + tracking data ────────────────────────────────────────
     const fetchTrackingDetails = useCallback(async () => {
@@ -410,6 +413,11 @@ const OrderTracking = () => {
                     />
                 </div>
 
+                {/* ── Kitchen Live Prep Stepper (when Placed or Preparing) ── */}
+                {['Placed', 'Preparing', 'Ready'].includes(order.orderStatus) && (
+                    <KitchenPrepTimeline orderStatus={order.orderStatus} />
+                )}
+
                 {/* ── Courier Card & Live Chat Button ───────────────────────── */}
                 {order.deliveryPartner && (
                     <motion.div
@@ -496,6 +504,31 @@ const OrderTracking = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* ── Rider & Order Safety Toolkit ───────────────────────── */}
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => setShowSafetyModal(true)}
+                        className="bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/40 py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    >
+                        <span>🚨 Emergency SOS</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            const shareUrl = window.location.origin + `/track/${orderId}`;
+                            const text = encodeURIComponent(
+                                `🍕 *Track My Bhojan Order Live!*\n` +
+                                `Restaurant: ${order.shop?.name || 'Bhojan Kitchen'}\n` +
+                                `Status: ${order.orderStatus}\n` +
+                                `Live Map: ${shareUrl}`
+                            );
+                            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                        }}
+                        className="bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    >
+                        <span>💬 Share Live Trip</span>
+                    </button>
                 </div>
 
                 {/* ── Cancellation Button ─────────────────────────────────── */}
@@ -619,6 +652,15 @@ const OrderTracking = () => {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* 🛡️ Rider Safety & SOS Modal */}
+            <RiderSafetyModal
+                isOpen={showSafetyModal}
+                onClose={() => setShowSafetyModal(false)}
+                orderId={orderId}
+                riderInfo={order.deliveryPartner}
+                trackingUrl={window.location.origin + `/track/${orderId}`}
+            />
         </div>
     );
 };

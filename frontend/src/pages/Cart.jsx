@@ -7,6 +7,10 @@ import api from '../utils/api';
 import CheckoutProgress from '../components/CheckoutProgress';
 import socket, { connectSocket } from '../utils/socket';
 import { toast } from 'react-toastify';
+import WeatherSurgeBanner from '../components/WeatherSurgeBanner';
+import FitBhojanMacroWidget from '../components/FitBhojanMacroWidget';
+import QuickAddonsCarousel from '../components/QuickAddonsCarousel';
+import BillSplitModal from '../components/BillSplitModal';
 
 const Cart = () => {
     const { cartItems, restaurant, coupon } = useSelector((state) => state.cart);
@@ -25,13 +29,15 @@ const Cart = () => {
     const [isGroupMode, setIsGroupMode] = useState(false);
     const [splitType, setSplitType] = useState('individual'); // 'individual', 'equal'
     const [copiedLink, setCopiedLink] = useState(false);
+    const [surgeFee, setSurgeFee] = useState(0);
+    const [showBillSplitModal, setShowBillSplitModal] = useState(false);
 
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const deliveryFee = subtotal > 500 ? 0 : 40;
     const gstRate = 0.05;
     const gstAmount = subtotal * gstRate;
     const discount = coupon?.discount || 0;
-    const total = subtotal + deliveryFee + gstAmount - discount;
+    const total = subtotal + deliveryFee + gstAmount + surgeFee - discount;
 
     // Start or Join a Group Ordering Session
     const startGroupSession = (id) => {
@@ -323,6 +329,9 @@ const Cart = () => {
                             </AnimatePresence>
                         </div>
 
+                        {/* 🍦 Smart Quick Add-ons Carousel (Desserts & Chilled Drinks) */}
+                        <QuickAddonsCarousel restaurant={restaurant} />
+
                         {/* Group Items List */}
                         {isGroupMode && groupMembersArray.length > 0 && (
                             <div className="space-y-4">
@@ -499,6 +508,12 @@ const Cart = () => {
                             )}
                         </div>
 
+                        {/* 🌧️ Dynamic Weather & Peak Rush Surge Banner */}
+                        <WeatherSurgeBanner onSurgeAmountChange={setSurgeFee} />
+
+                        {/* 🥗 FitBhojan Nutritional Macro Summary */}
+                        <FitBhojanMacroWidget items={cartItems} />
+
                         {/* Bill Breakdown */}
                         <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 transition-all">
                             <h3 className="font-black text-xl mb-4 dark:text-white">
@@ -513,6 +528,12 @@ const Cart = () => {
                                     <span>Delivery Fee</span>
                                     <span className={deliveryFee === 0 ? 'text-green-600 dark:text-green-400' : ''}>{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee.toFixed(2)}`}</span>
                                 </div>
+                                {surgeFee > 0 && (
+                                    <div className="flex justify-between text-amber-600 dark:text-amber-400 text-sm font-bold">
+                                        <span>Weather / Rush Surge</span>
+                                        <span>+₹{surgeFee.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-gray-500 dark:text-gray-400 text-sm font-medium">
                                     <span>GST (5%)</span>
                                     <span>₹{((isGroupMode ? combinedSubtotal : subtotal) * gstRate).toFixed(2)}</span>
@@ -551,6 +572,13 @@ const Cart = () => {
                                 <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
                             </button>
 
+                            <button
+                                onClick={() => setShowBillSplitModal(true)}
+                                className="w-full bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-700 hover:from-indigo-600 hover:to-purple-800 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <span>⚡ Split Bill via UPI / WhatsApp</span>
+                            </button>
+
                             <p className="text-[8px] text-gray-400 dark:text-gray-500 text-center font-bold uppercase tracking-widest leading-relaxed">
                                 By proceeding, you agree to our <br />
                                 <Link to="/terms" className="underline">Terms of Service</Link> & <Link to="/privacy" className="underline">Privacy Policy</Link>
@@ -580,6 +608,15 @@ const Cart = () => {
                     {isGroupMode ? 'Proceed with Group Order' : 'Proceed to Payment →'}
                 </button>
             </div>
+
+            {/* ⚡ UPI Bill Split Modal */}
+            <BillSplitModal
+                isOpen={showBillSplitModal}
+                onClose={() => setShowBillSplitModal(false)}
+                members={isGroupMode ? getSplitBreakdown() : [{ name: 'You (Host)', subtotal: total, itemsCount: cartItems.length }]}
+                totalAmount={isGroupMode ? combinedTotal : total}
+                partyId={groupId || 'BHOJAN'}
+            />
         </div>
     );
 };

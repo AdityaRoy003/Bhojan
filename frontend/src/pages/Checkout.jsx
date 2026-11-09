@@ -7,6 +7,8 @@ import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import CheckoutProgress from '../components/CheckoutProgress';
 import { toast } from 'react-toastify';
+import WeatherSurgeBanner from '../components/WeatherSurgeBanner';
+import FitBhojanMacroWidget from '../components/FitBhojanMacroWidget';
 
 const DELIVERY_PRESETS = [
     { id: 'leave_at_door', label: 'Leave at Door', icon: '🚪' },
@@ -69,6 +71,7 @@ const Checkout = () => {
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [couponApplied, setCouponApplied] = useState(false);
     const [couponMessage, setCouponMessage] = useState('');
+    const [surgeFee, setSurgeFee] = useState(0);
 
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const deliveryFee = 30;
@@ -112,7 +115,7 @@ const Checkout = () => {
         discountAmount = pointsToUse / 10;
     }
 
-    const total = Math.max(0, (subtotal + deliveryFee + platformFee + taxes + tipAmount) - discountAmount - couponDiscount);
+    const total = Math.max(0, (subtotal + deliveryFee + platformFee + taxes + tipAmount + surgeFee) - discountAmount - couponDiscount);
 
     useEffect(() => {
         if (cartItems.length === 0 && !orderSuccess) navigate('/cart');
@@ -650,8 +653,18 @@ const Checkout = () => {
                             ))}
                         </div>
 
+                        {/* 🥗 FitBhojan Macro Breakdown */}
+                        <div className="pt-2">
+                            <FitBhojanMacroWidget items={cartItems} compact />
+                        </div>
+
+                        {/* 🌧️ Dynamic Weather / Peak Surge */}
+                        <div className="pt-2">
+                            <WeatherSurgeBanner onSurgeAmountChange={setSurgeFee} />
+                        </div>
+
                         {/* Bill Breakdown */}
-                        <div className="space-y-2.5 pt-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="space-y-2.5 pt-2 text-xs text-gray-500 dark:text-gray-400">
                             <div className="flex justify-between">
                                 <span>Item Total</span>
                                 <span className="font-bold text-gray-800 dark:text-white">₹{subtotal.toFixed(2)}</span>
@@ -660,6 +673,12 @@ const Checkout = () => {
                                 <span>Delivery Fee</span>
                                 <span className="font-bold text-gray-800 dark:text-white">₹{deliveryFee.toFixed(2)}</span>
                             </div>
+                            {surgeFee > 0 && (
+                                <div className="flex justify-between text-amber-600 dark:text-amber-400 font-bold">
+                                    <span>Weather / Rush Surge</span>
+                                    <span>+₹{surgeFee.toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between">
                                 <span>Platform Fee</span>
                                 <span className="font-bold text-gray-800 dark:text-white">₹{platformFee.toFixed(2)}</span>

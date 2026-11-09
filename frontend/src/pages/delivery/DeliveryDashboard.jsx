@@ -4,10 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
 import socket, { connectSocket, disconnectSocket, joinTrackingRoom, emitRiderLocation } from '../../utils/socket';
 import LiveTrackingMap from '../../components/LiveTrackingMap';
+import RiderSafetyModal from '../../components/RiderSafetyModal';
 
 const DeliveryDashboard = () => {
     const { user } = useSelector(state => state.user);
     const [isOnline, setIsOnline] = useState(false);
+    const [showSafetyModal, setShowSafetyModal] = useState(false);
+    const [selectedSafetyOrder, setSelectedSafetyOrder] = useState(null);
     const [availableOrders, setAvailableOrders] = useState([]);
     const [myDeliveries, setMyDeliveries] = useState([]);
     const [activeTab, setActiveTab] = useState('find'); // find | active | earnings | profile
@@ -529,7 +532,7 @@ const DeliveryDashboard = () => {
                                             <div className="flex gap-2 w-full sm:w-auto justify-end">
                                                 <a href={`tel:${order.user?.mobile}`} className="flex-1 sm:flex-none h-12 w-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Call Customer">📞</a>
                                                 <button onClick={() => { setRiderChatOrder(order); setRiderChatMessages(order.chatMessages || []); }} className="flex-1 sm:flex-none h-12 w-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm" title="Chat with Customer">💬</button>
-                                                <button onClick={() => alert("SOS Triggered! Location shared.")} className="flex-1 sm:flex-none h-12 w-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm">🆘</button>
+                                                <button onClick={() => { setSelectedSafetyOrder(order); setShowSafetyModal(true); }} className="flex-1 sm:flex-none h-12 w-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm" title="Emergency Safety & SOS">🆘</button>
                                             </div>
                                         </div>
 
@@ -888,6 +891,14 @@ const DeliveryDashboard = () => {
                     </>
                 )}
             </AnimatePresence>
+            {/* 🛡️ Rider Emergency Safety & SOS Modal */}
+            <RiderSafetyModal
+                isOpen={showSafetyModal}
+                onClose={() => setShowSafetyModal(false)}
+                orderId={selectedSafetyOrder?._id}
+                riderInfo={user}
+                trackingUrl={window.location.origin + `/track/${selectedSafetyOrder?._id || ''}`}
+            />
         </div>
     );
 };

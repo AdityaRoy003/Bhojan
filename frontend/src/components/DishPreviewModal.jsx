@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
+import FitBhojanMacroWidget from './FitBhojanMacroWidget';
 
 // ─── Procedural 3D Dish Scene ────────────────────────────────────────────────
 const Dish3DCanvas = ({ dish }) => {
@@ -339,15 +340,12 @@ const DishPreviewModal = ({ dish, onClose, onAddToCart }) => {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Calories</p>
-                                    <p className="text-lg font-black text-gray-900 dark:text-white">~450 kcal</p>
-                                </div>
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prep Time</p>
-                                    <p className="text-lg font-black text-gray-900 dark:text-white">15–20 min</p>
-                                </div>
+                            {/* FitBhojan Nutritional Macro Breakdown */}
+                            <FitBhojanMacroWidget singleDish={dish} />
+
+                            <div className="bg-gray-50 dark:bg-gray-800 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estimated Kitchen Prep</span>
+                                <span className="text-xs font-black text-gray-900 dark:text-white">⏱️ 15–20 mins</span>
                             </div>
 
                             {dish.dietaryTags?.length > 0 && (
