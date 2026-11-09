@@ -246,22 +246,18 @@ const UserProfile = () => {
             const lowerTerm = orderSearchTerm.toLowerCase();
             filtered = filtered.filter(o =>
                 o.shop?.name?.toLowerCase().includes(lowerTerm) ||
-                o.items.some(i => i.name?.toLowerCase().includes(lowerTerm))
+                o.items?.some(i => (i.name || i.item?.name)?.toLowerCase().includes(lowerTerm))
             );
         }
 
         // Status Filter
-        if (orderStatusFilter !== 'All Status') {
+        if (orderStatusFilter === 'Active') {
+            filtered = filtered.filter(o => ['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(o.orderStatus));
+        } else if (orderStatusFilter !== 'All Status') {
             filtered = filtered.filter(o => o.orderStatus === orderStatusFilter);
         }
 
         return filtered;
-
-        if (filterDate === String(y - 1)) {
-            return orders.filter(o => new Date(o.createdAt).getFullYear() === (y - 1));
-        }
-
-        return orders;
     };
 
     const filteredOrders = getFilteredOrders();
@@ -1961,175 +1957,284 @@ const UserProfile = () => {
 
             case 'orders':
                 const activeOrder = orders.find(o => ['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(o.orderStatus));
+                const activeOrdersCount = orders.filter(o => ['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(o.orderStatus)).length;
+                const filteredOrdersList = getFilteredOrders();
+
                 return (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                        {/* Active Order Mini Widget */}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 md:space-y-6">
+                        {/* ── 1. Swiggy Live Tracking Hero Card ── */}
                         {activeOrder && (
                             <motion.div
-                                initial={{ scale: 0.95, opacity: 0 }}
+                                initial={{ scale: 0.96, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 onClick={() => navigate(`/track/${activeOrder._id}`)}
-                                className="bg-gradient-to-r from-emerald-500 to-teal-600 p-1 rounded-[32px] shadow-lg shadow-emerald-100 dark:shadow-none cursor-pointer group"
+                                className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-primary/10 dark:from-emerald-500/20 dark:to-primary/20 border-2 border-emerald-500/40 p-4 shadow-xl shadow-emerald-500/10 cursor-pointer active:scale-[0.99] transition-all group"
                             >
-                                <div className="bg-white dark:bg-gray-900 rounded-[31px] p-5 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-2xl">
-                                            🛵
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="relative shrink-0">
+                                            <img
+                                                src={activeOrder.shop?.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=60&w=120'}
+                                                alt={activeOrder.shop?.name}
+                                                className="w-12 h-12 rounded-2xl object-cover border border-emerald-200 dark:border-emerald-700 shadow-md"
+                                            />
+                                            <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 items-center justify-center text-[8px] text-white font-black">⚡</span>
+                                            </span>
                                         </div>
-                                        <div>
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">Active Order Tracking</h4>
-                                            <h3 className="font-black text-gray-900 dark:text-white text-sm">{activeOrder.shop?.name}</h3>
+                                        <div className="min-w-0">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                Live Order Tracking
+                                            </span>
+                                            <h3 className="font-black text-gray-900 dark:text-white text-base leading-tight truncate mt-0.5">
+                                                {activeOrder.shop?.name}
+                                            </h3>
+                                            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 truncate">
+                                                {activeOrder.items?.length || 1} {(activeOrder.items?.length || 1) === 1 ? 'item' : 'items'} • ₹{activeOrder.totalAmount?.toFixed(0)}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase">{activeOrder.orderStatus === 'Placed' ? 'Confirmed' : activeOrder.orderStatus}</p>
-                                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Tap to view live →</p>
-                                        </div>
-                                        <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center animate-pulse">
-                                            →
-                                        </div>
+
+                                    <div className="text-right shrink-0">
+                                        <span className="inline-block px-2.5 py-1 rounded-xl text-[9.5px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-sm">
+                                            {activeOrder.orderStatus === 'Placed' ? 'Confirmed' : activeOrder.orderStatus === 'OutForDelivery' ? 'On The Way' : activeOrder.orderStatus}
+                                        </span>
+                                        <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center justify-end gap-1">
+                                            <span>Track Live</span>
+                                            <span>➔</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Animated Order Progress Bar */}
+                                <div className="w-full bg-gray-200 dark:bg-gray-700/60 h-1.5 rounded-full overflow-hidden mb-3">
+                                    <motion.div
+                                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400"
+                                        initial={{ width: '15%' }}
+                                        animate={{
+                                            width: activeOrder.orderStatus === 'Placed' ? '25%'
+                                                : activeOrder.orderStatus === 'Preparing' ? '50%'
+                                                : activeOrder.orderStatus === 'Ready' ? '70%'
+                                                : activeOrder.orderStatus === 'OutForDelivery' ? '88%' : '100%'
+                                        }}
+                                        transition={{ duration: 0.8 }}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-emerald-500/20 text-xs">
+                                    <p className="text-[10px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[220px]">
+                                        {activeOrder.items?.map(i => `${i.name || i.item?.name} x${i.quantity}`).join(', ')}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 font-black text-[10px] uppercase text-emerald-600 dark:text-emerald-400 bg-white/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-xl shadow-xs">
+                                        <span>Live Map</span>
+                                        <span>🛵</span>
                                     </div>
                                 </div>
                             </motion.div>
                         )}
-                        {/* Filters Header */}
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-[30px] border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-                            <h2 className="hidden md:flex text-2xl font-black text-gray-900 dark:text-white items-center gap-2">
-                                <span>🧾</span> Order History
-                            </h2>
-                            <div className="flex flex-wrap gap-3 w-full md:w-auto">
+
+                        {/* ── 2. Modern Swiggy-Style Search & Filter Strip ── */}
+                        <div className="bg-white dark:bg-gray-800/90 p-3.5 md:p-4 rounded-[26px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+                            {/* Search bar */}
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                                    🔍
+                                </span>
                                 <input
                                     type="text"
-                                    placeholder="Search shop or item..."
-                                    className="bg-gray-50 dark:bg-gray-700 border-none rounded-2xl px-4 py-2 text-xs font-bold w-full md:w-48 focus:ring-2 ring-primary dark:text-white dark:placeholder-gray-500"
+                                    placeholder="Search by restaurant or dish name..."
+                                    className="w-full bg-gray-50 dark:bg-gray-700/60 border border-gray-100 dark:border-gray-600/50 rounded-2xl pl-10 pr-9 py-2.5 text-xs font-bold text-gray-800 dark:text-gray-100 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                     value={orderSearchTerm}
                                     onChange={(e) => setOrderSearchTerm(e.target.value)}
                                 />
-                                <select
-                                    className="bg-gray-50 dark:bg-gray-700 border-none rounded-2xl px-4 py-2 text-xs font-black uppercase cursor-pointer focus:ring-2 ring-primary dark:text-white"
-                                    value={orderStatusFilter}
-                                    onChange={(e) => setOrderStatusFilter(e.target.value)}
-                                >
-                                    <option>All Status</option>
-                                    <option>Placed</option>
-                                    <option>Preparing</option>
-                                    <option>OutForDelivery</option>
-                                    <option>Delivered</option>
-                                    <option>Cancelled</option>
-                                </select>
-                                <select
-                                    className="bg-gray-50 dark:bg-gray-700 border-none rounded-2xl px-4 py-2 text-xs font-black uppercase cursor-pointer focus:ring-2 ring-primary dark:text-white"
-                                    value={filterDate}
-                                    onChange={(e) => setFilterDate(e.target.value)}
-                                >
-                                    <option>All Time</option>
-                                    <option>Last 3 Months</option>
-                                    <option>{new Date().getFullYear()}</option>
-                                    <option>{new Date().getFullYear() - 1}</option>
-                                </select>
+                                {orderSearchTerm && (
+                                    <button
+                                        onClick={() => setOrderSearchTerm('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-300 flex items-center justify-center hover:opacity-80"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Horizontal Filter Chips */}
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-0.5">
+                                {[
+                                    { id: 'All Status', label: 'All Orders' },
+                                    { id: 'Delivered', label: '✅ Delivered' },
+                                    ...(activeOrdersCount > 0 ? [{ id: 'Active', label: `🛵 In Progress (${activeOrdersCount})` }] : []),
+                                    { id: 'Cancelled', label: '✕ Cancelled' },
+                                ].map((chip) => {
+                                    const isSelected = orderStatusFilter === chip.id;
+                                    return (
+                                        <button
+                                            key={chip.id}
+                                            onClick={() => setOrderStatusFilter(chip.id)}
+                                            className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-black transition-all ${
+                                                isSelected
+                                                    ? 'bg-primary text-white shadow-md shadow-primary/25 scale-[1.02]'
+                                                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            }`}
+                                        >
+                                            {chip.label}
+                                        </button>
+                                    );
+                                })}
+
+                                {/* Compact Date Filter */}
+                                <div className="ml-auto shrink-0">
+                                    <select
+                                        className="bg-gray-100 dark:bg-gray-700/60 border-none rounded-full px-3 py-1.5 text-[10.5px] font-black uppercase text-gray-600 dark:text-gray-300 cursor-pointer focus:outline-none"
+                                        value={filterDate}
+                                        onChange={(e) => setFilterDate(e.target.value)}
+                                    >
+                                        <option value="All Time">All Time</option>
+                                        <option value="Last 3 Months">Last 3 Months</option>
+                                        <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                                        <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Orders List */}
-                        {getFilteredOrders().length === 0 ? (
-                            <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-[40px] border border-gray-100 dark:border-gray-700">
-                                <span className="text-6xl mb-4 block">🛒</span>
-                                <h3 className="text-xl font-black dark:text-white">No orders found</h3>
-                                <p className="text-gray-400 text-sm mt-2 font-medium">Try adjusting your filters or search terms.</p>
+                        {/* ── 3. Orders List ── */}
+                        {filteredOrdersList.length === 0 ? (
+                            <div className="text-center py-16 px-4 bg-white dark:bg-gray-800/80 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <span className="text-5xl mb-3 block animate-bounce">🍽️</span>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white">No orders found</h3>
+                                <p className="text-gray-400 text-xs mt-1 font-medium max-w-xs mx-auto">
+                                    {orderSearchTerm ? `No past orders matching "${orderSearchTerm}".` : 'You haven’t placed any orders matching this filter yet.'}
+                                </p>
+                                <button
+                                    onClick={() => { setOrderSearchTerm(''); setOrderStatusFilter('All Status'); setFilterDate('All Time'); navigate('/home'); }}
+                                    className="mt-5 px-6 py-2.5 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition-all"
+                                >
+                                    Explore Restaurants ➔
+                                </button>
                             </div>
                         ) : (
-                            <div className="space-y-6">
-                                {getFilteredOrders().map((order) => (
-                                    <div key={order._id} className="bg-white dark:bg-gray-800 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:shadow-amber-500/5 transition-all group overflow-hidden relative">
+                            <div className="space-y-4">
+                                {filteredOrdersList.map((order) => {
+                                    const isDelivered = order.orderStatus === 'Delivered';
+                                    const isCancelled = order.orderStatus === 'Cancelled';
+                                    const isActiveOrder = ['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(order.orderStatus);
 
-                                        {/* Premium Timeline Header */}
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-700 overflow-hidden shadow-inner border border-gray-100 dark:border-gray-600 flex items-center justify-center text-2xl">
-                                                    {order.orderStatus === 'Delivered' ? '✅' : order.orderStatus === 'Cancelled' ? '❌' : '⏳'}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight">{order.shop?.name}</h3>
-                                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase mt-0.5 tracking-widest">{new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xl font-black text-gray-900 dark:text-white">₹{order.totalAmount?.toFixed(0)}</p>
-                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
-                                                    order.orderStatus === 'Cancelled' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' :
-                                                        'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                                                    }`}>
-                                                    {order.orderStatus}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Status Timeline Visualization (Desktop and Mobile) */}
-                                        <div className="relative mb-6 px-2">
-                                            <div className="flex justify-between relative z-10">
-                                                {['Placed', 'Preparing', 'OutForDelivery', 'Delivered'].map((status, idx) => {
-                                                    const statuses = ['Placed', 'Preparing', 'OutForDelivery', 'Delivered'];
-                                                    const currentIdx = statuses.indexOf(order.orderStatus);
-                                                    const isCompleted = currentIdx >= idx;
-                                                    const isCurrent = currentIdx === idx && order.orderStatus !== 'Delivered';
-
-                                                    // Skip "OutForDelivery" if cancelled
-                                                    if (order.orderStatus === 'Cancelled' && idx > 0) return null;
-
-                                                    return (
-                                                        <div key={status} className="flex flex-col items-center gap-1.5 flex-1 max-w-[80px]">
-                                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all duration-500 ${isCompleted ? 'bg-green-500 text-white shadow-lg' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'} ${isCurrent ? 'ring-4 ring-amber-100 dark:ring-amber-900/30' : ''}`}>
-                                                                {isCompleted ? '✓' : idx + 1}
-                                                            </div>
-                                                            <span className={`text-[8px] font-black uppercase tracking-tighter text-center ${isCompleted ? 'text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-600'}`}>
-                                                                {status === 'OutForDelivery' ? 'On Way' : status}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
-                                                {order.orderStatus === 'Cancelled' && (
-                                                    <div className="flex flex-col items-center gap-1.5 flex-1 max-w-[80px]">
-                                                        <div className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] shadow-lg">✕</div>
-                                                        <span className="text-[8px] font-black uppercase tracking-tighter text-red-500">Cancelled</span>
+                                    return (
+                                        <div
+                                            key={order._id}
+                                            className="bg-white dark:bg-gray-800/90 p-4 md:p-6 rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-orange-500/5 border border-gray-100 dark:border-gray-700/60 transition-all overflow-hidden relative"
+                                        >
+                                            {/* Restaurant Header */}
+                                            <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-gray-100 dark:border-gray-700/50">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <img
+                                                        src={order.shop?.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=60&w=120'}
+                                                        alt={order.shop?.name}
+                                                        className="w-13 h-13 rounded-2xl object-cover shrink-0 border border-gray-100 dark:border-gray-700 shadow-xs"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <h3 className="font-black text-gray-900 dark:text-white text-base leading-tight truncate">
+                                                            {order.shop?.name}
+                                                        </h3>
+                                                        <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-400 truncate mt-0.5">
+                                                            {order.shop?.city || order.deliveryAddress?.split(',')[0] || 'Order Placed'}
+                                                        </p>
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+                                                            {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
                                                     </div>
-                                                )}
-                                            </div>
-                                            {/* Connector Line */}
-                                            <div className="absolute top-3 left-0 right-0 h-[1.5px] bg-gray-100 dark:bg-gray-700 -z-0 mx-8">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: order.orderStatus === 'Cancelled' ? '0%' : `${(['Placed', 'Preparing', 'OutForDelivery', 'Delivered'].indexOf(order.orderStatus) / 3) * 100}%` }}
-                                                    className="h-full bg-green-500 transition-all duration-1000"
-                                                />
-                                            </div>
-                                        </div>
+                                                </div>
 
-                                        {/* Action Hub */}
-                                        <div className="flex flex-wrap items-center justify-between gap-4 pt-5 border-t border-gray-50 dark:border-gray-700 mt-2">
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleViewDetails(order)} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-2xl text-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all shadow-sm" title="Details">📋</button>
-                                                <button onClick={() => handleDownloadInvoice(order)} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-2xl text-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all shadow-sm" title="Invoice">📄</button>
-                                                {['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(order.orderStatus) && (
-                                                    <button onClick={() => navigate(`/track/${order._id}`)} className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl text-lg hover:bg-indigo-100 transition-all shadow-sm" title="Track">🛵</button>
-                                                )}
-                                                {order.orderStatus === 'Delivered' && (
-                                                    <button onClick={() => handleRateOrder(order)} className="p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-600 rounded-2xl text-lg hover:bg-amber-100 transition-all shadow-sm" title="Rate">⭐</button>
-                                                )}
+                                                <div className="text-right shrink-0">
+                                                    <span
+                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                            isDelivered
+                                                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                                                                : isCancelled
+                                                                ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
+                                                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 animate-pulse'
+                                                        }`}
+                                                    >
+                                                        <span>{isDelivered ? '✓' : isCancelled ? '✕' : '⏳'}</span>
+                                                        <span>{order.orderStatus}</span>
+                                                    </span>
+                                                    <p className="text-base font-black text-gray-900 dark:text-white mt-1.5">
+                                                        ₹{order.totalAmount?.toFixed(0)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleReorder(order)}
-                                                className="bg-black dark:bg-white text-white dark:text-black py-3 px-8 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-gray-200 dark:shadow-none"
-                                            >
-                                                Reorder ↻
-                                            </button>
+
+                                            {/* Dishes Breakdown (Swiggy item line with veg/non-veg indicator) */}
+                                            <div className="py-3.5 space-y-1.5">
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                    {order.items?.map((item, idx) => {
+                                                        const itemName = item.name || item.item?.name || 'Dish Item';
+                                                        const isVeg = item.item?.isVeg || item.item?.foodType === 'Veg' || item.foodType === 'Veg';
+                                                        return (
+                                                            <div key={idx} className="flex items-center gap-1.5">
+                                                                <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center text-[7px] font-black shrink-0 ${
+                                                                    isVeg ? 'border-emerald-600 text-emerald-600' : 'border-rose-600 text-rose-600'
+                                                                }`}>
+                                                                    ●
+                                                                </span>
+                                                                <span className="truncate max-w-[170px] sm:max-w-none">{itemName}</span>
+                                                                <span className="font-bold text-gray-400 dark:text-gray-500">x{item.quantity}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* Swiggy Bottom Action Buttons */}
+                                            <div className="pt-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => handleViewDetails(order)}
+                                                        className="px-3 py-2 rounded-xl text-xs font-black text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 flex items-center gap-1 active:scale-95"
+                                                    >
+                                                        <span>📋</span> Details
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDownloadInvoice(order)}
+                                                        className="p-2 rounded-xl text-xs font-black text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 active:scale-95"
+                                                        title="Download Invoice PDF"
+                                                    >
+                                                        📄
+                                                    </button>
+                                                    {isDelivered && (
+                                                        <button
+                                                            onClick={() => handleRateOrder(order)}
+                                                            className="px-3 py-2 rounded-xl text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition-all border border-amber-200 dark:border-amber-800/60 flex items-center gap-1 active:scale-95"
+                                                        >
+                                                            <span>⭐</span> Rate
+                                                        </button>
+                                                    )}
+                                                    {isActiveOrder && (
+                                                        <button
+                                                            onClick={() => navigate(`/track/${order._id}`)}
+                                                            className="px-3 py-2 rounded-xl text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition-all border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1 animate-pulse active:scale-95"
+                                                        >
+                                                            <span>🛵</span> Track
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Primary Reorder CTA Button */}
+                                                <button
+                                                    onClick={() => handleReorder(order)}
+                                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 via-primary to-rose-600 hover:opacity-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-primary/25 active:scale-95 transition-all flex items-center gap-1.5"
+                                                >
+                                                    <span>🔁</span>
+                                                    <span>Reorder</span>
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
-
-                        {/* Modals moved to main return */}
                     </motion.div>
                 );
 
@@ -4193,21 +4298,64 @@ const UserProfile = () => {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full overflow-hidden">
-                <header className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex flex-col gap-2">
-                        <button
-                            onClick={() => { setIsMobileMain(true); setSearchParams({}); }}
-                            className="md:hidden flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            Back to Account
-                        </button>
-                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-1">{tabs.find(t => t.id === activeTab)?.label}</h1>
-                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium italic">Manage your {tabs.find(t => t.id === activeTab)?.label.toLowerCase()} settings and details properly.</p>
-                    </div>
+            <main className="flex-1 p-3.5 sm:p-6 md:p-10 max-w-7xl mx-auto w-full overflow-hidden pb-36 md:pb-12">
+                <header className="mb-4 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {activeTab === 'orders' ? (
+                        <div className="w-full">
+                            {/* Swiggy-style Mobile App Header */}
+                            <div className="md:hidden flex items-center justify-between pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => { setIsMobileMain(true); setSearchParams({}); }}
+                                        className="w-9 h-9 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200 active:scale-95"
+                                        aria-label="Back to account"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+                                    <div>
+                                        <h1 className="text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                                            <span>Past Orders</span>
+                                            {orders?.length > 0 && (
+                                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                                    {orders.length}
+                                                </span>
+                                            )}
+                                        </h1>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                            Track, reorder & invoices
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/home')}
+                                    className="text-xs font-black text-primary hover:underline px-2.5 py-1 rounded-xl bg-primary/5 border border-primary/15"
+                                >
+                                    Explore ➔
+                                </button>
+                            </div>
+                            {/* Desktop Header */}
+                            <div className="hidden md:flex flex-col gap-1">
+                                <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1">Order History</h1>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Manage past orders, real-time tracking, and receipts.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => { setIsMobileMain(true); setSearchParams({}); }}
+                                className="md:hidden flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                                </svg>
+                                Back to Account
+                            </button>
+                            <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-1">{tabs.find(t => t.id === activeTab)?.label}</h1>
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium italic">Manage your {tabs.find(t => t.id === activeTab)?.label.toLowerCase()} settings and details properly.</p>
+                        </div>
+                    )}
                     {/* Contextual Action Button (Optional Placeholder) */}
                     <div className="hidden md:block">
                         <span className="px-4 py-2 bg-white dark:bg-gray-800 rounded-full text-xs font-black shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-2 dark:text-gray-300">
