@@ -119,8 +119,21 @@ const BottomNav = () => {
                 className="pointer-events-auto glass-3d-dock rounded-[28px] px-2 py-1.5 flex justify-around items-center"
             >
                 {navItems.map((item, idx) => {
-                    const isActive = location.pathname === item.to.split('?')[0]
-                        || (item.to.includes('?tab=') && location.search === `?tab=${item.to.split('?tab=')[1]}`);
+                    const itemPath = item.to.split('?')[0];
+                    const itemTab = item.to.includes('?tab=') ? new URLSearchParams(item.to.split('?')[1]).get('tab') : null;
+                    const currentTab = new URLSearchParams(location.search).get('tab');
+
+                    let isActive = false;
+                    if (itemTab) {
+                        isActive = location.pathname === itemPath && currentTab === itemTab;
+                    } else {
+                        const hasActiveSiblingTab = navItems.some(otherItem => {
+                            if (!otherItem.to.includes('?tab=')) return false;
+                            const otherTab = new URLSearchParams(otherItem.to.split('?')[1]).get('tab');
+                            return otherTab === currentTab && otherItem.to.split('?')[0] === location.pathname;
+                        });
+                        isActive = location.pathname === itemPath && (!currentTab || !hasActiveSiblingTab);
+                    }
 
                     return (
                         <Link
