@@ -178,3 +178,4 @@ const RiderSafetyModal = ({ isOpen, onClose, orderId, riderInfo, trackingUrl }) 
 };
 
 export default RiderSafetyModal;
+

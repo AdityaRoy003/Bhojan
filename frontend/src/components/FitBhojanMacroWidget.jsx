@@ -69,3 +69,4 @@ const FitBhojanMacroWidget = ({ items, singleDish, compact = false }) => {
 };
 
 export default FitBhojanMacroWidget;
+

@@ -83,6 +83,13 @@ const UserProfile = () => {
 
     const [activeTab, setActiveTab] = useState(getInitialTab());
     const [isMobileMain, setIsMobileMain] = useState(!searchParams.get('tab'));
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -1053,7 +1060,6 @@ const UserProfile = () => {
 
 
     const handleReorder = async (order) => {
-        const { reorder } = await import('../../redux/cartSlice');
         const items = order.items.map(item => ({
             _id: item.item?._id || item.item || item._id,
             name: item.item?.name || item.name,
@@ -4090,7 +4096,7 @@ const UserProfile = () => {
         </motion.div>
     );
 
-    if (isMobileMain && window.innerWidth < 768) {
+    if (isMobileMain && isMobile) {
         return renderMobileAccount();
     }
 

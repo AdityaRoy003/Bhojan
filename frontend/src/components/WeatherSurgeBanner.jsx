@@ -61,3 +61,4 @@ const WeatherSurgeBanner = ({ onSurgeAmountChange }) => {
 };
 
 export default WeatherSurgeBanner;
+

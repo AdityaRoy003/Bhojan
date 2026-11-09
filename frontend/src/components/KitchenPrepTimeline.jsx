@@ -123,3 +123,4 @@ const KitchenPrepTimeline = ({ orderStatus = 'Preparing' }) => {
 };
 
 export default KitchenPrepTimeline;
+

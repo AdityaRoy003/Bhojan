@@ -77,3 +77,4 @@ export const calculateCartNutrition = (cartItems = []) => {
         { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
 };
+

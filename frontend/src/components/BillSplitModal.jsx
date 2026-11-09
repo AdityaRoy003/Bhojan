@@ -201,3 +201,4 @@ const BillSplitModal = ({ isOpen, onClose, members = [], totalAmount = 0, partyI
 };
 
 export default BillSplitModal;
+
