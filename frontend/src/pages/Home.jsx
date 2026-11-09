@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api, { getCachedData } from '../utils/api';
@@ -89,7 +90,26 @@ const Home = () => {
     const [filterMaxPrice, setFilterMaxPrice] = useState(1000);
     const [filterRating, setFilterRating] = useState(0);
     const [filterVeg, setFilterVeg] = useState(false);
+    const [sortBy, setSortBy] = useState('relevance');
     const [activeFestival, setActiveFestival] = useState(null);
+
+    // Prevent background scrolling when filter modal is open
+    useEffect(() => {
+        if (showFilters) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [showFilters]);
+
+    const activeFilterCount = (filterMinPrice > 0 ? 1 : 0) +
+        (filterMaxPrice < 1000 ? 1 : 0) +
+        (filterRating > 0 ? 1 : 0) +
+        (filterVeg ? 1 : 0) +
+        (sortBy !== 'relevance' ? 1 : 0);
 
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -205,19 +225,23 @@ const Home = () => {
         }
     }, [searchQuery, allShops]);
 
-    // Client-side Filter Logic
+    // Client-side Filter & Sort Logic
     const filteredShops = shops.filter(shop => {
         // Price Filter
-        if (shop.costForTwo && (shop.costForTwo < filterMinPrice || shop.costForTwo > filterMaxPrice)) return false;
+        if (shop.costForTwo && (shop.costForTwo < filterMinPrice || (filterMaxPrice < 2000 && shop.costForTwo > filterMaxPrice))) return false;
         // Rating Filter
         if (shop.rating && shop.rating < filterRating) return false;
         // Veg Filter
         if (filterVeg) {
-            // Check if shop is veg or has mostly veg items (simplified check)
-            // Assuming we check populated items if available, or just skip if no data
+            // Check if shop is veg or has mostly veg items
             if (shop.items && !shop.items.some(i => i.isVeg || i.foodType === 'Veg')) return false;
         }
         return true;
+    }).sort((a, b) => {
+        if (sortBy === 'rating_high') return (b.rating || 0) - (a.rating || 0);
+        if (sortBy === 'cost_low') return (a.costForTwo || 0) - (b.costForTwo || 0);
+        if (sortBy === 'cost_high') return (b.costForTwo || 0) - (a.costForTwo || 0);
+        return 0;
     });
 
     const fetchRecommendations = async () => {
@@ -305,6 +329,7 @@ const Home = () => {
         setFilterMaxPrice(1000);
         setFilterRating(0);
         setFilterVeg(false);
+        setSortBy('relevance');
     };
 
     return (
@@ -443,10 +468,13 @@ const Home = () => {
                                     onClick={() => setShowFilters(!showFilters)}
                                     className={`p-2.5 md:p-3 rounded-full transition-all flex items-center justify-center relative ${showFilters ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600'}`}
                                     title="Advanced Filters"
+                                    aria-label="Filter Search"
                                 >
                                     <span className={`text-lg md:text-xl transition-transform duration-500 ${showFilters ? 'rotate-180' : ''}`}>⚙️</span>
-                                    {(filterMinPrice > 0 || filterMaxPrice < 1000 || filterRating > 0 || filterVeg) && !showFilters && (
-                                        <span className="absolute top-0 right-0 w-2.5 h-2.5 md:w-3 md:h-3 bg-primary rounded-full border-2 border-white dark:border-gray-800"></span>
+                                    {activeFilterCount > 0 && !showFilters && (
+                                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-primary text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-sm animate-pulse">
+                                            {activeFilterCount}
+                                        </span>
                                     )}
                                 </button>
 
@@ -457,117 +485,304 @@ const Home = () => {
                                     <span className="md:hidden text-lg">🔍</span>
                                     <span className="hidden md:inline">Search</span>
                                 </button>
-
-                                {/* Filter Modal/Popover */}
-                                <AnimatePresence>
-                                    {showFilters && (
-                                        <>
-                                            {/* Mobile Backdrop Overlay */}
-                                            <div 
-                                                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180] md:hidden"
-                                                onClick={() => setShowFilters(false)}
-                                            />
-
-                                            <motion.div
-                                                initial={isMobile ? { y: '100%', opacity: 1 } : { opacity: 0, y: 20, scale: 0.95 }}
-                                                animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-                                                exit={isMobile ? { y: '100%', opacity: 1 } : { opacity: 0, y: 20, scale: 0.95 }}
-                                                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                                                className="fixed bottom-0 left-0 right-0 z-[190] rounded-t-[32px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] border-t border-gray-100 dark:border-gray-800 shadow-2xl text-left md:absolute md:top-full md:bottom-auto md:left-auto md:right-0 md:w-96 md:rounded-[32px] md:mt-6 md:p-8 md:z-[60] md:border md:shadow-3xl md:max-h-none md:overflow-visible transition-all"
-                                            >
-                                                {/* Top drag handle indicator for mobile bottom sheet */}
-                                                <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-6 md:hidden" />
-
-                                                <div className="flex justify-between items-center mb-6 md:mb-8">
-                                                    <div>
-                                                        <h3 className="text-lg md:text-xl font-black text-gray-900 dark:text-white">Refine Search</h3>
-                                                        <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Customize your results</p>
-                                                    </div>
-                                                    <button onClick={() => setShowFilters(false)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-primary transition-colors">✕</button>
-                                                </div>
-
-                                                <div className="space-y-6 md:space-y-8">
-                                                    <div>
-                                                        <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block">Price Range (₹{filterMinPrice} - ₹{filterMaxPrice})</label>
-                                                        <div className="flex gap-4">
-                                                            <input
-                                                                type="range" min="0" max="500" value={filterMinPrice}
-                                                                onChange={(e) => setFilterMinPrice(Number(e.target.value))}
-                                                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                                                            />
-                                                            <input
-                                                                type="range" min="500" max="2000" value={filterMaxPrice}
-                                                                onChange={(e) => setFilterMaxPrice(Number(e.target.value))}
-                                                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 block">Min Rating ({filterRating}+)</label>
-                                                        <div className="flex justify-between">
-                                                            {[0, 3, 3.5, 4, 4.5].map(r => (
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.1, translateY: -2 }}
-                                                                    whileTap={{ scale: 0.9 }}
-                                                                    key={r}
-                                                                    onClick={() => setFilterRating(r)}
-                                                                    className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl font-black flex items-center justify-center transition-all ${filterRating === r ? 'bg-primary text-white shadow-xl shadow-primary/30 dark:shadow-none scale-110 z-10' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                                                                >
-                                                                    {r === 0 ? 'All' : r}
-                                                                </motion.button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30 p-4 rounded-3xl border border-gray-100 dark:border-gray-800">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-lg">🥬</span>
-                                                            <span className="text-sm font-black text-gray-700 dark:text-gray-300">Vegetarian Only</span>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setFilterVeg(!filterVeg)}
-                                                            className={`w-14 h-8 rounded-full transition-all duration-300 flex items-center px-1 group ${filterVeg ? 'bg-green-500 shadow-lg shadow-green-200 dark:shadow-none' : 'bg-gray-300 dark:bg-gray-700'}`}
-                                                        >
-                                                            <motion.span
-                                                                animate={{ x: filterVeg ? 24 : 0 }}
-                                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                                                className="w-6 h-6 bg-white rounded-full shadow-md"
-                                                            ></motion.span>
-                                                        </button>
-                                                    </div>
-
-                                                    {/* Festival Mode inside filters */}
-                                                    <div className="flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30 p-4 rounded-3xl border border-gray-100 dark:border-gray-800">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-lg">🎉</span>
-                                                            <span className="text-sm font-black text-gray-700 dark:text-gray-300">Festival Mode</span>
-                                                        </div>
-                                                        <FestivalModeToggle onThemeChange={setActiveFestival} compact />
-                                                    </div>
-
-                                                    <div className="pt-6 flex gap-3 border-t border-gray-100 dark:border-gray-800">
-                                                        <button
-                                                            onClick={handleClearFilters}
-                                                            className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-800"
-                                                        >
-                                                            Clear All
-                                                        </button>
-                                                        <button
-                                                            onClick={() => { handleSearch(); setShowFilters(false); }}
-                                                            className="flex-[2] py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all"
-                                                        >
-                                                            Apply Filters
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        </>
-                                    )}
-                                </AnimatePresence>
                             </div>
                         </div>
                     </motion.div>
+
+                    {/* ── Refine Search Modal / Bottom Sheet (Teleported via Portal) ── */}
+                    {typeof document !== 'undefined' && createPortal(
+                        <AnimatePresence>
+                            {showFilters && (
+                                <div className="fixed inset-0 z-[99999] flex items-end md:items-center justify-center p-0 md:p-4">
+                                    {/* Mobile & Desktop Full-screen Backdrop Overlay */}
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="fixed inset-0 bg-black/75 backdrop-blur-md"
+                                        onClick={() => setShowFilters(false)}
+                                    />
+
+                                    {/* Modal / Bottom Sheet */}
+                                    <motion.div
+                                        initial={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
+                                        animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+                                        exit={isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
+                                        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                                        className="relative w-full md:max-w-xl bg-white dark:bg-gray-900 rounded-t-[36px] md:rounded-[36px] shadow-[0_-12px_45px_rgba(0,0,0,0.5)] md:shadow-3xl border border-gray-100 dark:border-gray-800 z-10 max-h-[88vh] flex flex-col overflow-hidden text-left"
+                                    >
+                                        {/* Top drag handle indicator for mobile bottom sheet */}
+                                        <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mt-3.5 mb-1.5 md:hidden" />
+
+                                        {/* Modal Header */}
+                                        <div className="flex justify-between items-center px-6 pt-3 pb-4 md:p-6 border-b border-gray-100 dark:border-gray-800/80">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xl">⚙️</span>
+                                                    <h3 className="text-lg md:text-xl font-black text-gray-900 dark:text-white">Refine Search</h3>
+                                                    {activeFilterCount > 0 && (
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-primary/10 text-primary border border-primary/20">
+                                                            {activeFilterCount} Active
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">
+                                                    Customize your food taste, budget & rating
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowFilters(false)}
+                                                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-primary transition-all active:scale-95"
+                                                aria-label="Close filters"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+
+                                        {/* Scrollable Filter Content */}
+                                        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 overscroll-contain">
+                                            {/* ── 1. Sort Options ── */}
+                                            <div>
+                                                <label className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5 block">
+                                                    Sort By
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[
+                                                        { id: 'relevance', label: '⚡ Relevance', desc: 'Default recommended' },
+                                                        { id: 'rating_high', label: '⭐ Top Rated', desc: 'Highest star rating' },
+                                                        { id: 'cost_low', label: '💸 Budget Friendly', desc: 'Cost: Low to High' },
+                                                        { id: 'cost_high', label: '💎 Premium', desc: 'Cost: High to Low' },
+                                                    ].map((sortItem) => {
+                                                        const isSelected = sortBy === sortItem.id;
+                                                        return (
+                                                            <button
+                                                                key={sortItem.id}
+                                                                type="button"
+                                                                onClick={() => setSortBy(sortItem.id)}
+                                                                className={`p-3 rounded-2xl border text-left transition-all ${
+                                                                    isSelected
+                                                                        ? 'bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/30'
+                                                                        : 'bg-gray-50 dark:bg-gray-800/60 border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700'
+                                                                }`}
+                                                            >
+                                                                <p className="text-xs font-black">{sortItem.label}</p>
+                                                                <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 mt-0.5">{sortItem.desc}</p>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* ── 2. Price Range ── */}
+                                            <div>
+                                                <div className="flex justify-between items-center mb-2.5">
+                                                    <label className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                                                        Price Range for Two
+                                                    </label>
+                                                    <span className="text-xs font-black text-primary px-2.5 py-0.5 bg-primary/10 rounded-full border border-primary/20">
+                                                        ₹{filterMinPrice} - ₹{filterMaxPrice >= 2000 ? '2000+' : filterMaxPrice}
+                                                    </span>
+                                                </div>
+
+                                                {/* Quick Price Presets */}
+                                                <div className="flex gap-2 flex-wrap mb-4">
+                                                    {[
+                                                        { label: 'Any', min: 0, max: 2000 },
+                                                        { label: 'Under ₹250', min: 0, max: 250 },
+                                                        { label: '₹250 - ₹500', min: 250, max: 500 },
+                                                        { label: '₹500 - ₹1000', min: 500, max: 1000 },
+                                                        { label: '₹1000+', min: 1000, max: 2000 },
+                                                    ].map((preset, idx) => {
+                                                        const isMatch = filterMinPrice === preset.min && filterMaxPrice === preset.max;
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFilterMinPrice(preset.min);
+                                                                    setFilterMaxPrice(preset.max);
+                                                                }}
+                                                                className={`text-[10px] font-black px-3 py-1.5 rounded-xl border transition-all ${
+                                                                    isMatch
+                                                                        ? 'bg-primary text-white border-primary shadow-sm'
+                                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-transparent hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                                }`}
+                                                            >
+                                                                {preset.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                    <div>
+                                                        <div className="flex justify-between text-[10px] font-black text-gray-400 mb-1">
+                                                            <span>Min Cost</span>
+                                                            <span className="text-gray-900 dark:text-white">₹{filterMinPrice}</span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="1000"
+                                                            step="50"
+                                                            value={filterMinPrice}
+                                                            onChange={(e) => {
+                                                                const val = Number(e.target.value);
+                                                                setFilterMinPrice(Math.min(val, filterMaxPrice - 50));
+                                                            }}
+                                                            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between text-[10px] font-black text-gray-400 mb-1">
+                                                            <span>Max Cost</span>
+                                                            <span className="text-gray-900 dark:text-white">₹{filterMaxPrice}</span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="200"
+                                                            max="2000"
+                                                            step="50"
+                                                            value={filterMaxPrice}
+                                                            onChange={(e) => {
+                                                                const val = Number(e.target.value);
+                                                                setFilterMaxPrice(Math.max(val, filterMinPrice + 50));
+                                                            }}
+                                                            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* ── 3. Customer Rating ── */}
+                                            <div>
+                                                <div className="flex justify-between items-center mb-2.5">
+                                                    <label className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                                                        Customer Rating
+                                                    </label>
+                                                    {filterRating > 0 && (
+                                                        <span className="text-xs font-black text-amber-500">
+                                                            ★ {filterRating}+ stars
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-5 gap-2">
+                                                    {[
+                                                        { value: 0, label: 'All' },
+                                                        { value: 3.0, label: '★ 3.0+' },
+                                                        { value: 3.5, label: '★ 3.5+' },
+                                                        { value: 4.0, label: '★ 4.0+' },
+                                                        { value: 4.5, label: '★ 4.5+' },
+                                                    ].map((r) => {
+                                                        const isSelected = filterRating === r.value;
+                                                        return (
+                                                            <button
+                                                                key={r.value}
+                                                                type="button"
+                                                                onClick={() => setFilterRating(r.value)}
+                                                                className={`py-2.5 rounded-2xl font-black text-xs flex items-center justify-center transition-all ${
+                                                                    isSelected
+                                                                        ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 scale-105'
+                                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                                }`}
+                                                            >
+                                                                {r.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* ── 4. Dietary & Preferences ── */}
+                                            <div className="space-y-3">
+                                                <label className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">
+                                                    Food Preferences
+                                                </label>
+
+                                                {/* Veg Only Toggle Card */}
+                                                <div
+                                                    onClick={() => setFilterVeg(!filterVeg)}
+                                                    className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                                                        filterVeg
+                                                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
+                                                            : 'bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-300'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg">
+                                                            🥬
+                                                        </span>
+                                                        <div>
+                                                            <p className="text-xs font-black flex items-center gap-1.5">
+                                                                <span>Pure Vegetarian Only</span>
+                                                                {filterVeg && <span className="text-[9px] font-black bg-emerald-500 text-white px-1.5 py-0.2 rounded-md">ON</span>}
+                                                            </p>
+                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-0.5">
+                                                                Filter restaurants offering pure veg food
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`w-12 h-7 rounded-full transition-colors flex items-center px-1 ${
+                                                            filterVeg ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'
+                                                        }`}
+                                                    >
+                                                        <motion.div
+                                                            animate={{ x: filterVeg ? 20 : 0 }}
+                                                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                            className="w-5 h-5 bg-white rounded-full shadow-md"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Festival Mode Specials Card */}
+                                                <div className="flex items-center justify-between p-4 rounded-2xl border bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center text-lg">
+                                                            🎉
+                                                        </span>
+                                                        <div>
+                                                            <p className="text-xs font-black text-gray-700 dark:text-gray-300">Festival Mode Specials</p>
+                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-0.5">
+                                                                Unlock seasonal celebrations & deals
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <FestivalModeToggle onThemeChange={setActiveFestival} compact />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Modal Sticky Footer */}
+                                        <div className="p-4 md:p-5 border-t border-gray-100 dark:border-gray-800/80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={handleClearFilters}
+                                                className="flex-1 py-3.5 px-4 rounded-2xl text-[11px] font-black uppercase tracking-wider text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all border border-transparent active:scale-95"
+                                            >
+                                                Clear All
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handleSearch();
+                                                    setShowFilters(false);
+                                                }}
+                                                className="flex-[2] py-3.5 px-6 bg-gradient-to-r from-orange-600 via-primary to-rose-600 hover:opacity-95 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <span>Apply Filters</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">
+                                                    {filteredShops.length} Places
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>,
+                        document.body
+                    )}
 
                     {/* ── 3D AI Voice Assistant Banner on Mobile ── */}
                     <div className="md:hidden mt-4 max-w-2xl mx-auto px-1">
