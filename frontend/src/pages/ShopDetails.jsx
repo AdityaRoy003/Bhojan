@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../utils/api';
+import api, { getCachedData } from '../utils/api';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, replaceCart, updateQuantity, removeFromCart } from '../redux/cartSlice';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,9 +11,18 @@ import ItemCustomizationModal from '../components/ItemCustomizationModal';
 const ShopDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [shop, setShop] = useState(null);
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [shop, setShop] = useState(() => {
+        const cached = getCachedData(`/shop/${id}`);
+        return cached?.shop || null;
+    });
+    const [items, setItems] = useState(() => {
+        const cached = getCachedData(`/shop/${id}/items`);
+        return cached?.items || [];
+    });
+    const [loading, setLoading] = useState(() => {
+        const cached = getCachedData(`/shop/${id}`);
+        return !cached?.shop;
+    });
     const dispatch = useDispatch();
     const { isAuthenticated, user } = useSelector(state => state.user);
     const cart = useSelector(state => state.cart);
@@ -31,15 +40,20 @@ const ShopDetails = () => {
 
     useEffect(() => {
         const fetchShopDetails = async () => {
+            if (!shop && !getCachedData(`/shop/${id}`)) {
+                setLoading(true);
+            }
             try {
-                const shopRes = await api.get(`/shop/${id}`);
-                const itemsRes = await api.get(`/shop/${id}/items`);
-                if (shopRes.data.success) setShop(shopRes.data.shop);
-                if (itemsRes.data.success) setItems(itemsRes.data.items);
+                const [shopRes, itemsRes] = await Promise.all([
+                    api.get(`/shop/${id}`),
+                    api.get(`/shop/${id}/items`)
+                ]);
+                if (shopRes.data?.success) setShop(shopRes.data.shop);
+                if (itemsRes.data?.success) setItems(itemsRes.data.items);
 
                 if (isAuthenticated) {
                     const wishlistRes = await api.get('/user-actions/wishlist');
-                    if (wishlistRes.data.success) {
+                    if (wishlistRes.data?.success) {
                         setWishlist(wishlistRes.data.wishlist.map(item => item._id));
                     }
                 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import api from '../utils/api';
+import api, { getCachedData } from '../utils/api';
 import StatusTimeline from '../components/StatusTimeline';
 import ThreeDDeliveryCanvas from '../components/ThreeDDeliveryCanvas';
 import LiveTrackingMap from '../components/LiveTrackingMap';
@@ -39,10 +39,19 @@ const OrderTracking = () => {
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.user);
 
-    const [order, setOrder] = useState(null);
-    const [tracking, setTracking] = useState(null);
+    const [order, setOrder] = useState(() => {
+        const cached = getCachedData(`/tracking/${orderId}`) || getCachedData('/order/active');
+        return cached?.order || null;
+    });
+    const [tracking, setTracking] = useState(() => {
+        const cached = getCachedData(`/tracking/${orderId}`);
+        return cached?.tracking || null;
+    });
     const [eta, setEta] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        const cached = getCachedData(`/tracking/${orderId}`) || getCachedData('/order/active');
+        return !cached?.order;
+    });
     const [viewMode, setViewMode] = useState('map');
 
     // Live rider state
@@ -60,6 +69,9 @@ const OrderTracking = () => {
 
     // ── Fetch order + tracking data ────────────────────────────────────────
     const fetchTrackingDetails = useCallback(async () => {
+        if (!order && !getCachedData(`/tracking/${orderId}`)) {
+            setLoading(true);
+        }
         try {
             const { data } = await api.get(`/tracking/${orderId}`);
             if (data.success) {

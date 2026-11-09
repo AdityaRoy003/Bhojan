@@ -57,6 +57,8 @@ const shopSchema = new mongoose.Schema({
 
 // Performance Indexes
 shopSchema.index({ slug: 1 });
+shopSchema.index({ city: 1 });
+shopSchema.index({ city: 1, shopType: 1 });
 shopSchema.index({ location: '2dsphere' }); // Geospatial index
 shopSchema.index({ owner: 1 });
 shopSchema.index({ isLocal: 1, isFeatured: 1 }); // For filtering

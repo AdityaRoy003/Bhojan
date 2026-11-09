@@ -2,19 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import api from '../utils/api';
+import api, { getCachedData } from '../utils/api';
 import { toast } from 'react-toastify';
 
 const Notifications = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useSelector((state) => state.user);
-    const [notifications, setNotifications] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [notifications, setNotifications] = useState(() => {
+        const cached = getCachedData('/notifications/my');
+        return cached?.notifications || [];
+    });
+    const [loading, setLoading] = useState(() => {
+        const cached = getCachedData('/notifications/my');
+        return !cached?.notifications;
+    });
+    const [unreadCount, setUnreadCount] = useState(() => {
+        const cached = getCachedData('/notifications/my');
+        return cached?.notifications?.filter(n => !n.isRead).length || 0;
+    });
 
     const fetchNotifications = async () => {
-        try {
+        if (!notifications.length && !getCachedData('/notifications/my')) {
             setLoading(true);
+        }
+        try {
             const { data } = await api.get('/notifications/my?limit=100');
             if (data.success) {
                 setNotifications(data.notifications);

@@ -16,20 +16,23 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import MaintenancePage from './pages/MaintenancePage';
 
-// Lazy Load Pages
-const Landing = lazy(() => import('./pages/Landing'));
-const Home = lazy(() => import('./pages/Home'));
-const Login = lazy(() => import('./pages/Login'));
-const Signup = lazy(() => import('./pages/Signup'));
+// ── Core Pages: Eagerly Loaded for Instant 0ms Zero-Latency Navigation ──────
+import Landing from './pages/Landing';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ShopDetails from './pages/ShopDetails';
+import Cart from './pages/Cart';
+import UserProfile from './pages/user/UserProfile';
+import Checkout from './pages/Checkout';
+import OrderTracking from './pages/OrderTracking';
+import Notifications from './pages/Notifications';
+
+// ── Secondary / Management Pages: Lazy Loaded On Demand ────────────────────
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const ShopDetails = lazy(() => import('./pages/ShopDetails'));
-const Cart = lazy(() => import('./pages/Cart'));
-const UserProfile = lazy(() => import('./pages/user/UserProfile'));
 const OwnerDashboard = lazy(() => import('./pages/owner/OwnerDashboard'));
 const DeliveryDashboard = lazy(() => import('./pages/delivery/DeliveryDashboard'));
-const Checkout = lazy(() => import('./pages/Checkout'));
-const OrderTracking = lazy(() => import('./pages/OrderTracking'));
 const PrimeMembership = lazy(() => import('./pages/PrimeMembership'));
 const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
 const VirtualBrandManager = lazy(() => import('./pages/VirtualBrandManager'));
@@ -40,7 +43,6 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const PublicProfile = lazy(() => import('./pages/user/PublicProfile'));
 const GroupCartScreen = lazy(() => import('./pages/GroupCartScreen'));
 const HomeChefs = lazy(() => import('./pages/HomeChefs'));
-const Notifications = lazy(() => import('./pages/Notifications'));
 
 const CHROME_HIDDEN_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
 
@@ -60,7 +62,7 @@ function AppContent() {
   const idleTimerRef = useRef(null);
 
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [statusChecked, setStatusChecked] = useState(false); // avoid flash
+  const [statusChecked, setStatusChecked] = useState(true); // render immediately without initial blocking delay
 
   useEffect(() => {
     userRef.current = user;

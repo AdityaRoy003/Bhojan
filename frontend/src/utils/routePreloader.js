@@ -1,15 +1,12 @@
-// Dynamic route preloader for near-instant 0ms navigation transitions
-
+// Dynamic route preloader for secondary routes
 const routeLoaders = {
-    '/home': () => import('../pages/Home'),
-    '/cart': () => import('../pages/Cart'),
-    '/profile': () => import('../pages/user/UserProfile'),
-    '/notifications': () => import('../pages/Notifications'),
-    '/checkout': () => import('../pages/Checkout'),
-    '/login': () => import('../pages/Login'),
-    '/signup': () => import('../pages/Signup'),
     '/leaderboard': () => import('../pages/Leaderboard'),
     '/prime-membership': () => import('../pages/PrimeMembership'),
+    '/owner/dashboard': () => import('../pages/owner/OwnerDashboard'),
+    '/delivery/dashboard': () => import('../pages/delivery/DeliveryDashboard'),
+    '/terms': () => import('../pages/TermsOfService'),
+    '/privacy': () => import('../pages/PrivacyPolicy'),
+    '/home-chefs': () => import('../pages/HomeChefs'),
 };
 
 const preloadedSet = new Set();
@@ -29,12 +26,12 @@ export const preloadRoute = (to) => {
 };
 
 export const warmAllCoreRoutes = () => {
-    // Eagerly preload common customer routes into memory after initial paint
-    const warmTargets = ['/home', '/cart', '/profile', '/notifications', '/checkout'];
+    // Secondary routes pre-warmed after idle
+    const warmTargets = ['/leaderboard', '/prime-membership', '/home-chefs'];
     warmTargets.forEach((target, index) => {
         setTimeout(() => {
             preloadRoute(target);
-        }, 100 * (index + 1));
+        }, 300 * (index + 1));
     });
 };
 
