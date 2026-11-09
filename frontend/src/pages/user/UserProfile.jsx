@@ -93,6 +93,10 @@ const UserProfile = () => {
             } else {
                 setActiveTab(isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal');
             }
+            setIsMobileMain(false);
+        } else {
+            setActiveTab(isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal');
+            setIsMobileMain(true);
         }
     }, [searchParams, isAdmin, isOwner, isDelivery]);
     const [orders, setOrders] = useState(() => {
