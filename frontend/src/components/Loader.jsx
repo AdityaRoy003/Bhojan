@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 const Loader = () => {
     return (
-        <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center">
+        <div className="fixed inset-0 bg-white dark:bg-gray-950 z-[9999] flex flex-col items-center justify-center transition-colors">
             <motion.div
                 className="text-6xl mb-4"
                 animate={{
@@ -19,7 +19,7 @@ const Loader = () => {
                 🥘
             </motion.div>
             <motion.h2
-                className="text-2xl font-bold text-gray-800"
+                className="text-2xl font-bold text-gray-800 dark:text-gray-100"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
             >

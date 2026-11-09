@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { preloadRoute } from '../utils/routePreloader';
 
 // Pages where the bottom nav should NOT appear
 const HIDDEN_ON_ROUTES = ['/', '/login', '/signup', '/forgot-password', '/reset-password'];
@@ -139,6 +140,8 @@ const BottomNav = () => {
                         <Link
                             key={idx}
                             to={item.to}
+                            onMouseEnter={() => preloadRoute(item.to)}
+                            onTouchStart={() => preloadRoute(item.to)}
                             onClick={handleTap}
                             className="relative flex-1 flex flex-col items-center justify-center min-h-[50px] py-1 rounded-2xl transition-all duration-300"
                         >

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import api from '../utils/api';
+import api, { getCachedData } from '../utils/api';
+import { preloadRoute } from '../utils/routePreloader';
 import RecommendationCard from '../components/RecommendationCard';
 import StoryFeed from '../components/StoryFeed';
 import SpinTheWheel from '../components/SpinTheWheel';
@@ -40,18 +41,39 @@ const dietaryOptions = [
 
 const Home = () => {
     const navigate = useNavigate();
-    const [shops, setShops] = useState([]);
+    const [shops, setShops] = useState(() => {
+        const cached = getCachedData('/shop/all');
+        return cached?.shops || [];
+    });
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => {
+        const cached = getCachedData('/shop/all');
+        return !cached?.shops || cached.shops.length === 0;
+    });
     const [selectedDietaryTags, setSelectedDietaryTags] = useState([]);
-    const [personalizedRecs, setPersonalizedRecs] = useState([]);
-    const [trendingItems, setTrendingItems] = useState([]);
-    const [timeBasedSuggestions, setTimeBasedSuggestions] = useState([]);
-    const [mealTime, setMealTime] = useState('');
+    const [personalizedRecs, setPersonalizedRecs] = useState(() => {
+        const cached = getCachedData('/recommendations/personalized');
+        return cached?.recommendations || [];
+    });
+    const [trendingItems, setTrendingItems] = useState(() => {
+        const cached = getCachedData('/recommendations/trending');
+        return cached?.items || [];
+    });
+    const [timeBasedSuggestions, setTimeBasedSuggestions] = useState(() => {
+        const cached = getCachedData('/recommendations/time-based');
+        return cached?.items || [];
+    });
+    const [mealTime, setMealTime] = useState(() => {
+        const cached = getCachedData('/recommendations/time-based');
+        return cached?.mealTime || '';
+    });
     const { city } = useSelector((state) => state.location);
     const { isAuthenticated, user } = useSelector((state) => state.user);
     const [showSpinWheel, setShowSpinWheel] = useState(false);
-    const [activeOrder, setActiveOrder] = useState(null);
+    const [activeOrder, setActiveOrder] = useState(() => {
+        const cached = getCachedData('/order/active');
+        return cached?.order || null;
+    });
     const [allShops, setAllShops] = useState([]);
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -135,7 +157,9 @@ const Home = () => {
     }, [isAuthenticated, user, navigate]);
 
     const fetchShops = async (query = '') => {
-        setLoading(true);
+        if (!shops.length && !getCachedData('/shop/all')) {
+            setLoading(true);
+        }
         try {
             let endpoint = '/shop/all';
             const params = new URLSearchParams();

@@ -6,6 +6,8 @@ import api from './utils/api';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Loader from './components/Loader';
+import RouteTopBar from './components/RouteTopBar';
+import { warmAllCoreRoutes } from './utils/routePreloader';
 import CookieConsent from './components/CookieConsent';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
@@ -87,24 +89,9 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  // ── Background Idle Preloading for Zero-Latency Navigation ─────────────────
+  // ── Background Eager Preloading for Zero-Latency Navigation ─────────────────
   useEffect(() => {
-    const idleFn = window.requestIdleCallback || ((cb) => setTimeout(cb, 600));
-    const handle = idleFn(() => {
-      // Preload critical customer routes into browser module cache
-      import('./pages/Home');
-      import('./pages/ShopDetails');
-      import('./pages/Cart');
-      import('./pages/Checkout');
-      import('./pages/user/UserProfile');
-      import('./pages/Notifications');
-    });
-
-    return () => {
-      if (window.cancelIdleCallback && typeof handle === 'number') {
-        window.cancelIdleCallback(handle);
-      }
-    };
+    warmAllCoreRoutes();
   }, []);
 
   // ── Admin Idle Session Timeout ────────────────────────────────────────────
@@ -234,7 +221,7 @@ function AppContent() {
       {!hideChrome && <Navbar />}
       <CookieConsent />
       <main className="page-content">
-      <Suspense fallback={<Loader />}>
+      <Suspense fallback={<RouteTopBar />}>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/home" element={<Home />} />

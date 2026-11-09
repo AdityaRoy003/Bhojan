@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import socket from '../utils/socket';
 import { toast } from 'react-toastify';
+import { preloadRoute } from '../utils/routePreloader';
 
 const Navbar = () => {
     const [showLocationModal, setShowLocationModal] = useState(false);
@@ -321,7 +322,7 @@ const Navbar = () => {
                 {/* MOBILE TOP BAR: Logo | Location (flex-1) | Dark Mode | Notif | Profile */}
                 <div className="md:hidden flex items-center h-14 gap-2.5">
                     {/* Logo */}
-                    <Link to="/home" className="font-bold text-primary flex items-center gap-1.5 shrink-0 group">
+                    <Link to="/home" onMouseEnter={() => preloadRoute('/home')} onTouchStart={() => preloadRoute('/home')} className="font-bold text-primary flex items-center gap-1.5 shrink-0 group">
                         <motion.img 
                             whileHover={{ rotate: 12, scale: 1.08 }} 
                             whileTap={{ scale: 0.95 }}
@@ -361,7 +362,7 @@ const Navbar = () => {
                         </motion.button>
 
                         {isAuthenticated && (
-                            <Link to="/notifications" className="relative w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+                            <Link to="/notifications" onMouseEnter={() => preloadRoute('/notifications')} onTouchStart={() => preloadRoute('/notifications')} className="relative w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
                                 <span className="text-sm">🔔</span>
                                 {unreadCount > 0 && (
                                     <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm animate-pulse"></span>
@@ -371,6 +372,8 @@ const Navbar = () => {
                         {isAuthenticated ? (
                             <motion.div
                                 whileTap={{ scale: 0.92 }}
+                                onMouseEnter={() => preloadRoute('/profile')}
+                                onTouchStart={() => preloadRoute('/profile')}
                                 className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-orange-500 to-rose-500 p-[1.5px] cursor-pointer shrink-0 shadow-sm"
                                 onClick={() => navigate('/profile')}
                             >
@@ -457,7 +460,7 @@ const Navbar = () => {
 
                         {(!isAuthenticated || user?.role === 'Customer') && (
                             <>
-                                <Link to="/cart" className="relative text-gray-700 dark:text-gray-200 hover:text-primary transition-colors py-2 px-1 hidden md:block">
+                                <Link to="/cart" onMouseEnter={() => preloadRoute('/cart')} onTouchStart={() => preloadRoute('/cart')} className="relative text-gray-700 dark:text-gray-200 hover:text-primary transition-colors py-2 px-1 hidden md:block">
                                     <span className="text-xl md:text-2xl">🛒</span>
                                     {cartItems.length > 0 && (
                                         <span className="absolute top-1 -right-1 md:-right-2 bg-primary text-white text-[8px] md:text-[10px] font-black w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center shadow-sm">

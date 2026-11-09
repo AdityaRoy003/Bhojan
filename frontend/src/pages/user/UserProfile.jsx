@@ -2,14 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import api from '../../utils/api';
+import api, { getCachedData } from '../../utils/api';
 import OfflineStatus from '../../components/OfflineStatus';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import ReviewModal from '../../components/ReviewModal';
 import OrderDetailsModal from '../../components/OrderDetailsModal';
-import FoodQuests from '../../components/FoodQuests';
-import MealPlanner from '../../components/MealPlanner';
+const FoodQuests = React.lazy(() => import('../../components/FoodQuests'));
+const MealPlanner = React.lazy(() => import('../../components/MealPlanner'));
 import { toast } from 'react-toastify';
 import { updateUser, logoutUser } from '../../redux/userSlice';
 import { addToCart, reorder } from '../../redux/cartSlice';
@@ -97,12 +95,27 @@ const UserProfile = () => {
             }
         }
     }, [searchParams, isAdmin, isOwner, isDelivery]);
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [orders, setOrders] = useState(() => {
+        const cached = getCachedData('/order/my');
+        return cached?.orders || [];
+    });
+    const [loading, setLoading] = useState(() => {
+        const cached = getCachedData('/order/my');
+        return !cached?.orders || cached.orders.length === 0;
+    });
     const [updating, setUpdating] = useState(false);
-    const [insights, setInsights] = useState(null);
-    const [wishlistItems, setWishlistItems] = useState([]);
-    const [transactions, setTransactions] = useState([]);
+    const [insights, setInsights] = useState(() => {
+        const cached = getCachedData('/order/insights');
+        return cached?.insights || null;
+    });
+    const [wishlistItems, setWishlistItems] = useState(() => {
+        const cached = getCachedData('/user-actions/wishlist');
+        return cached?.wishlist || [];
+    });
+    const [transactions, setTransactions] = useState(() => {
+        const cached = getCachedData('/user-actions/wallet/transactions');
+        return cached?.transactions || [];
+    });
     const [shop, setShop] = useState(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
@@ -250,6 +263,7 @@ const UserProfile = () => {
         setIsMobileMain(false);
     };
 
+    const userId = user?._id;
     useEffect(() => {
         if (!isAuthenticated) navigate('/login');
         if (isAuthenticated) {
@@ -271,7 +285,7 @@ const UserProfile = () => {
             }
             fetchInitialData();
         }
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, userId]);
 
     useEffect(() => {
         let watchId;
@@ -375,6 +389,11 @@ const UserProfile = () => {
 
     const fetchInitialData = async () => {
         try {
+            const hasCachedOrders = orders.length > 0 || getCachedData('/order/my');
+            if (!hasCachedOrders) {
+                setLoading(true);
+            }
+
             if (isAdmin) {
                 const results = await Promise.allSettled([
                     api.get('/admin/stats'),
@@ -457,19 +476,25 @@ const UserProfile = () => {
                 }
             }
 
-            // Always fetch customer specific data (Orders, Insights, etc.) for everyone
-            // This allows Owners/Admins to also see their personal history as a customer
-            const endpoints = [
-                { path: '/order/my', setter: (d) => setOrders(d.orders || []) },
+            // Always fetch customer specific data with priority on /order/my
+            try {
+                const { data } = await api.get('/order/my');
+                if (data?.success) setOrders(data.orders || []);
+            } catch (err) {
+                console.error("Failed to fetch /order/my:", err);
+            }
+
+            // Fetch secondary data without blocking order display
+            const secondaryEndpoints = [
                 { path: '/order/insights', setter: (d) => setInsights(prev => ({ ...prev, ...d.insights })) },
                 { path: '/user-actions/wishlist', setter: (d) => setWishlistItems(d.wishlist || []) },
                 { path: '/user-actions/wallet/transactions', setter: (d) => setTransactions(d.transactions || []) }
             ];
 
-            await Promise.allSettled(endpoints.map(async (ep) => {
+            Promise.allSettled(secondaryEndpoints.map(async (ep) => {
                 try {
                     const { data } = await api.get(ep.path);
-                    if (data.success) ep.setter(data);
+                    if (data?.success) ep.setter(data);
                 } catch (err) {
                     console.error(`Failed to fetch ${ep.path}:`, err);
                 }
@@ -1039,8 +1064,11 @@ const UserProfile = () => {
         navigate('/cart');
     };
 
-    const handleDownloadInvoice = (order) => {
+    const handleDownloadInvoice = async (order) => {
         try {
+            const { jsPDF } = await import('jspdf');
+            const autoTableModule = await import('jspdf-autotable');
+            const autoTable = autoTableModule.default || autoTableModule;
             const doc = new jsPDF();
 
             // Header
@@ -1334,10 +1362,22 @@ const UserProfile = () => {
                 return renderDeliveryEarnings();
 
             case 'quests':
-                return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><FoodQuests /></motion.div>;
+                return (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <React.Suspense fallback={<div className="p-8 text-center text-sm font-bold text-gray-400 animate-pulse">Loading Quests...</div>}>
+                            <FoodQuests />
+                        </React.Suspense>
+                    </motion.div>
+                );
 
             case 'meal-planner':
-                return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><MealPlanner /></motion.div>;
+                return (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <React.Suspense fallback={<div className="p-8 text-center text-sm font-bold text-gray-400 animate-pulse">Loading Meal Planner...</div>}>
+                            <MealPlanner />
+                        </React.Suspense>
+                    </motion.div>
+                );
 
             case 'personal':
             case 'owner-personal':

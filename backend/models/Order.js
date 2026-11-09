@@ -130,6 +130,8 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Performance Indexes
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ shop: 1, createdAt: -1 });
 orderSchema.index({ user: 1 });
 orderSchema.index({ shop: 1 });
 orderSchema.index({ orderStatus: 1 });

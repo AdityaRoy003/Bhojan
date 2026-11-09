@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Fast In-Memory Cache for Client-Side Zero-Latency SWR Experience
 const clientCache = new Map();
-const CACHE_TTL_MS = 30 * 1000; // 30 seconds fresh window
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds fresh window
 
 // Base URL: uses relative '/api' so Vite proxy handles it locally without CORS preflight delay
 const api = axios.create({
@@ -18,6 +18,30 @@ const getCacheKey = (config) => {
     const url = config.url || '';
     const params = config.params ? JSON.stringify(config.params) : '';
     return `${config.method || 'get'}:${url}:${params}`;
+};
+
+// Direct synchronous cache accessor for instant initial useState values
+export const getCachedData = (url, params = null) => {
+    const paramsStr = params ? JSON.stringify(params) : '';
+    const key = `get:${url}:${paramsStr}`;
+    const cached = clientCache.get(key);
+    if (cached) {
+        // Return cached data if within 5 minutes grace period
+        if (Date.now() - cached.timestamp < 5 * 60 * 1000) {
+            return cached.data;
+        }
+    }
+    return null;
+};
+
+export const setCachedData = (url, data, params = null) => {
+    const paramsStr = params ? JSON.stringify(params) : '';
+    const key = `get:${url}:${paramsStr}`;
+    clientCache.set(key, {
+        data,
+        headers: {},
+        timestamp: Date.now()
+    });
 };
 
 // Request Interceptor: return cached response immediately for GET requests if fresh
@@ -85,5 +109,7 @@ api.interceptors.response.use(
 
 // Method to manually clear or bust cache if needed
 api.clearCache = () => clientCache.clear();
+api.getCached = getCachedData;
+api.setCached = setCachedData;
 
 export default api;
