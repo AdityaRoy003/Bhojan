@@ -283,11 +283,36 @@ const UserProfile = () => {
 
     const tabs = isAdmin ? adminTabs : isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
 
+    const scrollToTopInstant = () => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        const mainContent = document.querySelector('main.page-content');
+        if (mainContent) mainContent.scrollTop = 0;
+        requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            if (mainContent) mainContent.scrollTop = 0;
+        });
+    };
+
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         setSearchParams({ tab: tabId });
         setIsMobileMain(false);
+        scrollToTopInstant();
     };
+
+    const handleBackToAccount = () => {
+        setIsMobileMain(true);
+        setSearchParams({});
+        scrollToTopInstant();
+    };
+
+    useEffect(() => {
+        scrollToTopInstant();
+    }, [activeTab, isMobileMain]);
 
     const userId = user?._id;
     useEffect(() => {
@@ -4670,7 +4695,7 @@ const UserProfile = () => {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 p-3.5 sm:p-6 md:p-10 max-w-7xl mx-auto w-full overflow-hidden pb-36 md:pb-12">
+            <main className="flex-1 p-3.5 sm:p-6 md:p-10 max-w-7xl mx-auto w-full overflow-x-hidden pb-36 md:pb-12">
                 <header className="mb-4 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     {activeTab === 'orders' ? (
                         <div className="w-full">
@@ -4678,7 +4703,7 @@ const UserProfile = () => {
                             <div className="md:hidden flex items-center justify-between pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
                                 <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => { setIsMobileMain(true); setSearchParams({}); }}
+                                        onClick={handleBackToAccount}
                                         className="w-9 h-9 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200 active:scale-95"
                                         aria-label="Back to account"
                                     >
@@ -4716,7 +4741,7 @@ const UserProfile = () => {
                     ) : (
                         <div className="flex flex-col gap-2">
                             <button
-                                onClick={() => { setIsMobileMain(true); setSearchParams({}); }}
+                                onClick={handleBackToAccount}
                                 className="md:hidden flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
