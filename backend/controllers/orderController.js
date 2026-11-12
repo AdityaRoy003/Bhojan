@@ -113,7 +113,7 @@ exports.placeOrder = async (req, res) => {
         // Handle Point Redemption
         if (redeemPoints && user.loyaltyPoints > 0) {
             // max redemption: 10% of total amount or available points, whichever is lower
-            // Conversion: 10 points = ₹1
+            // Conversion: 10 points = â‚¹1
             const maxDiscount = Math.floor(totalAmount * 0.1); // Max 10% discount
             const maxPointsRedeemable = maxDiscount * 10;
 
@@ -126,7 +126,7 @@ exports.placeOrder = async (req, res) => {
             user.loyaltyPoints -= pointsRedeemed;
         }
 
-        // Calculate Points Earned (1 point per ₹10 spent)
+        // Calculate Points Earned (1 point per â‚¹10 spent)
         const pointsEarned = Math.floor(finalAmount / 10);
         user.loyaltyPoints += pointsEarned;
 
@@ -137,7 +137,7 @@ exports.placeOrder = async (req, res) => {
         if (user.milestones.totalOrders === 1) {
             user.badges.push({
                 name: 'First Bite',
-                icon: '🍔',
+                icon: 'ðŸ”',
                 description: 'Completed your first order!',
                 earnedAt: new Date()
             });
@@ -147,7 +147,7 @@ exports.placeOrder = async (req, res) => {
         if (user.milestones.totalOrders === 5) {
             user.badges.push({
                 name: 'Foodie',
-                icon: '👑',
+                icon: 'ðŸ‘‘',
                 description: 'Placed 5 orders. You love food!',
                 earnedAt: new Date()
             });
@@ -227,7 +227,7 @@ exports.placeOrder = async (req, res) => {
         // Notify Customer
         await sendNotification(
             req.user.id,
-            '🛒 Order Placed!',
+            'ðŸ›’ Order Placed!',
             `Your order #${newOrder._id.toString().slice(-6).toUpperCase()} has been placed successfully.`,
             'order'
         );
@@ -236,7 +236,7 @@ exports.placeOrder = async (req, res) => {
         if (shop && shop.owner) {
             await sendNotification(
                 shop.owner,
-                '🍳 New Order Received!',
+                'ðŸ³ New Order Received!',
                 `You have received a new order #${newOrder._id.toString().slice(-6).toUpperCase()} from ${user.fullname}.`,
                 'order'
             );
@@ -258,22 +258,8 @@ exports.placeOrder = async (req, res) => {
         // Notify Shop owner via Socket
         req.io.to(`shop_${shopId}`).emit('new_order', newOrder);
 
-        // Send Confirmation Email & SMS
-        try {
-            await sendEmail({
-                email: user.email,
-                subject: `Bhojan: Order Confirmation #${newOrder._id.toString().slice(-6).toUpperCase()}`,
-                message: `Hi ${user.fullname}, your order has been placed!`,
-                html: emailTemplates.orderConfirmation({ ...newOrder.toObject(), user })
-            });
-
-            await sendSMS({
-                mobile: user.mobile,
-                message: `Bhojan: Your order #${newOrder._id.toString().slice(-6).toUpperCase()} is placed! Total: ₹${newOrder.totalAmount}. Track it on our app.`
-            });
-        } catch (mailErr) {
-            console.error('Initial Notification Error:', mailErr.message);
-        }
+        // Note: In-app notification already recorded and emitted via sendNotification above.
+        // Confirmation email is sent ONLY after successful delivery of items.
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -354,23 +340,23 @@ exports.updateOrderStatus = async (req, res) => {
 
         // Save database notification and emit in real-time
         const { sendNotification } = require('../utils/notificationHelper');
-        let title = '📦 Order Update';
+        let title = 'ðŸ“¦ Order Update';
         let message = `Your order #${order._id.toString().slice(-6).toUpperCase()} status is now: ${status}`;
 
         if (status === 'Preparing') {
-            title = '🍳 Order Accepted';
+            title = 'ðŸ³ Order Accepted';
             message = `The kitchen has started preparing your order from ${shop.name}!`;
         } else if (status === 'Ready') {
-            title = '🍲 Order Ready';
+            title = 'ðŸ² Order Ready';
             message = `Your order from ${shop.name} is ready for pickup!`;
         } else if (status === 'OutForDelivery' || status === 'Out for Delivery') {
-            title = '🛵 Out for Delivery';
+            title = 'ðŸ›µ Out for Delivery';
             message = `Your order from ${shop.name} is out for delivery!`;
         } else if (status === 'Delivered') {
-            title = '🍽️ Order Delivered';
+            title = 'ðŸ½ï¸ Order Delivered';
             message = `Your order from ${shop.name} has been delivered. Enjoy your meal!`;
         } else if (status === 'Cancelled') {
-            title = '❌ Order Cancelled';
+            title = 'âŒ Order Cancelled';
             message = `Your order from ${shop.name} has been cancelled.`;
         }
 
@@ -417,28 +403,39 @@ exports.updateOrderStatus = async (req, res) => {
             }
         }
 
-        // Send Status Update Notifications
-        try {
-            const User = require('../models/User');
-            const customer = await User.findById(order.user);
+        // Customer Notification Handling:
+        // As requested: Other statuses (Placed, Preparing, Ready, OutForDelivery, Cancelled) are notified
+        // strictly via in-app notifications & socket events (already saved and emitted above).
+        // The confirmation email with all items and invoice details is sent ONLY upon successful delivery!
+        if (status === 'Delivered') {
+            try {
+                const User = require('../models/User');
+                const customer = await User.findById(order.user);
 
-            if (customer) {
-                await sendEmail({
-                    email: customer.email,
-                    subject: `Bhojan: Order ${status} #${order._id.toString().slice(-6).toUpperCase()}`,
-                    message: `Your order is now ${status}.`,
-                    html: emailTemplates.statusUpdate(order, status)
-                });
+                if (customer && customer.email) {
+                    await order.populate('items.item', 'name price image');
+                    await order.populate('shop', 'name address city');
+                    await order.populate('deliveryPartner', 'fullname mobile');
 
-                if (['Preparing', 'OutForDelivery', 'Delivered'].includes(status)) {
-                    await sendSMS({
-                        mobile: customer.mobile,
-                        message: `Bhojan: Your order #${order._id.toString().slice(-6).toUpperCase()} is now ${status.toUpperCase()}!`
+                    await sendEmail({
+                        email: customer.email,
+                        subject: `Bhojan: Order Delivered & Receipt #${order._id.toString().slice(-6).toUpperCase()}`,
+                        message: `Hi ${customer.fullname}, your order has been delivered!`,
+                        html: emailTemplates.deliveryConfirmation
+                            ? emailTemplates.deliveryConfirmation({ ...order.toObject(), user: customer, shop })
+                            : emailTemplates.orderConfirmation({ ...order.toObject(), user: customer, shop })
                     });
+
+                    if (customer.mobile) {
+                        await sendSMS({
+                            mobile: customer.mobile,
+                            message: `Bhojan: Your order #${order._id.toString().slice(-6).toUpperCase()} from ${shop?.name || 'Bhojan'} has been DELIVERED! Enjoy your meal.`
+                        });
+                    }
                 }
+            } catch (notifErr) {
+                console.error('Delivery Confirmation Email Error:', notifErr.message);
             }
-        } catch (notifErr) {
-            console.error('Status Notification Error:', notifErr.message);
         }
 
         if (status === 'Delivered' && order.paymentMethod === 'COD') {
@@ -644,7 +641,7 @@ exports.getUserInsights = async (req, res) => {
 
 // --- Advanced Logistics Functions ---
 
-// 📍 Geofencing: Partner Arrived at Restaurant
+// ðŸ“ Geofencing: Partner Arrived at Restaurant
 exports.verifyArrival = async (req, res) => {
     try {
         const order = await Order.findById(req.params.id).populate('shop');
@@ -674,7 +671,7 @@ exports.verifyArrival = async (req, res) => {
     }
 };
 
-// 🧾 Proof of Delivery: Partner marking as Delivered
+// ðŸ§¾ Proof of Delivery: Partner marking as Delivered
 exports.verifyDelivery = async (req, res) => {
     try {
         const { otp, photoUrl, signatureUrl, lat, lng } = req.body;
@@ -716,7 +713,7 @@ exports.verifyDelivery = async (req, res) => {
     }
 };
 
-// 🧑⚖️ Dispute Resolution: Partner raising a dispute
+// ðŸ§‘âš–ï¸ Dispute Resolution: Partner raising a dispute
 exports.raiseDispute = async (req, res) => {
     try {
         const { orderId, type, description, evidence } = req.body;
@@ -733,7 +730,7 @@ exports.raiseDispute = async (req, res) => {
     }
 };
 
-// 📦 Smart Zone Management: Fetch zones
+// ðŸ“¦ Smart Zone Management: Fetch zones
 exports.getZones = async (req, res) => {
     try {
         const zones = await Zone.find({ isActive: true });

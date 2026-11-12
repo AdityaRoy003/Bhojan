@@ -269,6 +269,80 @@ const emailTemplates = {
         </html>
     `,
 
+    // Official Delivery Confirmation & Invoice Email (Sent only upon successful delivery)
+    deliveryConfirmation: (order) => `
+        <html>
+        <head>${emailStyles}</head>
+        <body>
+            <div class="email-container">
+                <div class="header-gradient">
+                    ${brandLogoSVG}
+                    <h1 class="floating-accent" style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">Bhojan</h1>
+                    <p style="color: #ffe4e4; font-size: 14px; margin-top: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Order Delivered Successfully ✅</p>
+                </div>
+                <div class="content-body">
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <span style="font-size: 48px;">🍽️</span>
+                        <h2 style="color: #1e293b; font-weight: 800; margin: 10px 0 5px 0; font-size: 24px;">Your Feast Has Arrived!</h2>
+                        <p style="color: #64748b; font-size: 14px; margin: 0;">Hi <b>${order.user?.fullname || 'Foodie'}</b>, your order has been delivered hot & fresh. Enjoy your meal!</p>
+                    </div>
+
+                    <div style="background: #f8fafc; padding: 22px; border-radius: 20px; border: 1px solid #e2e8f0; margin: 20px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px;">
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #94a3b8; letter-spacing: 0.5px;">Order ID</span>
+                                <p style="margin: 2px 0 0 0; font-weight: 800; color: #1e293b; font-size: 14px;">#${order._id.toString().slice(-6).toUpperCase()}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #94a3b8; letter-spacing: 0.5px;">Restaurant</span>
+                                <p style="margin: 2px 0 0 0; font-weight: 800; color: #1e293b; font-size: 14px;">${order.shop?.name || 'Partner Restaurant'}</p>
+                            </div>
+                        </div>
+
+                        <h3 style="margin: 15px 0 10px 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">Items Delivered</h3>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            ${(order.items || []).map(item => `
+                                <li style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+                                    <span style="color: #334155; font-weight: 600;">
+                                        ${item.name || item.item?.name || 'Delicious Dish'}
+                                        <span style="color: #94a3b8; font-weight: 500;"> × ${item.quantity}</span>
+                                    </span>
+                                    <span style="font-weight: 700; color: #1e293b;">₹${((item.price || 0) * (item.quantity || 1)).toFixed(0)}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+
+                        <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 15px 0;">
+                        
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px; display: flex; justify-content: space-between;">
+                            <span>Payment Method:</span>
+                            <span style="font-weight: 700; color: #334155;">${order.paymentMethod || 'Online'}</span>
+                        </div>
+
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                            <span>Delivery Address:</span>
+                            <span style="font-weight: 600; color: #334155; max-width: 60%; text-align: right;">${order.deliveryAddress || 'Saved Address'}</span>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 18px; color: #1e293b; padding-top: 10px; border-top: 1px dashed #cbd5e1;">
+                            <span>Total Paid:</span>
+                            <span style="color: ${BRAND_COLOR};">₹${order.totalAmount?.toFixed(0)}</span>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile?tab=orders" class="btn-pulse" style="display: inline-block; text-decoration: none; padding: 14px 28px; font-weight: 800; font-size: 14px; border-radius: 16px;">⭐ Rate Your Food in App</a>
+                    </div>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2026 Bhojan. All rights reserved.</p>
+                    <p style="margin-top: 5px; font-size: 10px; color: #94a3b8;">Need help with your order? Open the Bhojan app and visit Support.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `,
+
     // Redesigned Status Update Email
     statusUpdate: (order, status) => `
         <html>

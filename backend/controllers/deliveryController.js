@@ -130,6 +130,51 @@ exports.completeDelivery = async (req, res) => {
             }
         });
 
+        // Emit real-time status update to sockets
+        if (req.io) {
+            const statusPayload = {
+                orderId: order._id,
+                status: 'Delivered',
+                orderStatus: 'Delivered'
+            };
+            req.io.to(`order_${order._id}`).emit('status_update', statusPayload);
+            req.io.to(`track_${order._id}`).emit('status_update', statusPayload);
+            req.io.to(`user_${order.user}`).emit('status_update', statusPayload);
+        }
+
+        // Send in-app notification & delivery confirmation email with all order items
+        try {
+            const { sendNotification } = require('../utils/notificationHelper');
+            await sendNotification(
+                order.user,
+                '🍽️ Order Delivered!',
+                `Your order #${order._id.toString().slice(-6).toUpperCase()} has been delivered successfully. Enjoy your meal!`,
+                'order'
+            );
+
+            const customer = await User.findById(order.user);
+            const Shop = require('../models/Shop');
+            const shop = await Shop.findById(order.shop);
+            const sendEmail = require('../utils/sendEmail');
+            const emailTemplates = require('../utils/emailTemplates');
+
+            if (customer && customer.email) {
+                await order.populate('items.item', 'name price image');
+                await order.populate('deliveryPartner', 'fullname mobile');
+
+                await sendEmail({
+                    email: customer.email,
+                    subject: `Bhojan: Order Delivered & Receipt #${order._id.toString().slice(-6).toUpperCase()}`,
+                    message: `Hi ${customer.fullname}, your order has been delivered!`,
+                    html: emailTemplates.deliveryConfirmation
+                        ? emailTemplates.deliveryConfirmation({ ...order.toObject(), user: customer, shop })
+                        : emailTemplates.orderConfirmation({ ...order.toObject(), user: customer, shop })
+                });
+            }
+        } catch (notifErr) {
+            console.error('Delivery completion notification error:', notifErr.message);
+        }
+
         res.status(200).json({
             success: true,
             message: 'Delivery completed successfully',
