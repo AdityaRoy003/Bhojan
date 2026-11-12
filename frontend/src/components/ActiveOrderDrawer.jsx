@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-const ActiveOrderDrawer = ({ order }) => {
+const ActiveOrderDrawer = ({ order, hideFloating = true }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [timeLeft, setTimeLeft] = useState(35); // Initial ETA
     const navigate = useNavigate();
@@ -37,8 +37,8 @@ const ActiveOrderDrawer = ({ order }) => {
 
     return (
         <>
-            {/* Sticky Compact Card */}
-            {!isOpen && (
+            {/* Sticky Compact Card (Only shown when not placed inline) */}
+            {!isOpen && !hideFloating && (
                 <motion.div
                     initial={{ y: 100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}

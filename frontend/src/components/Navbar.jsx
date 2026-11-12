@@ -349,13 +349,13 @@ const Navbar = () => {
                         <span className="text-gray-400 text-[10px] ml-auto shrink-0">▾</span>
                     </motion.div>
 
-                    {/* Right: Dark Mode + Notif + Profile */}
+                    {/* Right: Notifications + Profile (Theme toggle moved into Profile menu for uncluttered mobile header) */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {/* 3D Dark Mode Quick Toggle */}
+                        {/* 3D Dark Mode Quick Toggle (Hidden on mobile to keep header clean; available in Profile menu) */}
                         <motion.button
                             whileTap={{ scale: 0.85, rotate: 180 }}
                             onClick={toggleDarkMode}
-                            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
+                            className="hidden md:flex w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center text-xs text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
                             title="Toggle Theme"
                         >
                             {darkMode ? '☀️' : '🌙'}
@@ -670,6 +670,18 @@ const Navbar = () => {
                                                     <Link to="/profile?tab=settings" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
                                                         <span>⚙️</span> Settings
                                                     </Link>
+                                                    <button
+                                                        type="button"
+                                                        onClick={toggleDarkMode}
+                                                        className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-between"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <span>{darkMode ? '☀️' : '🌙'}</span> Theme Mode
+                                                        </span>
+                                                        <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                                                            {darkMode ? 'Dark' : 'Light'}
+                                                        </span>
+                                                    </button>
                                                     <Link to="/profile?tab=support" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
                                                         <span>❓</span> Help & Support
                                                     </Link>

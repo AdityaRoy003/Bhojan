@@ -143,49 +143,52 @@ const BottomNav = () => {
                             onMouseEnter={() => preloadRoute(item.to)}
                             onTouchStart={() => preloadRoute(item.to)}
                             onClick={handleTap}
-                            className="relative flex-1 flex flex-col items-center justify-center min-h-[50px] py-1 rounded-2xl transition-all duration-300"
+                            className="relative flex-1 flex flex-col items-center justify-center min-h-[52px] py-1 rounded-2xl transition-all duration-300"
                         >
-                            <motion.span
-                                whileTap={{ scale: 0.75, y: -2 }}
-                                transition={{ type: 'spring', stiffness: 450, damping: 15 }}
-                                className={`text-xl transition-all duration-300 ${
-                                    isActive
-                                        ? 'scale-110 drop-shadow-[0_4px_8px_rgba(230,57,70,0.35)]'
-                                        : 'opacity-50 grayscale hover:opacity-80'
-                                }`}
-                            >
-                                {item.icon}
-                            </motion.span>
+                            {/* Icon with Orange Circular Glow (Uber Eats / CRED / Swiggy style) */}
+                            <div className="relative flex items-center justify-center">
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="bottomNavGlowOrb"
+                                        className="absolute -inset-1 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 blur-sm opacity-80"
+                                        transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+                                    />
+                                )}
+                                <motion.div
+                                    whileTap={{ scale: 0.75, y: -2 }}
+                                    transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                                    className={`relative flex items-center justify-center transition-all duration-300 ${
+                                        isActive
+                                            ? 'w-9 h-9 rounded-full bg-gradient-to-tr from-orange-500 via-amber-500 to-orange-400 text-white shadow-[0_4px_16px_rgba(249,115,22,0.6)] ring-2 ring-white/40 dark:ring-gray-900/40 text-lg'
+                                            : 'text-xl opacity-50 grayscale hover:opacity-80'
+                                    }`}
+                                >
+                                    {item.icon}
+                                </motion.div>
+                            </div>
 
                             <span
-                                className={`text-[8.5px] font-black uppercase tracking-wider transition-all duration-300 mt-0.5 ${
-                                    isActive ? `${roleColor} font-black` : 'text-gray-400 dark:text-gray-500'
+                                className={`text-[8.5px] font-black uppercase tracking-wider transition-all duration-300 mt-1 ${
+                                    isActive
+                                        ? 'text-orange-600 dark:text-orange-400 font-black drop-shadow-[0_1px_3px_rgba(249,115,22,0.4)]'
+                                        : 'text-gray-400 dark:text-gray-500'
                                 }`}
                             >
                                 {item.label}
                             </span>
 
-                            {/* 3D Active Illuminated Dot */}
-                            {isActive && (
-                                <motion.span
-                                    layoutId="bottomNavDot"
-                                    className="w-1 h-1 rounded-full bg-primary shadow-[0_0_6px_#e63946] mt-0.5"
-                                    transition={{ type: 'spring', stiffness: 350, damping: 26 }}
-                                />
-                            )}
-
                             {/* Badge Indicator */}
                             {item.badge > 0 && (
-                                <span className="absolute top-0.5 right-[22%] bg-gradient-to-r from-orange-500 to-rose-600 text-white text-[8px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-md animate-pulse">
+                                <span className="absolute top-0.5 right-[18%] bg-gradient-to-r from-orange-500 to-rose-600 text-white text-[8px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-md animate-pulse">
                                     {item.badge}
                                 </span>
                             )}
 
-                            {/* 3D Active Capsule Pill */}
+                            {/* CRED / Uber Eats style Active Ambient Glow Capsule */}
                             {isActive && (
                                 <motion.div
                                     layoutId="bottomNavActiveBg"
-                                    className="absolute inset-0 bg-primary/10 dark:bg-white/10 rounded-[22px] -z-10 border border-primary/20 dark:border-white/10 shadow-inner"
+                                    className="absolute inset-0 bg-gradient-to-t from-orange-500/15 via-orange-500/10 to-transparent dark:from-orange-500/25 dark:via-orange-500/15 rounded-[22px] -z-10 border border-orange-500/30 dark:border-orange-500/40 shadow-[0_0_20px_rgba(249,115,22,0.25)]"
                                     transition={{ type: 'spring', stiffness: 350, damping: 26 }}
                                 />
                             )}

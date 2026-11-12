@@ -4126,6 +4126,39 @@ const UserProfile = () => {
                         </button>
                     )}
                 </div>
+
+                {/* Quick Theme Toggle Card inside Profile */}
+                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-2xl border border-gray-100 dark:border-gray-700/80 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-gray-700 flex items-center justify-center text-sm shadow-xs">
+                            {typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '🌙' : '☀️'}
+                        </span>
+                        <div>
+                            <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">Theme Appearance</p>
+                            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                {typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'Dark Mode Active' : 'Light Mode Active'}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const isDark = document.documentElement.classList.contains('dark');
+                            if (isDark) {
+                                document.documentElement.classList.remove('dark');
+                                localStorage.setItem('theme', 'light');
+                            } else {
+                                document.documentElement.classList.add('dark');
+                                localStorage.setItem('theme', 'dark');
+                            }
+                            window.dispatchEvent(new Event('storage'));
+                            setPersonalData(prev => ({ ...prev }));
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-primary text-white shadow-sm active:scale-95 transition-all"
+                    >
+                        Switch 🌓
+                    </button>
+                </div>
             </div>
 
             {/* Account Sections */}
