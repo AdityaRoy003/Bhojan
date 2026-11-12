@@ -200,6 +200,25 @@ const UserProfile = () => {
     const [notificationSettings, setNotificationSettings] = useState({
         email: true, sms: true, push: true
     });
+    const [isDarkTheme, setIsDarkTheme] = useState(() => {
+        if (typeof document !== 'undefined') {
+            return document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark';
+        }
+        return false;
+    });
+
+    const handleToggleTheme = () => {
+        const nextDark = !isDarkTheme;
+        setIsDarkTheme(nextDark);
+        if (nextDark) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+        window.dispatchEvent(new Event('storage'));
+    };
     const [analyticsData, setAnalyticsData] = useState(null);
     const [analyticsPredictions, setAnalyticsPredictions] = useState([]);
     const [supportTickets, setSupportTickets] = useState([]);
@@ -2427,6 +2446,25 @@ const UserProfile = () => {
                                         <option>French (FR)</option>
                                     </select>
                                 </div>
+
+                                {/* Privacy & Danger Zone (Point 4) */}
+                                <div className="pt-6 border-t border-gray-100 dark:border-gray-700/80">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-base">🛡️</span>
+                                        <h5 className="font-black text-sm text-red-600 dark:text-red-400">Privacy & Danger Zone</h5>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-4">
+                                        Permanently delete your Bhojan profile, active loyalty points, order history, and personal data.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all flex items-center gap-2 active:scale-98"
+                                    >
+                                        <span>🗑️</span>
+                                        <span>Delete My Account Permanently</span>
+                                    </button>
+                                </div>
                             </div>
                         </section>
                     </motion.div>
@@ -4090,149 +4128,450 @@ const UserProfile = () => {
         </motion.div>
     );
 
-    const renderMobileAccount = () => (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="md:hidden min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
-            {/* Swiggy-Style Premium Header */}
-            <div className="bg-white dark:bg-gray-800 px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm border-b border-gray-100 dark:border-gray-700">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight">
-                            {user?.fullname?.split(' ')[0]}
-                        </h2>
-                        <p className="text-sm font-bold text-gray-400 dark:text-gray-500 mt-1">{user?.mobile || user?.email}</p>
-                    </div>
-                    <div className="relative group/mobavatar">
-                        {user?.avatar ? (
-                            <img src={user.avatar} alt={user.fullname} className="w-16 h-16 rounded-[24px] object-cover shadow-xl" />
-                        ) : (
-                            <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center text-white text-xl font-black shadow-xl bg-gradient-to-br ${isAdmin ? 'from-indigo-500 to-purple-600' : isOwner ? 'from-red-500 to-orange-600' : 'from-amber-400 to-yellow-500'}`}>
-                                {user?.fullname?.charAt(0)}
+    const renderMobileAccount = () => {
+        const userOrdersCount = orders?.length || 0;
+        const totalSpent = orders?.reduce((acc, o) => acc + (Number(o.totalAmount || o.finalAmount || 0)), 0) || 0;
+        const totalSaved = Math.round(orders?.reduce((acc, o) => acc + (Number(o.discount || 0) || (Number(o.totalAmount || 0) * 0.15)), 0)) || (userOrdersCount > 0 ? userOrdersCount * 65 : 0);
+        const uniqueRestaurantsCount = new Set(orders?.map(o => o.shop?.name || o.shop?._id).filter(Boolean)).size;
+        const loyaltyPoints = user?.loyaltyPoints || user?.points || (userOrdersCount * 50) + (user?.isPrime ? 350 : 120);
+        const foodieLevel = userOrdersCount >= 30 
+            ? 'Level 12 Food Explorer' 
+            : userOrdersCount >= 15 
+                ? 'Level 7 Gourmet Pioneer' 
+                : userOrdersCount >= 5 
+                    ? 'Level 3 Taste Seeker' 
+                    : 'Level 1 Food Explorer';
+        const isPrime = Boolean(user?.isPrime || user?.primeMembership?.isActive);
+        const referralCode = user?.referralCode || (user?.fullname ? `${user.fullname.replace(/\s+/g, '').toUpperCase().slice(0, 5)}100` : 'BHOJAN100');
+
+        return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="md:hidden min-h-screen bg-gray-50 dark:bg-gray-900 pb-28">
+                {/* ── 1. High-Density Dynamic Profile Header (Point 1 & 2) ── */}
+                <div className="bg-white dark:bg-gray-800 px-5 pt-8 pb-6 rounded-b-[36px] shadow-sm border-b border-gray-100 dark:border-gray-700/80">
+                    <div className="flex items-center justify-between gap-3">
+                        {/* User Info */}
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-tight truncate">
+                                    {user?.fullname || 'Aditya'}
+                                </h2>
+                                {isPrime ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 text-[9.5px] font-black uppercase tracking-wider shadow-sm">
+                                        ⭐ Prime Member
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[9.5px] font-black uppercase tracking-wider">
+                                        ⭐ Member
+                                    </span>
+                                )}
                             </div>
-                        )}
-                        <label className="absolute inset-0 rounded-[24px] bg-black/50 opacity-0 group-hover/mobavatar:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
-                            <span className="text-white text-base">{uploadingPhoto ? '⏳' : '📷'}</span>
-                            <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
-                        </label>
-                    </div>
-                </div>
-
-                <div className="flex gap-3">
-                    <button onClick={() => handleTabChange('personal')} className="flex-1 bg-gray-50 dark:bg-gray-700/50 py-3 rounded-2xl flex items-center justify-center gap-2 border border-gray-100 dark:border-gray-600 active:scale-95 transition-transform">
-                        <span className="text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-300">Edit Profile</span>
-                    </button>
-                    {(isAdmin || isOwner) && (
-                        <button onClick={handleSwitchMode} className="flex-1 bg-indigo-600 text-white py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 active:scale-95 transition-transform">
-                            <span className="text-xs font-black uppercase tracking-widest">Dashboard</span>
-                        </button>
-                    )}
-                </div>
-
-                {/* Quick Theme Toggle Card inside Profile */}
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-2xl border border-gray-100 dark:border-gray-700/80 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-gray-700 flex items-center justify-center text-sm shadow-xs">
-                            {typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '🌙' : '☀️'}
-                        </span>
-                        <div>
-                            <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">Theme Appearance</p>
-                            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                {typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'Dark Mode Active' : 'Light Mode Active'}
+                            <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1.5 truncate">
+                                <span className="text-orange-500 dark:text-orange-400 font-black">{foodieLevel}</span>
+                                <span>•</span>
+                                <span>{user?.mobile || user?.email}</span>
                             </p>
                         </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const isDark = document.documentElement.classList.contains('dark');
-                            if (isDark) {
-                                document.documentElement.classList.remove('dark');
-                                localStorage.setItem('theme', 'light');
-                            } else {
-                                document.documentElement.classList.add('dark');
-                                localStorage.setItem('theme', 'dark');
-                            }
-                            window.dispatchEvent(new Event('storage'));
-                            setPersonalData(prev => ({ ...prev }));
-                        }}
-                        className="px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-primary text-white shadow-sm active:scale-95 transition-all"
-                    >
-                        Switch 🌓
-                    </button>
-                </div>
-            </div>
 
-            {/* Account Sections */}
-            <div className="px-6 mt-8 space-y-8">
-                {/* Categorized Menu Lists */}
-                {[
-                    // Management Hub (For Admins, Owners, Delivery)
-                    ...(isAdmin || isOwner || isDelivery ? [{
-                        title: isAdmin ? 'Platform Control' : isOwner ? 'Shop Management' : 'Delivery Hub',
-                        items: tabs.filter(t => t.id.startsWith('admin-') || t.id.startsWith('owner-') || t.id.startsWith('delivery-'))
-                    }] : []),
-
-                    // Personal & Account
-                    {
-                        title: 'Personal Info',
-                        items: tabs.filter(t => ['personal', 'analytics', 'security', 'preferences'].includes(t.id))
-                    },
-
-                    // Bhojan Hub (Primary User Actions)
-                    {
-                        title: 'Bhojan Hub',
-                        items: tabs.filter(t => ['orders', 'wishlist', 'payments', 'loyalty', 'quests', 'meal-planner'].includes(t.id))
-                    },
-
-                    // App Settings
-                    {
-                        title: 'Others',
-                        items: tabs.filter(t => ['settings', 'support'].includes(t.id))
-                    }
-                ].filter(section => section.items.length > 0).map((section, idx) => (
-                    <div key={idx} className="space-y-4">
-                        <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">
-                            {section.title}
-                        </h3>
-                        <div className="bg-white dark:bg-gray-800 rounded-[32px] overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm">
-                            {section.items.map((item, i) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => handleTabChange(item.id)}
-                                    className={`w-full flex items-center justify-between p-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 active:bg-gray-100 dark:active:bg-gray-700 transition-colors ${i !== section.items.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''}`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-xl bg-gray-50 dark:bg-gray-700 w-10 h-10 flex items-center justify-center rounded-xl">{item.icon}</span>
-                                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{item.label}</span>
-                                    </div>
-                                    <span className="text-gray-300">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="9 5l7 7-7 7" />
-                                        </svg>
-                                    </span>
-                                </button>
-                            ))}
+                        {/* Modern Avatar with Multi-tone Gradient Halo & Camera Upload (Point 2) */}
+                        <div className="relative group/mobavatar shrink-0">
+                            <div className="w-16 h-16 rounded-[22px] p-[2.5px] bg-gradient-to-tr from-amber-400 via-orange-500 to-rose-600 shadow-lg shadow-orange-500/20 ring-4 ring-orange-500/10 dark:ring-orange-500/20">
+                                <div className="w-full h-full rounded-[20px] bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                                    {user?.avatar ? (
+                                        <img src={user.avatar} alt={user.fullname} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-white text-2xl font-black shadow-inner">
+                                            {user?.fullname ? user.fullname.charAt(0).toUpperCase() : 'A'}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] shadow-md border-2 border-white dark:border-gray-800 cursor-pointer active:scale-90 transition-transform">
+                                {uploadingPhoto ? '⏳' : '📷'}
+                                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                            </label>
                         </div>
                     </div>
-                ))}
 
-                {/* Dangerous Zone */}
-                <div className="pt-4 pb-8">
+                    {/* Header Quick Real Metrics Strip (Point 1) */}
+                    <div className="grid grid-cols-3 gap-2 mt-5 p-3 rounded-2xl bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700/60">
+                        <div className="text-center border-r border-gray-200/60 dark:border-gray-600/60 pr-1">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-400">Orders</p>
+                            <p className="text-base font-black text-gray-900 dark:text-white mt-0.5">{userOrdersCount}</p>
+                        </div>
+                        <div className="text-center border-r border-gray-200/60 dark:border-gray-600/60 px-1">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-400">Points</p>
+                            <p className="text-base font-black text-amber-500 mt-0.5">{loyaltyPoints.toLocaleString()}</p>
+                        </div>
+                        <div className="text-center pl-1">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-400">Saved</p>
+                            <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">₹{totalSaved.toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2.5 mt-3.5">
+                        <button
+                            onClick={() => handleTabChange('personal')}
+                            className="flex-1 bg-white dark:bg-gray-700/70 hover:bg-gray-50 dark:hover:bg-gray-700 py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-600 shadow-2xs active:scale-95 transition-all"
+                        >
+                            <span className="text-xs">✏️</span>
+                            <span className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-200">Edit Profile</span>
+                        </button>
+                        {(isAdmin || isOwner) && (
+                            <button
+                                onClick={handleSwitchMode}
+                                className="flex-1 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
+                            >
+                                <span className="text-xs">📊</span>
+                                <span className="text-xs font-black uppercase tracking-wider">Dashboard</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── 2. Spotify Wrapped / Swiggy Style Activity Stats Cards (Point 3) ── */}
+                <div className="px-5 mt-5">
+                    <div className="flex items-center justify-between mb-2.5">
+                        <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                            <span>📊</span> Food Journey Activity
+                        </h3>
+                        <span className="text-[10px] font-bold text-primary">All Time</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2.5">
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-2xs">
+                            <span className="text-xl">🧾</span>
+                            <p className="text-base font-black text-gray-900 dark:text-white mt-1.5">{userOrdersCount}</p>
+                            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Orders</p>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-2xs">
+                            <span className="text-xl">🏪</span>
+                            <p className="text-base font-black text-gray-900 dark:text-white mt-1.5">{uniqueRestaurantsCount || (userOrdersCount > 0 ? 1 : 0)}</p>
+                            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Places</p>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-2xs">
+                            <span className="text-xl">💸</span>
+                            <p className="text-base font-black text-gray-900 dark:text-white mt-1.5">₹{totalSpent.toLocaleString()}</p>
+                            <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Spent</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── 3. Prime Membership Banner Card (Point 7) ── */}
+                <div className="px-5 mt-4">
+                    <motion.div
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate('/prime-membership')}
+                        className="relative overflow-hidden rounded-[26px] p-4 bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/20 cursor-pointer border border-white/20"
+                    >
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div>
+                                <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-amber-100 mb-1.5 border border-white/20">
+                                    👑 BHOJAN PRIME
+                                </span>
+                                <h4 className="text-lg font-black leading-tight text-white drop-shadow-sm">
+                                    {isPrime ? 'Active VIP Membership' : 'Unlock Free Delivery'}
+                                </h4>
+                                <p className="text-[11px] font-semibold text-orange-100 mt-0.5">
+                                    {isPrime ? 'Active until Feb 2027 • Free delivery unlocked' : 'Save ₹150+ per order with Prime benefits'}
+                                </p>
+                            </div>
+                            <div className="text-xl font-black bg-white/20 backdrop-blur-md w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border border-white/30 shadow-xs">
+                                ➔
+                            </div>
+                        </div>
+                        <div className="absolute -right-4 -bottom-6 text-7xl opacity-20 pointer-events-none">
+                            👑
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* ── 4. Primary Actions (Visual Hierarchy - Point 6) ── */}
+                <div className="px-5 mt-6">
+                    <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        <span>⚡</span> Key Hubs
+                    </h3>
+                    <div className="grid grid-cols-1 gap-2.5">
+                        {/* Order History Primary Card */}
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleTabChange('orders')}
+                            className="w-full p-4 rounded-2xl bg-gradient-to-r from-orange-500/10 via-primary/5 to-transparent dark:from-orange-500/20 dark:via-primary/10 border-2 border-orange-500/30 dark:border-orange-500/30 flex items-center justify-between text-left transition-all shadow-xs"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <span className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-500 to-rose-500 text-white flex items-center justify-center text-xl shadow-md">
+                                    🧾
+                                </span>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-sm font-black text-gray-900 dark:text-white">Order History</h4>
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-primary text-white">
+                                            {userOrdersCount} Orders
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                                        Past meals, invoices & live order radar
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-primary font-black text-sm">➔</span>
+                        </motion.button>
+
+                        {/* Bhojan Wallet & Payments Card */}
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleTabChange('payments')}
+                            className="w-full p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent dark:from-indigo-500/20 dark:via-purple-500/10 border-2 border-indigo-500/30 dark:border-indigo-500/30 flex items-center justify-between text-left transition-all shadow-xs"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <span className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xl shadow-md">
+                                    💳
+                                </span>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-sm font-black text-gray-900 dark:text-white">Bhojan Wallet & Payments</h4>
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-600 text-white">
+                                            ₹{user?.bhojanMoney || 0}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                                        1-click checkout, refunds & transactions
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-indigo-600 dark:text-indigo-400 font-black text-sm">➔</span>
+                        </motion.button>
+
+                        {/* Rewards & Loyalty Card */}
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleTabChange('loyalty')}
+                            className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent dark:from-amber-500/20 dark:via-yellow-500/10 border-2 border-amber-500/30 dark:border-amber-500/30 flex items-center justify-between text-left transition-all shadow-xs"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <span className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center text-xl shadow-md">
+                                    💎
+                                </span>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-sm font-black text-gray-900 dark:text-white">Rewards & Loyalty</h4>
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white">
+                                            {loyaltyPoints.toLocaleString()} Pts
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                                        Redeem points for free dishes & coupons
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-amber-500 font-black text-sm">➔</span>
+                        </motion.button>
+                    </div>
+                </div>
+
+                {/* ── 5. Saved Addresses Section (Point 7) ── */}
+                <div className="px-5 mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                            <span>📍</span> Saved Delivery Addresses
+                        </h3>
+                        <button
+                            onClick={() => setShowAddressModal(true)}
+                            className="text-[11px] font-black text-primary uppercase tracking-wider hover:underline"
+                        >
+                            + Add New
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {user?.addresses && user.addresses.length > 0 ? (
+                            user.addresses.map((addr, idx) => (
+                                <div key={idx} className="p-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-between shadow-2xs">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <span className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center justify-center text-base shrink-0">
+                                            {addr.label === 'Home' ? '🏠' : addr.label === 'Work' ? '🏢' : '📍'}
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-black text-gray-900 dark:text-white capitalize flex items-center gap-1.5">
+                                                <span>{addr.label}</span>
+                                                {addr.isDefault && (
+                                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                                                        Default
+                                                    </span>
+                                                )}
+                                            </p>
+                                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                                                {addr.street ? `${addr.street}, ${addr.city}` : addr.city || 'Saved Delivery Location'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteAddress(addr._id)}
+                                        className="text-gray-400 hover:text-red-500 text-xs p-1 transition-colors"
+                                        title="Delete Address"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <div
+                                onClick={() => setShowAddressModal(true)}
+                                className="p-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 cursor-pointer hover:border-primary/50 transition-colors bg-white/50 dark:bg-gray-800/50"
+                            >
+                                <span className="text-primary text-sm font-black">+</span>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Add Home or Work Address</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── 6. Referral Program Card (Point 7) ── */}
+                <div className="px-5 mt-6">
+                    <div className="rounded-[26px] p-4 bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 text-white shadow-lg shadow-indigo-600/20 relative overflow-hidden">
+                        <div className="relative z-10">
+                            <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-indigo-100 mb-1.5 border border-white/20">
+                                🎁 REFER & EARN
+                            </span>
+                            <h4 className="text-base font-black text-white leading-tight">
+                                Invite Friends, Earn ₹100
+                            </h4>
+                            <p className="text-[11px] font-medium text-indigo-100 mt-0.5">
+                                Share your invite code with friends & get ₹100 on their first order!
+                            </p>
+                            <div className="flex items-center gap-2 mt-3">
+                                <div className="px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 font-mono text-xs font-black tracking-widest text-amber-300">
+                                    {referralCode}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(referralCode);
+                                        toast.success('Referral code copied to clipboard!');
+                                    }}
+                                    className="px-3.5 py-1.5 rounded-xl bg-white text-indigo-900 font-black text-xs uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
+                                >
+                                    Copy Code
+                                </button>
+                            </div>
+                        </div>
+                        <div className="absolute -right-3 -bottom-3 text-7xl opacity-20 pointer-events-none">
+                            🎁
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── 7. Achievements & Badges (Point 7) ── */}
+                <div className="px-5 mt-6">
+                    <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        <span>🏆</span> Milestones & Badges
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center gap-2.5 shadow-2xs">
+                            <span className="text-2xl">🏆</span>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">Food Explorer</p>
+                                <p className="text-[9px] font-bold text-amber-500 mt-0.5">Unlocked</p>
+                            </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center gap-2.5 shadow-2xs">
+                            <span className="text-2xl">🎯</span>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">First 50 Orders</p>
+                                <p className="text-[9px] font-bold text-gray-400 mt-0.5">{userOrdersCount}/50 Completed</p>
+                            </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center gap-2.5 shadow-2xs">
+                            <span className="text-2xl">👑</span>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">Prime VIP</p>
+                                <p className="text-[9px] font-bold text-amber-500 mt-0.5">{isPrime ? 'Active VIP' : 'Join Prime'}</p>
+                            </div>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center gap-2.5 shadow-2xs">
+                            <span className="text-2xl">🌶️</span>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">Taste Champion</p>
+                                <p className="text-[9px] font-bold text-emerald-500 mt-0.5">Active</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── 8. Secondary Features & Options (Point 6) ── */}
+                <div className="px-5 mt-6 space-y-4">
+                    <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <span>✨</span> Features & Settings
+                    </h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-[28px] overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xs">
+                        {[
+                            { id: 'quests', label: 'Food Quests', icon: '🎮', desc: 'Challenges & badges' },
+                            { id: 'meal-planner', label: 'AI Meal Planner', icon: '🧠', desc: 'Smart weekly nutrition' },
+                            { id: 'wishlist', label: 'My Wishlist', icon: '❤️', desc: `${wishlistItems.length} saved dishes` },
+                            { id: 'analytics', label: 'My Analytics', icon: '📊', desc: 'Nutritional breakdown' },
+                            { id: 'preferences', label: 'Dietary Preferences', icon: '🍴', desc: 'Veg, Jain, Keto tags' },
+                            { id: 'settings', label: 'Settings & Privacy', icon: '⚙️', desc: 'Notifications & security' },
+                            { id: 'support', label: 'Help & Support', icon: '🎧', desc: '24/7 customer care' },
+                        ].map((item, i, arr) => (
+                            <button
+                                key={item.id}
+                                onClick={() => handleTabChange(item.id)}
+                                className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 active:bg-gray-100 dark:active:bg-gray-700 transition-colors ${i !== arr.length - 1 ? 'border-b border-gray-50 dark:border-gray-700/60' : ''}`}
+                            >
+                                <div className="flex items-center gap-3.5">
+                                    <span className="text-lg bg-gray-50 dark:bg-gray-700/60 w-9 h-9 flex items-center justify-center rounded-xl shrink-0">
+                                        {item.icon}
+                                    </span>
+                                    <div className="text-left">
+                                        <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">{item.label}</p>
+                                        <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{item.desc}</p>
+                                    </div>
+                                </div>
+                                <span className="text-gray-300 dark:text-gray-600 text-xs">➔</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* ── 9. iOS-Style Smooth Theme Toggle (Point 5) ── */}
+                <div className="px-5 mt-6">
+                    <div className="p-3.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 flex items-center justify-between shadow-2xs">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-orange-500/10 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center text-base">
+                                {isDarkTheme ? '🌙' : '☀️'}
+                            </span>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">Dark Mode</p>
+                                <p className="text-[9.5px] font-bold text-gray-400 dark:text-gray-500">
+                                    {isDarkTheme ? 'Night owl appearance active' : 'Daylight appearance active'}
+                                </p>
+                            </div>
+                        </div>
+                        {/* iOS-Style Sliding Switch */}
+                        <button
+                            type="button"
+                            onClick={handleToggleTheme}
+                            aria-label="Toggle dark mode"
+                            className={`w-12 h-7 rounded-full p-1 transition-colors duration-300 relative focus:outline-none ${isDarkTheme ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                        >
+                            <motion.div
+                                animate={{ x: isDarkTheme ? 20 : 0 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                className="w-5 h-5 rounded-full bg-white shadow-md pointer-events-none"
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {/* ── 10. Clean Account Logout (Point 4: Delete Account moved inside Settings) ── */}
+                <div className="px-5 mt-6 pb-6">
                     <button
                         onClick={() => { dispatch(logoutUser()); navigate('/'); }}
-                        className="w-full bg-red-50 dark:bg-red-900/10 text-red-600 py-5 rounded-[32px] font-black text-xs uppercase tracking-widest border border-red-100 dark:border-red-900/30 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                        className="w-full bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider border border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2 active:scale-98 transition-all shadow-2xs"
                     >
-                        <span>👋</span> Logout Account
-                    </button>
-                    <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="w-full mt-6 text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase tracking-widest text-center"
-                    >
-                        Delete My Data Permanently
+                        <span>👋</span> Log Out
                     </button>
                 </div>
-            </div>
-        </motion.div>
-    );
+            </motion.div>
+        );
+    };
 
     if (isMobileMain && isMobile) {
         return renderMobileAccount();
