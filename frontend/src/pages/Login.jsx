@@ -13,7 +13,7 @@ const Login = () => {
     const redirectUser = (userObj) => {
         const role = userObj?.role;
         if (role === 'Admin') {
-            navigate('/profile');
+            navigate('/profile?tab=admin-overview');
         } else if (role === 'Owner') {
             navigate('/owner/dashboard');
         } else if (role === 'Delivery') {

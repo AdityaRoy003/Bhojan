@@ -69,6 +69,7 @@ const UserProfile = () => {
     const isOwner = user?.role === 'Owner';
     const isAdmin = user?.role === 'Admin';
     const isDelivery = user?.role === 'Delivery';
+    const isCustomer = !isAdmin && !isOwner && !isDelivery;
 
     const getInitialTab = () => {
         const queryTab = searchParams.get('tab');
@@ -82,7 +83,7 @@ const UserProfile = () => {
     };
 
     const [activeTab, setActiveTab] = useState(getInitialTab());
-    const [isMobileMain, setIsMobileMain] = useState(!searchParams.get('tab'));
+    const [isMobileMain, setIsMobileMain] = useState(() => !searchParams.get('tab') && isCustomer);
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
     useEffect(() => {
@@ -102,10 +103,18 @@ const UserProfile = () => {
             }
             setIsMobileMain(false);
         } else {
-            setActiveTab(isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal');
-            setIsMobileMain(true);
+            const defaultTab = isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal';
+            setActiveTab(defaultTab);
+            setIsMobileMain(isCustomer);
+            if (isAdmin) {
+                setSearchParams({ tab: 'admin-overview' }, { replace: true });
+            } else if (isOwner) {
+                setSearchParams({ tab: 'owner-shops' }, { replace: true });
+            } else if (isDelivery) {
+                setSearchParams({ tab: 'delivery-available' }, { replace: true });
+            }
         }
-    }, [searchParams, isAdmin, isOwner, isDelivery]);
+    }, [searchParams, isAdmin, isOwner, isDelivery, isCustomer, setSearchParams]);
     const [orders, setOrders] = useState(() => {
         const cached = getCachedData('/order/my');
         return cached?.orders || [];
@@ -305,6 +314,18 @@ const UserProfile = () => {
     };
 
     const handleBackToAccount = () => {
+        if (isAdmin) {
+            handleTabChange('admin-overview');
+            return;
+        }
+        if (isOwner) {
+            handleTabChange('owner-shops');
+            return;
+        }
+        if (isDelivery) {
+            handleTabChange('delivery-available');
+            return;
+        }
         setIsMobileMain(true);
         setSearchParams({});
         scrollToTopInstant();
@@ -4598,7 +4619,7 @@ const UserProfile = () => {
         );
     };
 
-    if (isMobileMain && isMobile) {
+    if (isMobileMain && isMobile && isCustomer) {
         return renderMobileAccount();
     }
 
@@ -4696,6 +4717,70 @@ const UserProfile = () => {
 
             {/* Main Content Area */}
             <main className="flex-1 p-3.5 sm:p-6 md:p-10 max-w-7xl mx-auto w-full overflow-x-hidden pb-36 md:pb-12">
+                {/* Mobile Admin Command Header & Tab Strip */}
+                {isAdmin && (
+                    <div className="md:hidden mb-5 bg-white dark:bg-gray-800 p-4 rounded-[28px] border border-gray-100 dark:border-gray-700 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/25 shrink-0">
+                                    {user?.avatar ? (
+                                        <img src={user.avatar} alt={user.fullname} className="w-full h-full object-cover rounded-2xl" />
+                                    ) : (
+                                        user?.fullname?.charAt(0) || 'A'
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <h2 className="font-black text-gray-900 dark:text-white text-base truncate leading-tight">
+                                            {user?.fullname || 'Aditya Roy'}
+                                        </h2>
+                                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[9px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
+                                            👑 Admin Hub
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                                        Platform Administrator • {user?.mobile || user?.email}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                    onClick={() => handleTabChange('personal')}
+                                    title="Account Settings"
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border ${
+                                        activeTab === 'personal'
+                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                                            : 'bg-gray-50 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 active:scale-95'
+                                    }`}
+                                >
+                                    ⚙️
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Horizontal Scrollable Admin Tabs */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-gray-100 dark:border-gray-700/60">
+                            {adminTabs.map((t) => {
+                                const isSelected = activeTab === t.id;
+                                return (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => handleTabChange(t.id)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all shrink-0 ${
+                                            isSelected
+                                                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30 ring-2 ring-indigo-400/30'
+                                                : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 border border-gray-200/80 dark:border-gray-600/60 active:scale-95'
+                                        }`}
+                                    >
+                                        <span>{t.icon}</span>
+                                        <span>{t.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <header className="mb-4 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     {activeTab === 'orders' ? (
                         <div className="w-full">
@@ -4740,15 +4825,28 @@ const UserProfile = () => {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2">
-                            <button
-                                onClick={handleBackToAccount}
-                                className="md:hidden flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                                </svg>
-                                Back to Account
-                            </button>
+                            {isCustomer && (
+                                <button
+                                    onClick={handleBackToAccount}
+                                    className="md:hidden flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    Back to Account
+                                </button>
+                            )}
+                            {isAdmin && activeTab !== 'admin-overview' && (
+                                <button
+                                    onClick={() => handleTabChange('admin-overview')}
+                                    className="md:hidden flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest mb-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    Back to Platform Overview
+                                </button>
+                            )}
                             <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-1">{tabs.find(t => t.id === activeTab)?.label}</h1>
                             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium italic">Manage your {tabs.find(t => t.id === activeTab)?.label.toLowerCase()} settings and details properly.</p>
                         </div>

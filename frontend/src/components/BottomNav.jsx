@@ -126,7 +126,7 @@ const BottomNav = () => {
 
                     let isActive = false;
                     if (itemTab) {
-                        isActive = location.pathname === itemPath && currentTab === itemTab;
+                        isActive = location.pathname === itemPath && (currentTab === itemTab || (!currentTab && role === 'Admin' && itemTab === 'admin-overview'));
                     } else {
                         const hasActiveSiblingTab = navItems.some(otherItem => {
                             if (!otherItem.to.includes('?tab=')) return false;
