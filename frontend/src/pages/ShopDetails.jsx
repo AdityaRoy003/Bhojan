@@ -90,7 +90,7 @@ const ShopDetails = () => {
     };
 
     const handleAddToCart = (item) => {
-        if (isAuthenticated && user?.role !== 'Customer') {
+        if (isAuthenticated && !['Customer', 'User'].includes(user?.role)) {
             alert(`You are logged in as a ${user.role}. Only Customers can order food.`);
             return;
         }
@@ -261,13 +261,13 @@ const ShopDetails = () => {
                                     <div className="mt-2.5">
                                         <button
                                             onClick={() => setCustomizingItem(item)}
-                                            className={`w-full font-black py-2 rounded-xl transition-all text-xs tracking-wider shadow-sm ${(isAuthenticated && user?.role !== 'Customer')
+                                            className={`w-full font-black py-2 rounded-xl transition-all text-xs tracking-wider shadow-sm ${(isAuthenticated && !['Customer', 'User'].includes(user?.role))
                                                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
                                                 : 'bg-white dark:bg-gray-750 text-orange-600 dark:text-orange-400 border-2 border-orange-200 dark:border-orange-500/30 hover:bg-orange-50 dark:hover:bg-gray-700 hover:border-orange-500 shadow-sm flex flex-col items-center justify-center'
                                                 }`}
                                         >
                                             <span className="text-xs sm:text-sm font-black">
-                                                {(isAuthenticated && user?.role !== 'Customer') ? 'CUSTOMER ONLY' : (quantity > 0 ? `ADD MORE (${quantity})` : 'ADD')}
+                                                {(isAuthenticated && !['Customer', 'User'].includes(user?.role)) ? 'CUSTOMER ONLY' : (quantity > 0 ? `ADD MORE (${quantity})` : 'ADD')}
                                             </span>
                                             <span className="text-[8.5px] text-gray-400 dark:text-gray-400 uppercase tracking-widest font-black">Customisable</span>
                                         </button>

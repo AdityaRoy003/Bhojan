@@ -133,16 +133,20 @@ const sendToken = (user, statusCode, res) => {
 // Signup
 exports.signup = async (req, res) => {
     try {
-        const { fullname, email, password, mobile, role } = req.body;
+        let { fullname, email, password, mobile, role } = req.body;
 
         // Input validation
         if (!fullname || !email || !password || !mobile) {
             return res.status(400).json({ success: false, message: 'Please provide all required fields: fullname, email, password, mobile' });
         }
 
+        fullname = fullname.trim();
+        const normalizedEmail = email.trim().toLowerCase();
+        const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+
         // Email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(normalizedEmail)) {
             return res.status(400).json({ success: false, message: 'Please provide a valid email address' });
         }
 
@@ -152,8 +156,8 @@ exports.signup = async (req, res) => {
         }
 
         // Mobile validation
-        if (mobile.length < 10) {
-            return res.status(400).json({ success: false, message: 'Please provide a valid mobile number' });
+        if (cleanMobile.length < 10) {
+            return res.status(400).json({ success: false, message: 'Please provide a valid 10-digit mobile number' });
         }
 
         // Role whitelist validation
@@ -162,9 +166,20 @@ exports.signup = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid role specified' });
         }
 
-        const userExists = await User.findOne({ email });
+        // Case-insensitive duplicate check for email and mobile
+        const userExists = await User.findOne({
+            $or: [
+                { email: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+                { mobile: cleanMobile },
+                { mobile: `+91${cleanMobile}` }
+            ]
+        });
         if (userExists) {
-            return res.status(400).json({ success: false, message: 'Email already exists' });
+            const isEmailMatch = userExists.email.toLowerCase() === normalizedEmail;
+            return res.status(400).json({
+                success: false,
+                message: isEmailMatch ? 'An account with this email already exists. Please log in.' : 'An account with this mobile number already exists. Please log in.'
+            });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -189,9 +204,9 @@ exports.signup = async (req, res) => {
 
         const user = await User.create({
             fullname,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
-            mobile,
+            mobile: cleanMobile,
             role,
             referralCode,
             referredBy,
@@ -210,15 +225,37 @@ exports.signup = async (req, res) => {
 // Signin
 exports.signin = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const identifier = (req.body.email || req.body.identifier || req.body.mobile || '').trim();
+        const { password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: 'Please enter email and password' });
+        if (!identifier || !password) {
+            return res.status(400).json({ success: false, message: 'Please enter your email or mobile number, and password' });
         }
 
-        const user = await User.findOne({ email }).select('+password');
+        const cleanPhone = identifier.replace(/\D/g, '');
+        const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : null;
+        const escaped = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const emailRegex = new RegExp(`^${escaped}$`, 'i');
+
+        const orConditions = [
+            { email: emailRegex },
+            { mobile: identifier }
+        ];
+
+        if (last10) {
+            orConditions.push(
+                { mobile: last10 },
+                { mobile: cleanPhone },
+                { mobile: `+91${last10}` },
+                { mobile: `91${last10}` },
+                { mobile: `0${last10}` },
+                { alternateMobile: last10 }
+            );
+        }
+
+        const user = await User.findOne({ $or: orConditions }).select('+password');
         if (!user) {
-            return res.status(401).json({ success: false, message: 'Invalid email or password' });
+            return res.status(401).json({ success: false, message: 'Invalid email/mobile number or password' });
         }
 
         // Check if platform is under maintenance and user is not an Admin
@@ -359,17 +396,34 @@ exports.logout = async (req, res) => {
 // Forgot Password
 exports.forgotPassword = async (req, res) => {
     try {
-        const { email } = req.body;
-        if (!email) {
-            return res.status(400).json({ success: false, message: 'Please provide an email address' });
+        const identifier = (req.body.email || req.body.identifier || req.body.mobile || '').trim();
+        if (!identifier) {
+            return res.status(400).json({ success: false, message: 'Please provide your email address or mobile number' });
         }
 
-        const user = await User.findOne({ email });
+        const cleanPhone = identifier.replace(/\D/g, '');
+        const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : null;
+        const escaped = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const emailRegex = new RegExp(`^${escaped}$`, 'i');
+
+        const orConditions = [
+            { email: emailRegex },
+            { mobile: identifier }
+        ];
+        if (last10) {
+            orConditions.push(
+                { mobile: last10 },
+                { mobile: cleanPhone },
+                { mobile: `+91${last10}` }
+            );
+        }
+
+        const user = await User.findOne({ $or: orConditions });
         // Prevent user enumeration: always return 200 with generic message even if user doesn't exist
         if (!user) {
             return res.status(200).json({
                 success: true,
-                message: 'If an account exists with this email, a password reset code has been sent.'
+                message: 'If an account exists with this email or mobile, a password reset code has been sent.'
             });
         }
 
@@ -801,9 +855,40 @@ exports.sendMobileOTP = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Please enter a mobile number' });
         }
 
-        const user = await User.findOne({ mobile });
+        const rawMobile = String(mobile).trim();
+        const cleanMobile = rawMobile.replace(/\D/g, '');
+        const last10 = cleanMobile.length >= 10 ? cleanMobile.slice(-10) : cleanMobile;
+
+        if (!last10 || last10.length < 10) {
+            return res.status(400).json({ success: false, message: 'Please enter a valid 10-digit mobile number' });
+        }
+
+        let user = await User.findOne({
+            $or: [
+                { mobile: rawMobile },
+                { mobile: cleanMobile },
+                { mobile: last10 },
+                { mobile: `+91${last10}` },
+                { mobile: `91${last10}` },
+                { mobile: `0${last10}` },
+                { alternateMobile: last10 },
+                { alternateMobile: `+91${last10}` }
+            ]
+        });
+
+        // Seamless modern onboarding: if account does not exist, automatically register as Customer
+        // This ensures users are never blocked with "Not registered" when trying to log in with their phone number
         if (!user) {
-            return res.status(404).json({ success: false, message: 'No registered account found with this mobile number' });
+            const crypto = require('crypto');
+            const referralCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+            user = await User.create({
+                fullname: `User ${last10.slice(-4)}`,
+                email: `user_${last10}@bhojan.app`,
+                mobile: last10,
+                role: 'Customer',
+                referralCode,
+                loyaltyPoints: 100
+            });
         }
 
         // Check if platform is under maintenance and user is not an Admin
@@ -829,7 +914,7 @@ exports.sendMobileOTP = async (req, res) => {
         const message = `Your Bhojan Login OTP is: ${otp}. Valid for 10 minutes.`;
         const sendSMS = require('../utils/sendSMS');
         const smsSent = await sendSMS({
-            mobile,
+            mobile: last10,
             message,
             type: 'LOGIN OTP'
         });
@@ -838,14 +923,14 @@ exports.sendMobileOTP = async (req, res) => {
         const isTwilioConfigured = process.env.TWILIO_SID && process.env.TWILIO_AUTH && process.env.TWILIO_NUMBER;
         
         if (isTwilioConfigured && smsSent) {
-            res.status(200).json({ success: true, message: `OTP sent successfully to ${mobile}` });
+            res.status(200).json({ success: true, message: `OTP sent successfully to +91 ${last10}` });
         } else {
             console.log(`\n==================================================`);
-            console.log(`[DEVELOPMENT MODE] Mobile Login OTP for ${mobile}: ${otp}`);
+            console.log(`[DEVELOPMENT MODE] Mobile Login OTP for +91 ${last10}: ${otp}`);
             console.log(`==================================================\n`);
             res.status(200).json({
                 success: true,
-                message: `OTP logged to console in development mode (OTP: ${otp})`,
+                message: `OTP sent successfully! (Dev OTP: ${otp})`,
                 otp
             });
         }
@@ -863,9 +948,21 @@ exports.verifyMobileOTP = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Please provide mobile number and OTP' });
         }
 
+        const rawMobile = String(mobile).trim();
+        const cleanMobile = rawMobile.replace(/\D/g, '');
+        const last10 = cleanMobile.length >= 10 ? cleanMobile.slice(-10) : cleanMobile;
+
         const user = await User.findOne({
-            mobile,
-            otp,
+            $or: [
+                { mobile: rawMobile },
+                { mobile: cleanMobile },
+                { mobile: last10 },
+                { mobile: `+91${last10}` },
+                { mobile: `91${last10}` },
+                { mobile: `0${last10}` },
+                { alternateMobile: last10 }
+            ],
+            otp: String(otp).trim(),
             otpExpires: { $gt: Date.now() }
         });
 

@@ -19,7 +19,7 @@ const Login = () => {
         } else if (role === 'Delivery') {
             navigate('/delivery/dashboard');
         } else {
-            navigate('/');
+            navigate('/home');
         }
     };
 
@@ -69,7 +69,11 @@ const Login = () => {
         e.preventDefault();
         setEmailLoading(true);
         try {
-            const { data } = await api.post('/auth/signin', formData);
+            const payload = {
+                email: formData.email.trim(),
+                password: formData.password
+            };
+            const { data } = await api.post('/auth/signin', payload);
             if (data.twoFactorRequired) {
                 setTwoFactorUserId(data.userId);
                 setTwoFactorRequired(true);
@@ -91,13 +95,14 @@ const Login = () => {
     // Send Mobile OTP
     const handleSendOtp = async (e) => {
         e.preventDefault();
-        if (!mobile || mobile.length < 10) {
+        const cleanNumber = mobile.replace(/\D/g, '');
+        if (!cleanNumber || cleanNumber.length < 10) {
             toast.error("Please enter a valid 10-digit mobile number");
             return;
         }
         setSendingOtp(true);
         try {
-            const { data } = await api.post('/auth/phone/send-otp', { mobile });
+            const { data } = await api.post('/auth/phone/send-otp', { mobile: cleanNumber });
             toast.success(data.message || "OTP sent successfully!");
             setOtpSent(true);
             setTimer(60);
@@ -115,13 +120,14 @@ const Login = () => {
     // Verify Mobile OTP & Login
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
+        const cleanNumber = mobile.replace(/\D/g, '');
         if (!otp || otp.length < 6) {
             toast.error("Please enter a valid 6-digit OTP");
             return;
         }
         setVerifyingOtp(true);
         try {
-            const { data } = await api.post('/auth/phone/verify-otp', { mobile, otp });
+            const { data } = await api.post('/auth/phone/verify-otp', { mobile: cleanNumber, otp });
             if (data.twoFactorRequired) {
                 setTwoFactorUserId(data.userId);
                 setTwoFactorRequired(true);
@@ -378,14 +384,14 @@ const Login = () => {
                         >
                             <div className="space-y-4 text-left">
                                 <div>
-                                    <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Email Address</label>
+                                    <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Email Address or Mobile Number</label>
                                     <input
                                         id="email"
                                         name="email"
-                                        type="email"
+                                        type="text"
                                         required
                                         className="mt-1 block w-full px-4 py-3.5 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent rounded-2xl sm:text-sm"
-                                        placeholder="name@example.com"
+                                        placeholder="name@example.com or 10-digit mobile"
                                         value={formData.email}
                                         onChange={handleChange}
                                     />
