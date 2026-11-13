@@ -239,7 +239,8 @@ exports.signin = async (req, res) => {
 
         const orConditions = [
             { email: emailRegex },
-            { mobile: identifier }
+            { mobile: identifier },
+            { alternateMobile: identifier }
         ];
 
         if (last10) {
@@ -249,11 +250,19 @@ exports.signin = async (req, res) => {
                 { mobile: `+91${last10}` },
                 { mobile: `91${last10}` },
                 { mobile: `0${last10}` },
-                { alternateMobile: last10 }
+                { alternateMobile: last10 },
+                { alternateMobile: cleanPhone },
+                { alternateMobile: `+91${last10}` },
+                { alternateMobile: `91${last10}` },
+                { alternateMobile: `0${last10}` }
             );
         }
 
-        const user = await User.findOne({ $or: orConditions }).select('+password');
+        // Prioritize Admin or privileged accounts if multiple match
+        let user = await User.findOne({ $or: orConditions, role: 'Admin' }).select('+password');
+        if (!user) {
+            user = await User.findOne({ $or: orConditions }).select('+password');
+        }
         if (!user) {
             return res.status(401).json({ success: false, message: 'Invalid email/mobile number or password' });
         }
@@ -863,18 +872,26 @@ exports.sendMobileOTP = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Please enter a valid 10-digit mobile number' });
         }
 
-        let user = await User.findOne({
-            $or: [
-                { mobile: rawMobile },
-                { mobile: cleanMobile },
-                { mobile: last10 },
-                { mobile: `+91${last10}` },
-                { mobile: `91${last10}` },
-                { mobile: `0${last10}` },
-                { alternateMobile: last10 },
-                { alternateMobile: `+91${last10}` }
-            ]
-        });
+        const orConditions = [
+            { mobile: rawMobile },
+            { mobile: cleanMobile },
+            { mobile: last10 },
+            { mobile: `+91${last10}` },
+            { mobile: `91${last10}` },
+            { mobile: `0${last10}` },
+            { alternateMobile: rawMobile },
+            { alternateMobile: cleanMobile },
+            { alternateMobile: last10 },
+            { alternateMobile: `+91${last10}` },
+            { alternateMobile: `91${last10}` },
+            { alternateMobile: `0${last10}` }
+        ];
+
+        // Prioritize Admin or privileged accounts
+        let user = await User.findOne({ $or: orConditions, role: 'Admin' });
+        if (!user) {
+            user = await User.findOne({ $or: orConditions });
+        }
 
         // Seamless modern onboarding: if account does not exist, automatically register as Customer
         // This ensures users are never blocked with "Not registered" when trying to log in with their phone number
@@ -952,19 +969,35 @@ exports.verifyMobileOTP = async (req, res) => {
         const cleanMobile = rawMobile.replace(/\D/g, '');
         const last10 = cleanMobile.length >= 10 ? cleanMobile.slice(-10) : cleanMobile;
 
-        const user = await User.findOne({
-            $or: [
-                { mobile: rawMobile },
-                { mobile: cleanMobile },
-                { mobile: last10 },
-                { mobile: `+91${last10}` },
-                { mobile: `91${last10}` },
-                { mobile: `0${last10}` },
-                { alternateMobile: last10 }
-            ],
+        const orConditions = [
+            { mobile: rawMobile },
+            { mobile: cleanMobile },
+            { mobile: last10 },
+            { mobile: `+91${last10}` },
+            { mobile: `91${last10}` },
+            { mobile: `0${last10}` },
+            { alternateMobile: rawMobile },
+            { alternateMobile: cleanMobile },
+            { alternateMobile: last10 },
+            { alternateMobile: `+91${last10}` },
+            { alternateMobile: `91${last10}` },
+            { alternateMobile: `0${last10}` }
+        ];
+
+        let user = await User.findOne({
+            $or: orConditions,
+            role: 'Admin',
             otp: String(otp).trim(),
             otpExpires: { $gt: Date.now() }
         });
+
+        if (!user) {
+            user = await User.findOne({
+                $or: orConditions,
+                otp: String(otp).trim(),
+                otpExpires: { $gt: Date.now() }
+            });
+        }
 
         if (!user) {
             return res.status(400).json({ success: false, message: 'OTP is invalid or has expired' });
