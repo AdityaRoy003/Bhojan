@@ -282,6 +282,9 @@ const UserProfile = () => {
     const [filterDate, setFilterDate] = useState('All Time');
     const [adminSearchTerm, setAdminSearchTerm] = useState('');
     const [adminRoleFilter, setAdminRoleFilter] = useState('All Roles');
+    const [adminStatusFilter, setAdminStatusFilter] = useState('All Status');
+    const [adminOrderSearch, setAdminOrderSearch] = useState('');
+    const [adminOrderStatus, setAdminOrderStatus] = useState('All');
     const [deliveryPartners, setDeliveryPartners] = useState([]);
     const [broadcastMsg, setBroadcastMsg] = useState({ title: '', message: '', role: 'Delivery' });
     const [manualAssign, setManualAssign] = useState({ orderId: '', partnerId: '' });
@@ -3494,110 +3497,441 @@ const UserProfile = () => {
     );
 
     const renderAdminUsers = () => {
-        const filteredUsers = (adminData.users || []).filter(u => {
-            const matchesSearch = !adminSearchTerm ||
-                u.fullname?.toLowerCase().includes(adminSearchTerm.toLowerCase()) ||
-                u.email?.toLowerCase().includes(adminSearchTerm.toLowerCase()) ||
-                u.mobile?.includes(adminSearchTerm);
+        const usersList = adminData.users || [];
+        const totalUsers = usersList.length;
+        const customerCount = usersList.filter(u => u.role === 'Customer').length;
+        const ownerCount = usersList.filter(u => u.role === 'Owner').length;
+        const deliveryCount = usersList.filter(u => u.role === 'Delivery').length;
+        const adminCount = usersList.filter(u => u.role === 'Admin').length;
+        const suspendedCount = usersList.filter(u => u.status === 'Suspended').length;
+
+        const filteredUsers = usersList.filter(u => {
+            const q = adminSearchTerm.trim().toLowerCase();
+            const matchesSearch = !q ||
+                u.fullname?.toLowerCase().includes(q) ||
+                u.email?.toLowerCase().includes(q) ||
+                u.mobile?.includes(q);
 
             const matchesRole = adminRoleFilter === 'All Roles' || u.role === adminRoleFilter;
+            const matchesStatus = adminStatusFilter === 'All Status' ||
+                (adminStatusFilter === 'Active' && (!u.status || u.status === 'Active')) ||
+                (adminStatusFilter === 'Suspended' && u.status === 'Suspended');
 
-            return matchesSearch && matchesRole;
+            return matchesSearch && matchesRole && matchesStatus;
         });
 
+        const roleBadges = {
+            Admin: { bg: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800', icon: '👑', label: 'Admin' },
+            Owner: { bg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800', icon: '🏪', label: 'Owner' },
+            Delivery: { bg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800', icon: '🛵', label: 'Delivery' },
+            Customer: { bg: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800', icon: '👤', label: 'Customer' },
+        };
+
         return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <header className="flex justify-between items-center bg-white dark:bg-gray-800 p-8 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6 pb-28 md:pb-12">
+                {/* ── 1. Header Card with Live Status ── */}
+                <header className="bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[36px] border border-gray-100 dark:border-gray-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h3 className="text-2xl font-black flex items-center gap-2 dark:text-white"><span>👥</span> User Hub</h3>
-                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">Manage global user accounts & permissions</p>
+                        <div className="flex items-center gap-2">
+                            <span className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg">👥</span>
+                            <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white leading-tight">User Hub</h3>
+                            <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider border border-indigo-500/20">
+                                {totalUsers} Accounts
+                            </span>
+                        </div>
+                        <p className="text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-gray-500 mt-1">
+                            Global account management, access control, & security oversight
+                        </p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Platform Status</p>
-                        <p className="text-2xl font-black dark:text-white">Live 🟢</p>
+                    <div className="flex items-center gap-2 sm:self-center">
+                        <div className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Platform Live</span>
+                        </div>
                     </div>
                 </header>
 
-                <section className="bg-white dark:bg-gray-800 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-gray-50 dark:border-gray-700 flex gap-4">
-                        <input
-                            type="text"
-                            placeholder="Search users..."
-                            className="flex-1 bg-gray-50 dark:bg-gray-700 rounded-2xl px-6 py-3 text-sm font-bold border-none outline-none focus:ring-2 ring-indigo-600/20 dark:text-white"
-                            value={adminSearchTerm}
-                            onChange={(e) => setAdminSearchTerm(e.target.value)}
-                        />
-                        <select
-                            className="bg-gray-50 dark:bg-gray-700 rounded-2xl px-6 py-3 text-sm font-black uppercase border-none outline-none dark:text-white"
-                            value={adminRoleFilter}
-                            onChange={(e) => setAdminRoleFilter(e.target.value)}
-                        >
-                            <option value="All Roles">All Roles</option>
-                            <option value="Customer">Customer</option>
-                            <option value="Owner">Owner</option>
-                            <option value="Delivery">Delivery</option>
-                            <option value="Admin">Admin</option>
-                        </select>
+                {/* ── 2. Interactive KPI Filter Badges Strip ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+                    <button
+                        type="button"
+                        onClick={() => { setAdminRoleFilter('All Roles'); setAdminStatusFilter('All Status'); }}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminRoleFilter === 'All Roles' && adminStatusFilter === 'All Status'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20 ring-2 ring-indigo-400/30'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-indigo-300'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80">All Users</p>
+                        <p className="text-lg font-black mt-0.5">{totalUsers}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminRoleFilter('Customer')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminRoleFilter === 'Customer'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 ring-2 ring-blue-400/30'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-blue-300'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80 flex items-center gap-1"><span>👤</span> Customers</p>
+                        <p className="text-lg font-black mt-0.5">{customerCount}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminRoleFilter('Owner')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminRoleFilter === 'Owner'
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20 ring-2 ring-amber-400/30'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-amber-300'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80 flex items-center gap-1"><span>🏪</span> Owners</p>
+                        <p className="text-lg font-black mt-0.5">{ownerCount}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminRoleFilter('Delivery')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminRoleFilter === 'Delivery'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/30'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-emerald-300'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80 flex items-center gap-1"><span>🛵</span> Riders</p>
+                        <p className="text-lg font-black mt-0.5">{deliveryCount}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminRoleFilter('Admin')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminRoleFilter === 'Admin'
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 ring-2 ring-purple-400/30'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-purple-300'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80 flex items-center gap-1"><span>👑</span> Admins</p>
+                        <p className="text-lg font-black mt-0.5">{adminCount}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setAdminStatusFilter(adminStatusFilter === 'Suspended' ? 'All Status' : 'Suspended'); }}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminStatusFilter === 'Suspended'
+                                ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-500/20 ring-2 ring-rose-400/30'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700 hover:border-rose-300'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider text-rose-500 flex items-center gap-1"><span>⚠️</span> Suspended</p>
+                        <p className="text-lg font-black mt-0.5 text-rose-600 dark:text-rose-400">{suspendedCount}</p>
+                    </button>
+                </div>
+
+                {/* ── 3. Search Bar & Filter Controls ── */}
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl md:rounded-[28px] border border-gray-100 dark:border-gray-700/80 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-2.5">
+                        {/* Search Input with Clear Button */}
+                        <div className="relative flex-1">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                            <input
+                                type="text"
+                                placeholder="Search by name, email, or mobile number..."
+                                className="w-full bg-gray-50 dark:bg-gray-700/70 rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm font-semibold border border-gray-200/60 dark:border-gray-600 outline-none focus:ring-2 ring-indigo-500/30 dark:text-white transition-all placeholder:text-gray-400"
+                                value={adminSearchTerm}
+                                onChange={(e) => setAdminSearchTerm(e.target.value)}
+                            />
+                            {adminSearchTerm && (
+                                <button
+                                    onClick={() => setAdminSearchTerm('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white text-xs p-1"
+                                    title="Clear search"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Status Select Pill */}
+                        <div className="flex items-center gap-2">
+                            <select
+                                className="bg-gray-50 dark:bg-gray-700/70 border border-gray-200/60 dark:border-gray-600 rounded-xl px-3 py-2.5 text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-200 outline-none cursor-pointer"
+                                value={adminStatusFilter}
+                                onChange={(e) => setAdminStatusFilter(e.target.value)}
+                            >
+                                <option value="All Status">Status: All</option>
+                                <option value="Active">🟢 Active Only</option>
+                                <option value="Suspended">🔴 Suspended Only</option>
+                            </select>
+                            {(adminSearchTerm || adminRoleFilter !== 'All Roles' || adminStatusFilter !== 'All Status') && (
+                                <button
+                                    onClick={() => { setAdminSearchTerm(''); setAdminRoleFilter('All Roles'); setAdminStatusFilter('All Status'); }}
+                                    className="px-3 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-black uppercase tracking-wider hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors whitespace-nowrap cursor-pointer"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50/50 dark:bg-gray-900/50">
-                                <tr>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Identity</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Role & Status</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Security</th>
-                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                                {filteredUsers.map(u => (
-                                    <tr key={u._id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-lg font-black shadow-inner">
-                                                    {u.fullname?.charAt(0)}
+
+                    {/* Role Filter Chips Strip */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+                        {[
+                            { id: 'All Roles', label: 'All', count: totalUsers },
+                            { id: 'Customer', label: 'Customers', count: customerCount, icon: '👤' },
+                            { id: 'Owner', label: 'Owners', count: ownerCount, icon: '🏪' },
+                            { id: 'Delivery', label: 'Riders', count: deliveryCount, icon: '🛵' },
+                            { id: 'Admin', label: 'Admins', count: adminCount, icon: '👑' },
+                        ].map(rf => (
+                            <button
+                                key={rf.id}
+                                onClick={() => setAdminRoleFilter(rf.id)}
+                                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                                    adminRoleFilter === rf.id
+                                        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                                        : 'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-600/60'
+                                }`}
+                            >
+                                {rf.icon && <span>{rf.icon}</span>}
+                                <span>{rf.label}</span>
+                                <span className={`px-1.5 py-0.2 rounded-full text-[9px] ${
+                                    adminRoleFilter === rf.id ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                }`}>
+                                    {rf.count}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Results Counter */}
+                    <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 dark:text-gray-500 pt-1 border-t border-gray-50 dark:border-gray-700/50">
+                        <span>Showing <strong className="text-gray-900 dark:text-white">{filteredUsers.length}</strong> of {totalUsers} users</span>
+                        {filteredUsers.length !== totalUsers && (
+                            <span className="text-indigo-600 dark:text-indigo-400">Filter active</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── 4. Main Content: Responsive User Cards for Mobile, Modern Table for Desktop ── */}
+                {filteredUsers.length === 0 ? (
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl md:rounded-[36px] border border-gray-100 dark:border-gray-700 text-center space-y-3">
+                        <span className="text-4xl">🔍</span>
+                        <h4 className="text-base font-black text-gray-900 dark:text-white">No users match your criteria</h4>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 max-w-sm mx-auto">
+                            Try broadening your search term or reset the role and status filters.
+                        </p>
+                        <button
+                            onClick={() => { setAdminSearchTerm(''); setAdminRoleFilter('All Roles'); setAdminStatusFilter('All Status'); }}
+                            className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:bg-indigo-700 transition cursor-pointer"
+                        >
+                            Reset All Filters
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        {/* ── Mobile View: Interactive Touch Cards (< 768px) ── */}
+                        <div className="md:hidden space-y-3">
+                            {filteredUsers.map(u => {
+                                const badge = roleBadges[u.role] || roleBadges.Customer;
+                                const isSuspended = u.status === 'Suspended';
+                                return (
+                                    <div
+                                        key={u._id}
+                                        className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/80 shadow-2xs space-y-3"
+                                    >
+                                        {/* Card Header: Avatar, Name, Email, Status */}
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-base shadow-sm shrink-0">
+                                                    {u.avatar ? (
+                                                        <img src={u.avatar} alt={u.fullname} className="w-full h-full object-cover rounded-2xl" />
+                                                    ) : (
+                                                        u.fullname?.charAt(0).toUpperCase() || 'U'
+                                                    )}
                                                 </div>
-                                                <div>
-                                                    <h4 className="font-black text-sm dark:text-white">{u.fullname}</h4>
-                                                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{u.email}</p>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <h4 className="font-black text-sm text-gray-900 dark:text-white leading-tight truncate">
+                                                            {u.fullname || 'Unnamed User'}
+                                                        </h4>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate font-semibold mt-0.5">
+                                                        {u.email}
+                                                    </p>
+                                                    {u.mobile && (
+                                                        <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">
+                                                            📞 {u.mobile}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2 mb-1">
+
+                                            {/* Status Badge */}
+                                            <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider shrink-0 ${
+                                                isSuspended
+                                                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40'
+                                                    : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40'
+                                            }`}>
+                                                {isSuspended ? '🔴 Suspended' : '🟢 Active'}
+                                            </span>
+                                        </div>
+
+                                        {/* Card Actions Toolbar: Role Selector + Security + Status */}
+                                        <div className="pt-2.5 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-2 flex-wrap">
+                                            {/* Role Selector Pill */}
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Role:</span>
                                                 <select
-                                                    onChange={(e) => handleUpdateUserRole(u._id, e.target.value)}
                                                     value={u.role}
-                                                    className="bg-gray-100 dark:bg-gray-700 border-none rounded-lg text-[8px] font-black uppercase px-2 py-1 outline-none appearance-none cursor-pointer dark:text-white"
+                                                    onChange={(e) => handleUpdateUserRole(u._id, e.target.value)}
+                                                    className={`border rounded-xl text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 outline-none cursor-pointer ${badge.bg}`}
                                                 >
-                                                    {['Customer', 'Owner', 'Delivery', 'Admin'].map(r => <option key={r} value={r}>{r}</option>)}
+                                                    {['Customer', 'Owner', 'Delivery', 'Admin'].map(r => (
+                                                        <option key={r} value={r} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                                                            {r}
+                                                        </option>
+                                                    ))}
                                                 </select>
-                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${(!u.status || u.status === 'Active') ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'}`}>
-                                                    {u.status || 'Active'}
-                                                </span>
                                             </div>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleResetUserPassword(u._id)} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-indigo-600 hover:text-white transition-all text-xs" title="Reset Password">🔑</button>
-                                                <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-indigo-600 hover:text-white transition-all text-xs" title="Force Logout">📱</button>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {(!u.status || u.status === 'Active') ? (
-                                                    <button onClick={() => handleUpdateUserStatus(u._id, 'Suspended')} className="bg-primary text-white text-[8px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl">Suspend</button>
+
+                                            {/* Quick Action Buttons */}
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    onClick={() => handleResetUserPassword(u._id)}
+                                                    title="Reset Password"
+                                                    className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-indigo-600 hover:text-white text-gray-600 dark:text-gray-300 flex items-center justify-center text-xs transition-colors active:scale-95 cursor-pointer shadow-2xs"
+                                                >
+                                                    🔑
+                                                </button>
+                                                <button
+                                                    onClick={() => alert(`Forced logout for ${u.fullname || u.email}. All active tokens invalidated.`)}
+                                                    title="Force Logout"
+                                                    className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-indigo-600 hover:text-white text-gray-600 dark:text-gray-300 flex items-center justify-center text-xs transition-colors active:scale-95 cursor-pointer shadow-2xs"
+                                                >
+                                                    📱
+                                                </button>
+
+                                                {/* Suspend / Activate Toggle */}
+                                                {isSuspended ? (
+                                                    <button
+                                                        onClick={() => handleUpdateUserStatus(u._id, 'Active')}
+                                                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[9.5px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
+                                                    >
+                                                        Activate
+                                                    </button>
                                                 ) : (
-                                                    <button onClick={() => handleUpdateUserStatus(u._id, 'Active')} className="bg-green-600 text-white text-[8px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl">Activate</button>
+                                                    <button
+                                                        onClick={() => handleUpdateUserStatus(u._id, 'Suspended')}
+                                                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-[9.5px] font-black uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
+                                                    >
+                                                        Suspend
+                                                    </button>
                                                 )}
                                             </div>
-                                        </td>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* ── Desktop View: Spacious, Modern Table (>= 768px) ── */}
+                        <div className="hidden md:block bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50/80 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-700/80">
+                                    <tr>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Identity</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Role & Access</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Security</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 text-right">Moderation</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/70">
+                                    {filteredUsers.map(u => {
+                                        const badge = roleBadges[u.role] || roleBadges.Customer;
+                                        const isSuspended = u.status === 'Suspended';
+                                        return (
+                                            <tr key={u._id} className="hover:bg-gray-50/60 dark:hover:bg-gray-700/40 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+                                                            {u.avatar ? (
+                                                                <img src={u.avatar} alt={u.fullname} className="w-full h-full object-cover rounded-2xl" />
+                                                            ) : (
+                                                                u.fullname?.charAt(0).toUpperCase() || 'U'
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h4 className="font-black text-sm text-gray-900 dark:text-white truncate">{u.fullname || 'Unnamed User'}</h4>
+                                                            <p className="text-[10.5px] font-medium text-gray-400 dark:text-gray-500 truncate">{u.email}</p>
+                                                            {u.mobile && <p className="text-[9.5px] font-bold text-gray-400 dark:text-gray-500 truncate">📞 {u.mobile}</p>}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <select
+                                                        onChange={(e) => handleUpdateUserRole(u._id, e.target.value)}
+                                                        value={u.role}
+                                                        className={`border rounded-xl text-[10px] font-black uppercase tracking-wider px-3 py-1.5 outline-none cursor-pointer ${badge.bg}`}
+                                                    >
+                                                        {['Customer', 'Owner', 'Delivery', 'Admin'].map(r => (
+                                                            <option key={r} value={r} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                                                                {r}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                                        isSuspended
+                                                            ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40'
+                                                            : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40'
+                                                    }`}>
+                                                        {isSuspended ? '🔴 Suspended' : '🟢 Active'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <button
+                                                            onClick={() => handleResetUserPassword(u._id)}
+                                                            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all text-xs cursor-pointer active:scale-95"
+                                                            title="Reset Password"
+                                                        >
+                                                            🔑 Reset
+                                                        </button>
+                                                        <button
+                                                            onClick={() => alert(`Forced logout for ${u.fullname || u.email}. All sessions terminated.`)}
+                                                            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all text-xs cursor-pointer active:scale-95"
+                                                            title="Force Logout"
+                                                        >
+                                                            📱 Terminate
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    {isSuspended ? (
+                                                        <button
+                                                            onClick={() => handleUpdateUserStatus(u._id, 'Active')}
+                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl active:scale-95 transition-all shadow-sm cursor-pointer"
+                                                        >
+                                                            Activate Account
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleUpdateUserStatus(u._id, 'Suspended')}
+                                                            className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40 text-[9px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl active:scale-95 transition-all cursor-pointer"
+                                                        >
+                                                            Suspend Account
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
             </motion.div>
         );
     };
@@ -3711,63 +4045,250 @@ const UserProfile = () => {
         </motion.div>
     );
 
-    const renderAdminOrders = () => (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <header className="flex justify-between items-center bg-white dark:bg-gray-800 p-8 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm">
-                <div>
-                    <h3 className="text-2xl font-black flex items-center gap-2 dark:text-white"><span>🧾</span> Order Central</h3>
-                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">Live platform order stream & monitoring</p>
-                </div>
-            </header>
+    const renderAdminOrders = () => {
+        const allOrders = adminData.orders || [];
+        const totalOrders = allOrders.length;
+        const deliveredOrders = allOrders.filter(o => o.orderStatus === 'Delivered').length;
+        const activeOrders = allOrders.filter(o => ['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(o.orderStatus)).length;
+        const cancelledOrders = allOrders.filter(o => o.orderStatus === 'Cancelled').length;
+        const totalVolume = allOrders.reduce((sum, o) => sum + (Number(o.totalAmount || 0)), 0);
 
-            <section className="bg-white dark:bg-gray-800 rounded-[40px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-50/50 dark:bg-gray-900/50">
-                            <tr>
-                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Order ID</th>
-                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Merchant & Customer</th>
-                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Value & Status</th>
-                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Time</th>
-                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                            {(adminData.orders || []).map(order => (
-                                <tr key={order._id} className="group hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-8 py-6">
-                                        <span className="font-black text-xs text-indigo-600">#{order._id.slice(-6).toUpperCase()}</span>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div>
-                                            <h4 className="font-black text-sm">{order.shop?.name}</h4>
-                                            <p className="text-[10px] font-bold text-gray-400">Cust: {order.user?.fullname}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-black text-sm text-gray-900 dark:text-white">₹{order.totalAmount}</span>
-                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${order.orderStatus === 'Delivered' ? 'bg-green-100 text-green-600' :
-                                                order.orderStatus === 'Cancelled' ? 'bg-red-100 text-primary' : 'bg-blue-100 text-blue-600'
-                                                }`}>
-                                                {order.orderStatus}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-[10px] font-bold text-gray-400">
-                                        {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <button onClick={() => handleViewDetails(order)} className="text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-lg transition-colors">Details</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+        const filteredOrders = allOrders.filter(o => {
+            const q = adminOrderSearch.trim().toLowerCase();
+            const matchesSearch = !q ||
+                o._id?.toLowerCase().includes(q) ||
+                o.shop?.name?.toLowerCase().includes(q) ||
+                o.user?.fullname?.toLowerCase().includes(q);
+
+            const matchesStatus = adminOrderStatus === 'All' ||
+                (adminOrderStatus === 'Active' && ['Placed', 'Preparing', 'Ready', 'OutForDelivery'].includes(o.orderStatus)) ||
+                o.orderStatus === adminOrderStatus;
+
+            return matchesSearch && matchesStatus;
+        });
+
+        const statusBadges = {
+            Delivered: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+            Cancelled: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800',
+            Preparing: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+            Ready: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+            OutForDelivery: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+            Placed: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+        };
+
+        return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6 pb-28 md:pb-12">
+                {/* ── 1. Header Card ── */}
+                <header className="bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[36px] border border-gray-100 dark:border-gray-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg">🧾</span>
+                            <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white leading-tight">Order Central</h3>
+                            <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider border border-indigo-500/20">
+                                {totalOrders} Orders
+                            </span>
+                        </div>
+                        <p className="text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-gray-500 mt-1">
+                            Live platform order telemetry, dispatch monitoring, and financial auditing
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-700/60 border border-gray-200/60 dark:border-gray-600 flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Total GMV:</span>
+                            <span className="text-xs font-black text-gray-900 dark:text-white">₹{totalVolume.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </header>
+
+                {/* ── 2. Interactive Order KPI Badges ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setAdminOrderStatus('All')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminOrderStatus === 'All'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80">All Orders</p>
+                        <p className="text-lg font-black mt-0.5">{totalOrders}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminOrderStatus('Active')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminOrderStatus === 'Active'
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80">In Progress</p>
+                        <p className="text-lg font-black mt-0.5">{activeOrders}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminOrderStatus('Delivered')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminOrderStatus === 'Delivered'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80">Delivered</p>
+                        <p className="text-lg font-black mt-0.5">{deliveredOrders}</p>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAdminOrderStatus('Cancelled')}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
+                            adminOrderStatus === 'Cancelled'
+                                ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-500/20'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-100 dark:border-gray-700'
+                        }`}
+                    >
+                        <p className="text-[9px] font-black uppercase tracking-wider opacity-80">Cancelled</p>
+                        <p className="text-lg font-black mt-0.5">{cancelledOrders}</p>
+                    </button>
                 </div>
-            </section>
-        </motion.div>
-    );
+
+                {/* ── 3. Search & Quick Filter ── */}
+                <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-2xl border border-gray-100 dark:border-gray-700/80 shadow-sm space-y-2.5">
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                            <input
+                                type="text"
+                                placeholder="Search by Order ID, Restaurant, or Customer..."
+                                className="w-full bg-gray-50 dark:bg-gray-700/70 rounded-xl pl-8 pr-7 py-2 text-xs font-semibold border border-gray-200/60 dark:border-gray-600 outline-none focus:ring-2 ring-indigo-500/30 dark:text-white"
+                                value={adminOrderSearch}
+                                onChange={e => setAdminOrderSearch(e.target.value)}
+                            />
+                            {adminOrderSearch && (
+                                <button
+                                    onClick={() => setAdminOrderSearch('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white text-xs p-1"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-gray-400">
+                        <span>Showing {filteredOrders.length} of {totalOrders} orders</span>
+                    </div>
+                </div>
+
+                {/* ── 4. Main Order Cards (Mobile) / Table (Desktop) ── */}
+                {filteredOrders.length === 0 ? (
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-100 dark:border-gray-700 text-center space-y-2">
+                        <span className="text-3xl">🧾</span>
+                        <h4 className="text-sm font-black text-gray-900 dark:text-white">No matching orders</h4>
+                        <p className="text-xs text-gray-400">No orders match your filter criteria.</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* Mobile Cards */}
+                        <div className="md:hidden space-y-3">
+                            {filteredOrders.map(order => {
+                                const badgeClass = statusBadges[order.orderStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+                                return (
+                                    <div
+                                        key={order._id}
+                                        className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/80 shadow-2xs space-y-3"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <span className="font-black text-xs text-indigo-600 dark:text-indigo-400">
+                                                    #{order._id.slice(-6).toUpperCase()}
+                                                </span>
+                                                <h4 className="font-black text-sm text-gray-900 dark:text-white leading-tight mt-0.5">
+                                                    {order.shop?.name || 'Restaurant'}
+                                                </h4>
+                                                <p className="text-[11px] text-gray-400 font-semibold mt-0.5">
+                                                    Customer: {order.user?.fullname || 'Guest'}
+                                                </p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-base font-black text-gray-900 dark:text-white">₹{order.totalAmount}</p>
+                                                <span className={`inline-block px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider border mt-1 ${badgeClass}`}>
+                                                    {order.orderStatus}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
+                                            <span className="text-[10px] text-gray-400 font-semibold">
+                                                {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(order.createdAt).toLocaleDateString()}
+                                            </span>
+                                            <button
+                                                onClick={() => handleViewDetails(order)}
+                                                className="px-3.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
+                                            >
+                                                Inspect ➔
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop Table */}
+                        <div className="hidden md:block bg-white dark:bg-gray-800 rounded-[32px] border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50/80 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-700/80">
+                                    <tr>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Order ID</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Merchant & Customer</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Value & Status</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Time</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/70">
+                                    {filteredOrders.map(order => {
+                                        const badgeClass = statusBadges[order.orderStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+                                        return (
+                                            <tr key={order._id} className="hover:bg-gray-50/60 dark:hover:bg-gray-700/40 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <span className="font-black text-xs text-indigo-600 dark:text-indigo-400">#{order._id.slice(-6).toUpperCase()}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div>
+                                                        <h4 className="font-black text-sm text-gray-900 dark:text-white">{order.shop?.name}</h4>
+                                                        <p className="text-[10px] font-bold text-gray-400">Cust: {order.user?.fullname}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <span className="font-black text-sm text-gray-900 dark:text-white">₹{order.totalAmount}</span>
+                                                        <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider border ${badgeClass}`}>
+                                                            {order.orderStatus}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-[10px] font-bold text-gray-400">
+                                                    {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() => handleViewDetails(order)}
+                                                        className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer"
+                                                    >
+                                                        Inspect Details
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+            </motion.div>
+        );
+    };
 
     const renderAdminFinancials = () => (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">

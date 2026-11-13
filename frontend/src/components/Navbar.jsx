@@ -377,21 +377,58 @@ const Navbar = () => {
                         </Link>
                     )}
 
-                    {/* Location Pill with 3D tactile feel */}
-                    <motion.div
-                        whileTap={{ scale: 0.96 }}
-                        className="flex-1 flex items-center gap-1.5 cursor-pointer overflow-hidden px-2.5 py-1.5 rounded-2xl bg-gray-100/80 dark:bg-gray-800/80 border border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-all shadow-inner"
-                        onClick={() => setShowLocationModal(true)}
-                    >
-                        <span className="text-primary text-xs shrink-0">📍</span>
-                        <div className="flex flex-col min-w-0 leading-none">
-                            <span className="text-[7.5px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Delivering to</span>
-                            <p className="text-[11px] font-black text-gray-900 dark:text-white truncate mt-0.5">
-                                {locationLoading ? 'Detecting...' : city ? `${city}` : 'Select location'}
-                            </p>
+                    {/* Role-Aware Center Pill */}
+                    {isAdmin ? (
+                        <div className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 shadow-inner">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs">👑</span>
+                                <div className="leading-none min-w-0">
+                                    <span className="text-[7.5px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Admin Console</span>
+                                    <p className="text-[10px] font-black text-gray-900 dark:text-white truncate">Platform Control</p>
+                                </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8px] font-black shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Live
+                            </span>
                         </div>
-                        <span className="text-gray-400 text-[10px] ml-auto shrink-0">▾</span>
-                    </motion.div>
+                    ) : isOwner ? (
+                        <div className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 shadow-inner">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs">🏪</span>
+                                <div className="leading-none min-w-0">
+                                    <span className="text-[7.5px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">Merchant Hub</span>
+                                    <p className="text-[10px] font-black text-gray-900 dark:text-white truncate">{user?.restaurantName || 'Kitchen Ops'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : isDelivery ? (
+                        <div className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 shadow-inner">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs">🛵</span>
+                                <div className="leading-none min-w-0">
+                                    <span className="text-[7.5px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Rider Hub</span>
+                                    <p className="text-[10px] font-black text-gray-900 dark:text-white truncate">On Duty</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Customer Location Pill with 3D tactile feel */
+                        <motion.div
+                            whileTap={{ scale: 0.96 }}
+                            className="flex-1 flex items-center gap-1.5 cursor-pointer overflow-hidden px-2.5 py-1.5 rounded-2xl bg-gray-100/80 dark:bg-gray-800/80 border border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-200/70 dark:hover:bg-gray-700/70 transition-all shadow-inner"
+                            onClick={() => setShowLocationModal(true)}
+                        >
+                            <span className="text-primary text-xs shrink-0">📍</span>
+                            <div className="flex flex-col min-w-0 leading-none">
+                                <span className="text-[7.5px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Delivering to</span>
+                                <p className="text-[11px] font-black text-gray-900 dark:text-white truncate mt-0.5">
+                                    {locationLoading ? 'Detecting...' : city ? `${city}` : 'Select location'}
+                                </p>
+                            </div>
+                            <span className="text-gray-400 text-[10px] ml-auto shrink-0">▾</span>
+                        </motion.div>
+                    )}
 
                     {/* Right: Notifications + Profile */}
                     <div className="flex items-center gap-1.5 shrink-0">
