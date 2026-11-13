@@ -12,6 +12,7 @@ import CookieConsent from './components/CookieConsent';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import BottomNav from './components/BottomNav';
+import GlobalActiveOrderBar from './components/GlobalActiveOrderBar';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import MaintenancePage from './pages/MaintenancePage';
@@ -264,6 +265,7 @@ function AppContent() {
       </main>
       {/* Footer is desktop-only; BottomNav handles mobile navigation */}
       {!hideChrome && <div className="hidden md:block"><Footer /></div>}
+      {!hideChrome && <GlobalActiveOrderBar />}
       {!hideChrome && <BottomNav />}
     </>
   );

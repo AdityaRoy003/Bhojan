@@ -5320,7 +5320,7 @@ const UserProfile = () => {
         );
     };
 
-    if (isMobileMain && isMobile && isCustomer) {
+    if (isMobileMain && isMobile && (isCustomer || isShoppingMode) && !isAdmin) {
         return renderMobileAccount();
     }
 

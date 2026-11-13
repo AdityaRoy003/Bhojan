@@ -9,6 +9,7 @@ import CheckoutProgress from '../components/CheckoutProgress';
 import { toast } from 'react-toastify';
 import WeatherSurgeBanner from '../components/WeatherSurgeBanner';
 import FitBhojanMacroWidget from '../components/FitBhojanMacroWidget';
+import SlideToPay from '../components/SlideToPay';
 
 const DELIVERY_PRESETS = [
     { id: 'leave_at_door', label: 'Leave at Door', icon: '🚪' },
@@ -789,17 +790,16 @@ const Checkout = () => {
                             </div>
                         </div>
 
-                        <button
-                            disabled={loading || !selectedAddress}
-                            onClick={handlePayment}
-                            className={`w-full mt-6 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all ${
-                                loading || !selectedAddress
-                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                                    : 'bg-primary text-white hover:opacity-95 shadow-orange-500/20 active:scale-95'
-                            }`}
-                        >
-                            {loading ? 'Processing...' : paymentMethod === 'COD' ? 'Place COD Order' : 'Proceed to Pay →'}
-                        </button>
+                        <div className="mt-6">
+                            <SlideToPay
+                                onConfirm={handlePayment}
+                                loading={loading}
+                                disabled={loading || !selectedAddress}
+                                amount={total}
+                                label={paymentMethod === 'COD' ? 'Slide to Confirm COD' : 'Slide to Pay'}
+                                successText={paymentMethod === 'COD' ? 'Placing Order' : 'Securing Payment'}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
