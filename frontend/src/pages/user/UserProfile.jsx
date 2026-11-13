@@ -599,29 +599,31 @@ const UserProfile = () => {
                 }
             }
 
-            // Always fetch customer specific data with priority on /order/my
-            try {
-                const { data } = await api.get('/order/my');
-                if (data?.success) setOrders(data.orders || []);
-            } catch (err) {
-                console.error("Failed to fetch /order/my:", err);
-            }
-
-            // Fetch secondary data without blocking order display
-            const secondaryEndpoints = [
-                { path: '/order/insights', setter: (d) => setInsights(prev => ({ ...prev, ...d.insights })) },
-                { path: '/user-actions/wishlist', setter: (d) => setWishlistItems(d.wishlist || []) },
-                { path: '/user-actions/wallet/transactions', setter: (d) => setTransactions(d.transactions || []) }
-            ];
-
-            Promise.allSettled(secondaryEndpoints.map(async (ep) => {
+            // Only fetch customer-specific order/wallet/wishlist data if user is a customer or in shopping mode
+            if (isCustomer || isShoppingMode) {
                 try {
-                    const { data } = await api.get(ep.path);
-                    if (data?.success) ep.setter(data);
+                    const { data } = await api.get('/order/my');
+                    if (data?.success) setOrders(data.orders || []);
                 } catch (err) {
-                    console.error(`Failed to fetch ${ep.path}:`, err);
+                    console.error("Failed to fetch /order/my:", err);
                 }
-            }));
+
+                // Fetch secondary data without blocking order display
+                const secondaryEndpoints = [
+                    { path: '/order/insights', setter: (d) => setInsights(prev => ({ ...prev, ...d.insights })) },
+                    { path: '/user-actions/wishlist', setter: (d) => setWishlistItems(d.wishlist || []) },
+                    { path: '/user-actions/wallet/transactions', setter: (d) => setTransactions(d.transactions || []) }
+                ];
+
+                Promise.allSettled(secondaryEndpoints.map(async (ep) => {
+                    try {
+                        const { data } = await api.get(ep.path);
+                        if (data?.success) ep.setter(data);
+                    } catch (err) {
+                        // Silent catch for secondary non-critical widgets
+                    }
+                }));
+            }
         } catch (error) {
             console.error("Error in fetchInitialData", error);
         } finally {
@@ -650,13 +652,18 @@ const UserProfile = () => {
     };
 
     const handleUpdateUserStatus = async (userId, status) => {
+        if ((userId === user?._id || userId === user?.id) && status !== 'Active') {
+            alert('Security Protection: You cannot suspend your own admin account.');
+            return;
+        }
         try {
             const adminNotes = status === 'Suspended' ? prompt('Reason for suspension:') : '';
-            await api.put('/admin/user/status', { userId, status, adminNotes });
+            if (status === 'Suspended' && adminNotes === null) return; // User pressed cancel
+            await api.put('/admin/user/status', { userId, status, adminNotes: adminNotes || '' });
             alert(`User status updated to ${status}`);
             fetchInitialData();
         } catch (error) {
-            alert('Failed to update user status');
+            alert(error.response?.data?.message || 'Failed to update user status');
         }
     };
 
@@ -3753,6 +3760,11 @@ const UserProfile = () => {
                                                         <h4 className="font-black text-sm text-gray-900 dark:text-white leading-tight truncate">
                                                             {u.fullname || 'Unnamed User'}
                                                         </h4>
+                                                        {(u._id === user?._id || u.email === user?.email) && (
+                                                            <span className="px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 text-[8.5px] font-black uppercase">
+                                                                You
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate font-semibold mt-0.5">
                                                         {u.email}
@@ -3818,6 +3830,13 @@ const UserProfile = () => {
                                                     >
                                                         Activate
                                                     </button>
+                                                ) : (u._id === user?._id || u.email === user?.email) ? (
+                                                    <span
+                                                        title="You cannot suspend your own account"
+                                                        className="px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 text-[9px] font-bold uppercase tracking-wider cursor-not-allowed"
+                                                    >
+                                                        Self
+                                                    </span>
                                                 ) : (
                                                     <button
                                                         onClick={() => handleUpdateUserStatus(u._id, 'Suspended')}
@@ -3861,7 +3880,14 @@ const UserProfile = () => {
                                                             )}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <h4 className="font-black text-sm text-gray-900 dark:text-white truncate">{u.fullname || 'Unnamed User'}</h4>
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <h4 className="font-black text-sm text-gray-900 dark:text-white truncate">{u.fullname || 'Unnamed User'}</h4>
+                                                                {(u._id === user?._id || u.email === user?.email) && (
+                                                                    <span className="px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 text-[8.5px] font-black uppercase">
+                                                                        You
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-[10.5px] font-medium text-gray-400 dark:text-gray-500 truncate">{u.email}</p>
                                                             {u.mobile && <p className="text-[9.5px] font-bold text-gray-400 dark:text-gray-500 truncate">📞 {u.mobile}</p>}
                                                         </div>
@@ -3915,6 +3941,13 @@ const UserProfile = () => {
                                                         >
                                                             Activate Account
                                                         </button>
+                                                    ) : (u._id === user?._id || u.email === user?.email) ? (
+                                                        <span
+                                                            title="You cannot suspend your own account"
+                                                            className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 text-[9px] font-bold uppercase tracking-wider cursor-not-allowed"
+                                                        >
+                                                            Protected
+                                                        </span>
                                                     ) : (
                                                         <button
                                                             onClick={() => handleUpdateUserStatus(u._id, 'Suspended')}

@@ -76,8 +76,19 @@ exports.getAllUsers = async (req, res) => {
 exports.updateUserStatus = async (req, res) => {
     try {
         const { userId, status, adminNotes } = req.body;
+        
+        // Safety guard 1: Admin cannot suspend themselves
+        if (req.user && req.user._id.toString() === userId.toString() && status !== 'Active') {
+            return res.status(400).json({ success: false, message: 'Security Policy: You cannot suspend your own admin account.' });
+        }
+
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        // Safety guard 2: Admin accounts cannot be suspended
+        if (user.role === 'Admin' && status !== 'Active') {
+            return res.status(400).json({ success: false, message: 'Security Policy: Admin accounts cannot be suspended directly.' });
+        }
 
         user.status = status;
         if (adminNotes) user.adminNotes = adminNotes;
