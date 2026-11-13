@@ -24,6 +24,20 @@ const Navbar = () => {
     const profileRef = useRef(null);
     const notificationRef = useRef(null);
 
+    const isDetailPage = location.pathname.startsWith('/shop/') ||
+        ['/cart', '/checkout', '/notifications', '/prime-membership', '/leaderboard', '/home-chefs', '/terms', '/privacy', '/partner'].includes(location.pathname) ||
+        location.pathname.startsWith('/track/') ||
+        location.pathname.startsWith('/user/') ||
+        location.pathname.startsWith('/group-cart/');
+
+    const handleNavBack = () => {
+        if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1);
+        } else {
+            navigate('/home');
+        }
+    };
+
     useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add('dark');
@@ -320,18 +334,43 @@ const Navbar = () => {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* MOBILE TOP BAR: Logo | Location (flex-1) | Dark Mode | Notif | Profile */}
-                <div className="md:hidden flex items-center h-14 gap-2.5">
-                    {/* Logo */}
-                    <Link to="/home" onMouseEnter={() => preloadRoute('/home')} onTouchStart={() => preloadRoute('/home')} className="font-bold text-primary flex items-center gap-1.5 shrink-0 group">
-                        <motion.img 
-                            whileHover={{ rotate: 12, scale: 1.08 }} 
-                            whileTap={{ scale: 0.95 }}
-                            src="/bhojan-logo.svg" 
-                            alt="Bhojan" 
-                            className="w-7 h-7 rounded-lg object-contain shadow-sm" 
-                        />
-                        <span className="text-lg tracking-tight font-black bg-gradient-to-r from-orange-600 via-primary to-rose-500 bg-clip-text text-transparent">Bhojan</span>
-                    </Link>
+                <div className="md:hidden flex items-center h-14 gap-2">
+                    {/* If detail page: Show Back Button + mini Logo; else full Logo */}
+                    {isDetailPage ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                                type="button"
+                                onClick={handleNavBack}
+                                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-700 dark:text-gray-200 active:scale-90 transition-all shadow-sm border border-gray-200/60 dark:border-gray-700/60 cursor-pointer"
+                                aria-label="Go back"
+                                title="Go back"
+                            >
+                                <svg className="w-4 h-4 -translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <Link to="/home" onMouseEnter={() => preloadRoute('/home')} onTouchStart={() => preloadRoute('/home')} className="flex items-center shrink-0">
+                                <motion.img 
+                                    whileHover={{ rotate: 12, scale: 1.08 }} 
+                                    whileTap={{ scale: 0.95 }}
+                                    src="/bhojan-logo.svg" 
+                                    alt="Bhojan" 
+                                    className="w-6 h-6 rounded-md object-contain shadow-sm" 
+                                />
+                            </Link>
+                        </div>
+                    ) : (
+                        <Link to="/home" onMouseEnter={() => preloadRoute('/home')} onTouchStart={() => preloadRoute('/home')} className="font-bold text-primary flex items-center gap-1.5 shrink-0 group">
+                            <motion.img 
+                                whileHover={{ rotate: 12, scale: 1.08 }} 
+                                whileTap={{ scale: 0.95 }}
+                                src="/bhojan-logo.svg" 
+                                alt="Bhojan" 
+                                className="w-7 h-7 rounded-lg object-contain shadow-sm" 
+                            />
+                            <span className="text-lg tracking-tight font-black bg-gradient-to-r from-orange-600 via-primary to-rose-500 bg-clip-text text-transparent">Bhojan</span>
+                        </Link>
+                    )}
 
                     {/* Location Pill with 3D tactile feel */}
                     <motion.div
@@ -393,7 +432,20 @@ const Navbar = () => {
 
                 {/* DESKTOP TOP BAR (original) */}
                 <div className="hidden md:flex justify-between h-16">
-                    <div className="flex items-center gap-2 md:gap-6">
+                    <div className="flex items-center gap-2 md:gap-4">
+                        {isDetailPage && (
+                            <button
+                                type="button"
+                                onClick={handleNavBack}
+                                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all shadow-sm border border-gray-200/60 dark:border-gray-700/60 cursor-pointer mr-1"
+                                aria-label="Go back"
+                                title="Go back"
+                            >
+                                <svg className="w-4 h-4 -translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                        )}
                         <Link to="/" className="text-xl md:text-2xl font-bold text-primary flex items-center gap-2 group">
                             <motion.img 
                                 whileHover={{ rotate: 12, scale: 1.08 }} 

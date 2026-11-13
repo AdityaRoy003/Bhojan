@@ -327,6 +327,19 @@ const Checkout = () => {
                 <CheckoutProgress currentStep={3} />
             </div>
 
+            <div className="max-w-7xl mx-auto px-4 mt-2">
+                <button
+                    type="button"
+                    onClick={() => navigate('/cart')}
+                    className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-200 hover:text-primary transition-all py-2 px-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm active:scale-95 cursor-pointer"
+                >
+                    <svg className="w-4 h-4 -translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>Back to Cart</span>
+                </button>
+            </div>
+
             <div className="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left 2 Cols: Form Sections */}
                 <div className="lg:col-span-2 space-y-6">

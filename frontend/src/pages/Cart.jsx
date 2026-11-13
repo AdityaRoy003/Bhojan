@@ -234,6 +234,19 @@ const Cart = () => {
             {/* Progress Indicator */}
             <CheckoutProgress currentStep={1} />
 
+            <div className="max-w-6xl mx-auto px-4 mb-4 flex items-center justify-between">
+                <button
+                    type="button"
+                    onClick={() => (restaurant?._id ? navigate(`/shop/${restaurant._id}`) : (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home')))}
+                    className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-200 hover:text-primary transition-all py-2 px-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm active:scale-95 cursor-pointer"
+                >
+                    <svg className="w-4 h-4 -translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>{restaurant?.name ? `Back to ${restaurant.name}` : 'Continue Shopping'}</span>
+                </button>
+            </div>
+
             <div className="max-w-6xl mx-auto px-4">
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Left Column: Items & Suggestions */}
