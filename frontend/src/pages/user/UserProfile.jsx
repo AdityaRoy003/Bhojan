@@ -66,20 +66,60 @@ const UserProfile = () => {
     const navigate = useNavigate();
 
     const [searchParams, setSearchParams] = useSearchParams();
-    const isOwner = user?.role === 'Owner';
-    const isAdmin = user?.role === 'Admin';
-    const isDelivery = user?.role === 'Delivery';
+    const userRoleLower = (user?.role || '').toLowerCase();
+    const isOwner = userRoleLower === 'owner';
+    const isAdmin = userRoleLower === 'admin';
+    const isDelivery = userRoleLower === 'delivery';
     const isCustomer = !isAdmin && !isOwner && !isDelivery;
+
+    const normalizeAdminTab = (tab) => {
+        if (!tab) return 'admin-overview';
+        const map = {
+            'support': 'admin-support',
+            'help': 'admin-support',
+            'admin-support': 'admin-support',
+            'settings': 'admin-settings',
+            'admin-settings': 'admin-settings',
+            'orders': 'admin-orders',
+            'admin-orders': 'admin-orders',
+            'shops': 'admin-shops',
+            'admin-shops': 'admin-shops',
+            'users': 'admin-users',
+            'admin-users': 'admin-users',
+            'items': 'admin-items',
+            'menu': 'admin-items',
+            'admin-items': 'admin-items',
+            'delivery': 'admin-delivery',
+            'fleet': 'admin-delivery',
+            'admin-delivery': 'admin-delivery',
+            'financials': 'admin-financials',
+            'admin-financials': 'admin-financials',
+            'moderation': 'admin-moderation',
+            'admin-moderation': 'admin-moderation',
+            'emails': 'admin-emails',
+            'campaigns': 'admin-emails',
+            'admin-emails': 'admin-emails',
+            'personal': 'personal',
+            'account': 'personal',
+            'profile': 'personal',
+            'overview': 'admin-overview',
+            'admin-overview': 'admin-overview'
+        };
+        return map[tab] || (adminTabs.some(t => t.id === tab) ? tab : 'admin-overview');
+    };
 
     const getInitialTab = () => {
         const queryTab = searchParams.get('tab');
+        if (isAdmin) {
+            return normalizeAdminTab(queryTab);
+        }
         if (queryTab) {
-            const allowedTabs = isAdmin ? adminTabs : isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
+            const allowedTabs = isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
             if (allowedTabs.some(t => t.id === queryTab)) {
                 return queryTab;
             }
         }
-        return isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal';
+        return isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal';
     };
 
     const [activeTab, setActiveTab] = useState(getInitialTab());
@@ -93,22 +133,30 @@ const UserProfile = () => {
     }, []);
 
     useEffect(() => {
-        const tab = searchParams.get('tab');
-        if (tab) {
-            const allowedTabs = isAdmin ? adminTabs : isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
-            if (allowedTabs.some(t => t.id === tab)) {
-                setActiveTab(tab);
+        const rawTab = searchParams.get('tab');
+        if (isAdmin) {
+            const targetTab = normalizeAdminTab(rawTab);
+            setActiveTab(targetTab);
+            setIsMobileMain(false);
+            if (rawTab !== targetTab) {
+                setSearchParams({ tab: targetTab }, { replace: true });
+            }
+            return;
+        }
+
+        if (rawTab) {
+            const allowedTabs = isOwner ? ownerTabs : isDelivery ? deliveryTabs : customerTabs;
+            if (allowedTabs.some(t => t.id === rawTab)) {
+                setActiveTab(rawTab);
             } else {
-                setActiveTab(isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal');
+                setActiveTab(isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal');
             }
             setIsMobileMain(false);
         } else {
-            const defaultTab = isAdmin ? 'admin-overview' : isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal';
+            const defaultTab = isOwner ? 'owner-shops' : isDelivery ? 'delivery-available' : 'personal';
             setActiveTab(defaultTab);
             setIsMobileMain(isCustomer);
-            if (isAdmin) {
-                setSearchParams({ tab: 'admin-overview' }, { replace: true });
-            } else if (isOwner) {
+            if (isOwner) {
                 setSearchParams({ tab: 'owner-shops' }, { replace: true });
             } else if (isDelivery) {
                 setSearchParams({ tab: 'delivery-available' }, { replace: true });
@@ -1555,7 +1603,91 @@ const UserProfile = () => {
                             </form>
                         </section>
 
-                        {!isOwner && (
+                        {/* Appearance & Theme Setting */}
+                        <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3.5">
+                                    <div className="w-12 h-12 rounded-2xl bg-orange-500/10 dark:bg-orange-500/20 text-orange-500 flex items-center justify-center text-2xl shadow-inner">
+                                        {isDarkTheme ? '🌙' : '☀️'}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black dark:text-white leading-tight">Appearance & Theme</h3>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mt-0.5">
+                                            {isDarkTheme ? 'Dark Mode active · Gentle on eyes' : 'Light Mode active · High contrast Daylight'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleToggleTheme}
+                                    aria-label="Toggle theme appearance"
+                                    className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 relative focus:outline-none cursor-pointer ${
+                                        isDarkTheme ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-700'
+                                    }`}
+                                >
+                                    <motion.div
+                                        animate={{ x: isDarkTheme ? 24 : 0 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                        className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center text-xs"
+                                    >
+                                        {isDarkTheme ? '🌙' : '☀️'}
+                                    </motion.div>
+                                </button>
+                            </div>
+                        </section>
+
+                        {/* Security & Password Section */}
+                        <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h3 className="text-xl font-black mb-6 flex items-center gap-2 dark:text-white">
+                                <span>🔒</span> Security & Password
+                            </h3>
+                            <form onSubmit={handleChangePassword} className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Password</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary dark:text-white dark:placeholder-gray-500"
+                                        value={passwordData.currentPassword}
+                                        onChange={e => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">New Password</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary dark:text-white dark:placeholder-gray-500"
+                                        value={passwordData.newPassword}
+                                        onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Confirm New Password</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary dark:text-white dark:placeholder-gray-500"
+                                        value={passwordData.confirmPassword}
+                                        onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                    />
+                                </div>
+                                <div className="md:col-span-3 flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={updating}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition shadow-lg shadow-indigo-500/20 cursor-pointer disabled:opacity-50"
+                                    >
+                                        {updating ? 'Updating...' : 'Update Password'}
+                                    </button>
+                                </div>
+                            </form>
+                        </section>
+
+                        {isCustomer && (
                             <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-xl font-black flex items-center gap-2 dark:text-white">
@@ -1588,6 +1720,21 @@ const UserProfile = () => {
                                 </div>
                             </section>
                         )}
+
+                        {/* Session Sign Out Action */}
+                        <section className="bg-white dark:bg-gray-800 p-6 rounded-[32px] shadow-sm border border-red-100 dark:border-red-900/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div>
+                                <h4 className="text-sm font-black text-gray-900 dark:text-white">Active Session</h4>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Securely log out of your current Bhojan account on this device.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { dispatch(logoutUser()); navigate('/'); }}
+                                className="w-full sm:w-auto bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                            >
+                                <span>👋</span> Log Out
+                            </button>
+                        </section>
                     </motion.div>
                 );
 
@@ -4745,15 +4892,40 @@ const UserProfile = () => {
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                                 <button
+                                    onClick={handleToggleTheme}
+                                    title="Toggle Appearance Theme"
+                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border bg-gray-50 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 active:scale-95 cursor-pointer"
+                                >
+                                    {isDarkTheme ? '🌙' : '☀️'}
+                                </button>
+                                <button
                                     onClick={() => handleTabChange('personal')}
-                                    title="Account Settings"
-                                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border ${
+                                    title="Account & Profile Settings"
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border cursor-pointer ${
                                         activeTab === 'personal'
                                             ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
                                             : 'bg-gray-50 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 active:scale-95'
                                     }`}
                                 >
                                     ⚙️
+                                </button>
+                                <button
+                                    onClick={() => handleTabChange('admin-support')}
+                                    title="Support Tickets Desk"
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border cursor-pointer ${
+                                        activeTab === 'admin-support'
+                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
+                                            : 'bg-gray-50 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 active:scale-95'
+                                    }`}
+                                >
+                                    🎫
+                                </button>
+                                <button
+                                    onClick={() => { dispatch(logoutUser()); navigate('/'); }}
+                                    title="Sign Out"
+                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm transition-all border bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/30 active:scale-95 cursor-pointer"
+                                >
+                                    👋
                                 </button>
                             </div>
                         </div>

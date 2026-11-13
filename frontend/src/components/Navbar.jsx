@@ -18,6 +18,11 @@ const Navbar = () => {
     const dispatch = useDispatch();
     const location = useLocation();
     const navigate = useNavigate();
+    const userRoleLower = (user?.role || '').toLowerCase();
+    const isAdmin = userRoleLower === 'admin';
+    const isOwner = userRoleLower === 'owner';
+    const isDelivery = userRoleLower === 'delivery';
+    const isCustomer = !isAdmin && !isOwner && !isDelivery;
     const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
     const [showNotifications, setShowNotifications] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -388,18 +393,8 @@ const Navbar = () => {
                         <span className="text-gray-400 text-[10px] ml-auto shrink-0">▾</span>
                     </motion.div>
 
-                    {/* Right: Notifications + Profile (Theme toggle moved into Profile menu for uncluttered mobile header) */}
+                    {/* Right: Notifications + Profile */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {/* 3D Dark Mode Quick Toggle (Hidden on mobile to keep header clean; available in Profile menu) */}
-                        <motion.button
-                            whileTap={{ scale: 0.85, rotate: 180 }}
-                            onClick={toggleDarkMode}
-                            className="hidden md:flex w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center text-xs text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50"
-                            title="Toggle Theme"
-                        >
-                            {darkMode ? '☀️' : '🌙'}
-                        </motion.button>
-
                         {isAuthenticated && (
                             <Link to="/notifications" onMouseEnter={() => preloadRoute('/notifications')} onTouchStart={() => preloadRoute('/notifications')} className="relative w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
                                 <span className="text-sm">🔔</span>
@@ -411,10 +406,9 @@ const Navbar = () => {
                         {isAuthenticated ? (
                             <motion.div
                                 whileTap={{ scale: 0.92 }}
-                                onMouseEnter={() => preloadRoute('/profile')}
-                                onTouchStart={() => preloadRoute('/profile')}
                                 className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-orange-500 to-rose-500 p-[1.5px] cursor-pointer shrink-0 shadow-sm"
-                                onClick={() => navigate('/profile')}
+                                onClick={() => setShowProfileMenu(prev => !prev)}
+                                aria-label="Open profile menu"
                             >
                                 <div className="w-full h-full rounded-full bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden">
                                     {user?.avatar ? (
@@ -429,6 +423,170 @@ const Navbar = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Mobile Profile Dropdown Sheet */}
+                <AnimatePresence>
+                    {showProfileMenu && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[200] md:hidden"
+                                onClick={() => setShowProfileMenu(false)}
+                            />
+                            <motion.div
+                                initial={{ opacity: 0, y: -15, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -15, scale: 0.96 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+                                className="fixed top-16 right-3 left-3 sm:left-auto sm:w-80 bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl border border-gray-100 dark:border-gray-800 z-[210] p-4 md:hidden overflow-hidden"
+                            >
+                                {/* User Info Header */}
+                                <div className="flex items-center justify-between pb-3.5 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-orange-500 to-rose-500 p-[2px] shrink-0 shadow-md">
+                                            <div className="w-full h-full rounded-[14px] bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                                                {user?.avatar ? (
+                                                    <img src={user.avatar} alt={user.fullname} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-sm font-black text-amber-600">{user?.fullname?.charAt(0).toUpperCase()}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <h4 className="font-black text-sm text-gray-900 dark:text-white truncate">
+                                                    {user?.fullname}
+                                                </h4>
+                                                <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider ${
+                                                    isAdmin
+                                                        ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                                                        : isOwner
+                                                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                                            : isDelivery
+                                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                                : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20'
+                                                }`}>
+                                                    {isAdmin ? '👑 Admin' : isOwner ? '🏪 Owner' : isDelivery ? '🛵 Delivery' : 'Customer'}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10.5px] text-gray-400 dark:text-gray-500 truncate font-semibold mt-0.5">
+                                                {user?.email || user?.mobile}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowProfileMenu(false)}
+                                        className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center text-xs shrink-0 cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Menu List */}
+                                <div className="py-2.5 space-y-1">
+                                    <button
+                                        onClick={() => {
+                                            setShowProfileMenu(false);
+                                            navigate(isOwner ? '/profile?tab=owner-personal' : '/profile?tab=personal');
+                                        }}
+                                        className="w-full text-left px-3.5 py-2.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center justify-between transition-all cursor-pointer"
+                                    >
+                                        <span className="flex items-center gap-2.5">
+                                            <span className="text-base">👤</span>
+                                            <span>Edit Profile & Account</span>
+                                        </span>
+                                        <span className="text-gray-400 text-xs">➔</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setShowProfileMenu(false);
+                                            if (isAdmin) navigate('/profile?tab=admin-overview');
+                                            else if (isOwner) navigate('/owner/dashboard');
+                                            else if (isDelivery) navigate('/delivery/dashboard');
+                                            else navigate('/home');
+                                        }}
+                                        className="w-full text-left px-3.5 py-2.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center justify-between transition-all cursor-pointer"
+                                    >
+                                        <span className="flex items-center gap-2.5">
+                                            <span className="text-base">{isAdmin ? '🌐' : '📊'}</span>
+                                            <span>{isAdmin ? 'Platform Overview' : 'Dashboard'}</span>
+                                        </span>
+                                        <span className="text-gray-400 text-xs">➔</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setShowProfileMenu(false);
+                                            navigate(isAdmin ? '/profile?tab=admin-settings' : '/profile?tab=settings');
+                                        }}
+                                        className="w-full text-left px-3.5 py-2.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center justify-between transition-all cursor-pointer"
+                                    >
+                                        <span className="flex items-center gap-2.5">
+                                            <span className="text-base">⚙️</span>
+                                            <span>{isAdmin ? 'Platform Settings' : 'Preferences & Settings'}</span>
+                                        </span>
+                                        <span className="text-gray-400 text-xs">➔</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setShowProfileMenu(false);
+                                            navigate(isAdmin ? '/profile?tab=admin-support' : '/profile?tab=support');
+                                        }}
+                                        className="w-full text-left px-3.5 py-2.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center justify-between transition-all cursor-pointer"
+                                    >
+                                        <span className="flex items-center gap-2.5">
+                                            <span className="text-base">🎫</span>
+                                            <span>{isAdmin ? 'Support Desk & Tickets' : 'Help & Support'}</span>
+                                        </span>
+                                        <span className="text-gray-400 text-xs">➔</span>
+                                    </button>
+
+                                    {/* Theme Appearance Mode Toggle */}
+                                    <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 mt-1">
+                                        <span className="flex items-center gap-2.5 text-xs font-bold text-gray-800 dark:text-gray-200">
+                                            <span className="text-base">{darkMode ? '🌙' : '☀️'}</span>
+                                            <span>Theme Mode</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={toggleDarkMode}
+                                            className={`w-12 h-6.5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
+                                                darkMode ? 'bg-indigo-600 justify-end' : 'bg-gray-300 dark:bg-gray-700 justify-start'
+                                            }`}
+                                            aria-label="Toggle theme"
+                                        >
+                                            <motion.div
+                                                layout
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                className="w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center text-[10px]"
+                                            >
+                                                {darkMode ? '🌙' : '☀️'}
+                                            </motion.div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Logout Button */}
+                                <div className="pt-2 border-t border-gray-100 dark:border-gray-800 mt-1">
+                                    <button
+                                        onClick={() => {
+                                            setShowProfileMenu(false);
+                                            handleLogout();
+                                            navigate('/');
+                                        }}
+                                        className="w-full bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 py-3 rounded-2xl font-black text-xs uppercase tracking-wider border border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+                                    >
+                                        <span>👋</span> Log Out
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
 
                 {/* DESKTOP TOP BAR (original) */}
                 <div className="hidden md:flex justify-between h-16">
@@ -701,10 +859,23 @@ const Navbar = () => {
                                                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
                                                 </div>
                                                 <div className="py-2">
-                                                    <Link to="/profile" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
-                                                        <span>👤</span> My Profile
+                                                    <Link
+                                                        to={isAdmin ? '/profile?tab=personal' : isOwner ? '/profile?tab=owner-personal' : '/profile?tab=personal'}
+                                                        onClick={() => setShowProfileMenu(false)}
+                                                        className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2"
+                                                    >
+                                                        <span>👤</span> {isAdmin ? 'Account & Profile' : 'My Profile'}
                                                     </Link>
-                                                    {user?.role === 'Owner' && (
+                                                    {isAdmin && (
+                                                        <Link
+                                                            to="/profile?tab=admin-overview"
+                                                            onClick={() => setShowProfileMenu(false)}
+                                                            className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2"
+                                                        >
+                                                            <span>🌐</span> Platform Overview
+                                                        </Link>
+                                                    )}
+                                                    {isOwner && (
                                                         <>
                                                             <Link to="/owner/dashboard" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
                                                                 <span>🏢</span> Dashboard
@@ -714,13 +885,17 @@ const Navbar = () => {
                                                             </Link>
                                                         </>
                                                     )}
-                                                    {user?.role === 'Delivery' && (
+                                                    {isDelivery && (
                                                         <Link to="/delivery/dashboard" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
                                                             <span>🚚</span> Dashboard
                                                         </Link>
                                                     )}
-                                                    <Link to="/profile?tab=settings" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
-                                                        <span>⚙️</span> Settings
+                                                    <Link
+                                                        to={isAdmin ? '/profile?tab=admin-settings' : '/profile?tab=settings'}
+                                                        onClick={() => setShowProfileMenu(false)}
+                                                        className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2"
+                                                    >
+                                                        <span>⚙️</span> {isAdmin ? 'Platform Settings' : 'Settings'}
                                                     </Link>
                                                     <button
                                                         type="button"
@@ -734,8 +909,12 @@ const Navbar = () => {
                                                             {darkMode ? 'Dark' : 'Light'}
                                                         </span>
                                                     </button>
-                                                    <Link to="/profile?tab=support" onClick={() => setShowProfileMenu(false)} className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2">
-                                                        <span>❓</span> Help & Support
+                                                    <Link
+                                                        to={isAdmin ? '/profile?tab=admin-support' : '/profile?tab=support'}
+                                                        onClick={() => setShowProfileMenu(false)}
+                                                        className="block px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center gap-2"
+                                                    >
+                                                        <span>❓</span> {isAdmin ? 'Support Desk & Tickets' : 'Help & Support'}
                                                     </Link>
                                                 </div>
                                                 <div className="border-t border-gray-100 dark:border-gray-800 p-2">

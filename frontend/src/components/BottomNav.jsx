@@ -16,8 +16,11 @@ const BottomNav = () => {
     // Hide on landing/auth pages
     if (HIDDEN_ON_ROUTES.includes(location.pathname)) return null;
 
-    const role = user?.role;
-    const isCustomer = !role || role === 'Customer';
+    const roleLower = (user?.role || '').toLowerCase();
+    const isAdmin = roleLower === 'admin';
+    const isOwner = roleLower === 'owner';
+    const isDelivery = roleLower === 'delivery';
+    const isCustomer = !isAdmin && !isOwner && !isDelivery;
 
     // Calculate cart totals
     const totalCartItems = cartItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
@@ -58,14 +61,14 @@ const BottomNav = () => {
         { label: 'Profile', icon: '👤', to: '/profile' },
     ];
 
-    const navItems = (role === 'Admin' ? adminNavItems
-        : role === 'Owner' ? ownerNavItems
-            : role === 'Delivery' ? deliveryNavItems
+    const navItems = (isAdmin ? adminNavItems
+        : isOwner ? ownerNavItems
+            : isDelivery ? deliveryNavItems
                 : customerNavItems).filter(item => item.show !== false);
 
-    const roleColor = role === 'Admin' ? 'text-indigo-500 dark:text-indigo-400'
-        : role === 'Owner' ? 'text-amber-500 dark:text-amber-400'
-            : role === 'Delivery' ? 'text-emerald-500 dark:text-emerald-400'
+    const roleColor = isAdmin ? 'text-indigo-500 dark:text-indigo-400'
+        : isOwner ? 'text-amber-500 dark:text-amber-400'
+            : isDelivery ? 'text-emerald-500 dark:text-emerald-400'
                 : 'text-primary';
 
     const handleTap = () => {
@@ -126,7 +129,7 @@ const BottomNav = () => {
 
                     let isActive = false;
                     if (itemTab) {
-                        isActive = location.pathname === itemPath && (currentTab === itemTab || (!currentTab && role === 'Admin' && itemTab === 'admin-overview'));
+                        isActive = location.pathname === itemPath && (currentTab === itemTab || (!currentTab && isAdmin && itemTab === 'admin-overview'));
                     } else {
                         const hasActiveSiblingTab = navItems.some(otherItem => {
                             if (!otherItem.to.includes('?tab=')) return false;
