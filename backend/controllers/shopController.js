@@ -93,22 +93,39 @@ exports.getShopDetails = async (req, res) => {
     }
 };
 
-// Search Shops
+// Search Shops & Menu Items
 exports.searchShops = async (req, res) => {
     try {
         const { query } = req.params;
-        if (!query) return res.status(400).json({ success: false, message: "Query required" });
+        if (!query || !query.trim()) return res.status(400).json({ success: false, message: "Query required" });
 
-        // Case-insensitive regex search on Name, City, or Address
-        const searchRegex = new RegExp(query, 'i');
+        // Safe case-insensitive regex search
+        const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const searchRegex = new RegExp(escaped, 'i');
 
+        // 1. Search in Items to find shops serving matching dishes
+        const Item = require('../models/Item');
+        const matchingItems = await Item.find({
+            $or: [
+                { name: searchRegex },
+                { category: searchRegex },
+                { description: searchRegex }
+            ]
+        }).select('shop').lean();
+
+        const shopIdsFromItems = matchingItems.map(item => item.shop).filter(Boolean);
+
+        // 2. Search Shops by Name, City, Address, Cuisine, or matching dishes
         const refinedShops = await Shop.find({
             $or: [
                 { name: searchRegex },
                 { city: searchRegex },
-                { address: searchRegex }
+                { address: searchRegex },
+                { shopType: searchRegex },
+                { specialTags: searchRegex },
+                { _id: { $in: shopIdsFromItems } }
             ]
-        }).lean();
+        }).populate('items').lean();
 
         res.status(200).json({ success: true, shops: refinedShops });
     } catch (error) {

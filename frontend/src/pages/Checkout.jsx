@@ -257,6 +257,7 @@ const Checkout = () => {
             instructions: instructions || '',
             address: selectedAddress ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.pincode}` : 'Default Address',
             deliveryFee: deliveryFee || 0,
+            surgeFee: surgeFee || 0,
             platformFee: platformFee || 0,
             taxAmount: taxes || 0,
             redeemPoints: Boolean(redeemPoints),

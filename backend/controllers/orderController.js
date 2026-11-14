@@ -35,6 +35,7 @@ exports.placeOrder = async (req, res) => {
             paymentMethod,
             instructions,
             deliveryFee,
+            surgeFee,
             platformFee,
             taxAmount,
             redeemPoints, // Boolean: true if user wants to redeem points
@@ -168,12 +169,27 @@ exports.placeOrder = async (req, res) => {
 
         // Calculate expected order total server-side
         const verifiedDeliveryFee = Number(deliveryFee) || 0;
+        const verifiedSurgeFee = Math.max(0, Number(req.body.surgeFee) || 0);
         const verifiedPlatformFee = 10;
         const verifiedTax = Math.round(calculatedSubtotal * 0.05); // 5% GST
         const verifiedTip = Math.max(0, Number(req.body.tipAmount) || 0);
 
-        let serverOrderTotal = calculatedSubtotal + verifiedDeliveryFee + verifiedPlatformFee + verifiedTax + verifiedTip - verifiedCouponDiscount;
-        serverOrderTotal = Math.max(0, Math.round(serverOrderTotal));
+        let preDiscountTotal = calculatedSubtotal + verifiedDeliveryFee + verifiedSurgeFee + verifiedPlatformFee + verifiedTax + verifiedTip - verifiedCouponDiscount;
+        preDiscountTotal = Math.max(0, preDiscountTotal);
+
+        let pointsRedeemed = 0;
+        let pointsDiscount = 0;
+
+        // Handle Point Redemption calculation
+        if (redeemPoints && user.loyaltyPoints > 0) {
+            const maxDiscount = Math.floor(preDiscountTotal * 0.1); // Max 10% discount
+            const maxPointsRedeemable = maxDiscount * 10;
+
+            pointsRedeemed = Math.min(user.loyaltyPoints, maxPointsRedeemable);
+            pointsDiscount = pointsRedeemed / 10;
+        }
+
+        let serverOrderTotal = Math.max(0, Math.round(preDiscountTotal - pointsDiscount));
 
         // Validate client totalAmount against server calculated total (allow ±₹3 rounding leeway)
         const submittedTotal = Math.round(Number(totalAmount) || 0);
@@ -216,20 +232,10 @@ exports.placeOrder = async (req, res) => {
         }
 
         let finalAmount = serverOrderTotal;
-        let pointsRedeemed = 0;
 
-        // Handle Point Redemption
-        if (redeemPoints && user.loyaltyPoints > 0) {
-            const maxDiscount = Math.floor(serverOrderTotal * 0.1); // Max 10% discount
-            const maxPointsRedeemable = maxDiscount * 10;
-
-            pointsRedeemed = Math.min(user.loyaltyPoints, maxPointsRedeemable);
-            const discountAmount = pointsRedeemed / 10;
-
-            finalAmount = Math.max(0, serverOrderTotal - discountAmount);
-
-            // Deduct points
-            user.loyaltyPoints -= pointsRedeemed;
+        // Deduct points if redeemed
+        if (pointsRedeemed > 0) {
+            user.loyaltyPoints = Math.max(0, user.loyaltyPoints - pointsRedeemed);
         }
 
         // Calculate Points Earned (1 point per â‚¹10 spent)
@@ -287,12 +293,18 @@ exports.placeOrder = async (req, res) => {
         }
 
         let shop = null;
-        if (effectiveShopId) {
+        if (effectiveShopId && mongoose.Types.ObjectId.isValid(effectiveShopId)) {
             try {
                 shop = await Shop.findById(effectiveShopId);
             } catch (err) {
                 logger.warn('[ORDER] Failed to find shop by ID: ' + err.message);
             }
+        }
+
+        if (!shop) {
+            // Fallback: assign to first available active shop so order never hard-fails
+            shop = await Shop.findOne({ isActive: true }) || await Shop.findOne({});
+            if (shop) effectiveShopId = shop._id;
         }
 
         if (!effectiveShopId && !shop) {
@@ -333,7 +345,7 @@ exports.placeOrder = async (req, res) => {
 
         const newOrder = await Order.create({
             user: req.user.id || req.user._id,
-            shop: effectiveShopId || shop?._id,
+            shop: shop?._id || effectiveShopId,
             items: verifiedItems,
             totalAmount: finalAmount, // Use discounted amount
             tipAmount: Number(req.body.tipAmount) || 0,
@@ -348,9 +360,10 @@ exports.placeOrder = async (req, res) => {
             isPaid: paymentMethod === 'Online',
             instructions: instructions || '',
             deliveryAddress: address || 'Default Address',
-            deliveryFee: Number(deliveryFee) || 0,
-            platformFee: Number(platformFee) || 0,
-            taxAmount: Number(taxAmount) || 0,
+            deliveryFee: verifiedDeliveryFee,
+            surgeFee: verifiedSurgeFee,
+            platformFee: verifiedPlatformFee,
+            taxAmount: verifiedTax,
             couponCode: couponCode || null,
             couponDiscount: Number(couponDiscount) || 0,
             restaurantCoords,

@@ -2278,10 +2278,16 @@ const UserProfile = () => {
                         <div className="bg-white dark:bg-gray-800/90 p-3.5 md:p-4 rounded-[26px] border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
                             {/* Search bar */}
                             <div className="relative">
-                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => document.getElementById('order-search-input')?.focus()}
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary text-sm cursor-pointer active:scale-95 transition-all z-10"
+                                    title="Search orders"
+                                >
                                     🔍
-                                </span>
+                                </button>
                                 <input
+                                    id="order-search-input"
                                     type="text"
                                     placeholder="Search by restaurant or dish name..."
                                     className="w-full bg-gray-50 dark:bg-gray-700/60 border border-gray-100 dark:border-gray-600/50 rounded-2xl pl-10 pr-9 py-2.5 text-xs font-bold text-gray-800 dark:text-gray-100 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
@@ -2401,7 +2407,7 @@ const UserProfile = () => {
                                                         }`}
                                                     >
                                                         <span>{isDelivered ? '✓' : isCancelled ? '✕' : '⏳'}</span>
-                                                        <span>{order.orderStatus}</span>
+                                                        <span>{order.orderStatus === 'OutForDelivery' ? 'On The Way' : order.orderStatus === 'Ready' ? 'Ready' : order.orderStatus}</span>
                                                     </span>
                                                     <p className="text-sm sm:text-base font-black text-gray-900 dark:text-white mt-1">
                                                         ₹{order.totalAmount?.toFixed(0)}
@@ -2431,8 +2437,8 @@ const UserProfile = () => {
                                             </div>
 
                                             {/* Swiggy Bottom Action Buttons */}
-                                            <div className="pt-2.5 sm:pt-3 border-t border-gray-100 dark:border-gray-700/50 flex flex-wrap items-center justify-between gap-2">
-                                                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                                            <div className="pt-2.5 sm:pt-3 border-t border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                                                     <button
                                                         onClick={() => handleViewDetails(order)}
                                                         className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-black text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 flex items-center gap-1 active:scale-95 shrink-0"
@@ -2441,10 +2447,11 @@ const UserProfile = () => {
                                                     </button>
                                                     <button
                                                         onClick={() => handleDownloadInvoice(order)}
-                                                        className="p-1.5 sm:p-2 rounded-xl text-xs font-black text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 active:scale-95 shrink-0"
+                                                        className="p-1.5 sm:px-2.5 sm:py-2 rounded-xl text-xs font-black text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 active:scale-95 flex items-center gap-1 shrink-0"
                                                         title="Download Invoice PDF"
                                                     >
-                                                        📄
+                                                        <span>📄</span>
+                                                        <span className="hidden sm:inline text-[11px]">Invoice</span>
                                                     </button>
                                                     {isDelivered && (
                                                         <button
@@ -2467,7 +2474,7 @@ const UserProfile = () => {
                                                 {/* Primary Reorder CTA Button */}
                                                 <button
                                                     onClick={() => handleReorder(order)}
-                                                    className="px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-orange-600 via-primary to-rose-600 hover:opacity-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-primary/25 active:scale-95 transition-all flex items-center gap-1 shrink-0 ml-auto sm:ml-0"
+                                                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2 rounded-xl bg-gradient-to-r from-orange-600 via-primary to-rose-600 hover:opacity-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-primary/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0"
                                                 >
                                                     <span>🔁</span>
                                                     <span>Reorder</span>

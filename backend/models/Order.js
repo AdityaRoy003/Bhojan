@@ -68,6 +68,7 @@ const orderSchema = new mongoose.Schema({
     },
     deliveryAddress: { type: String, required: true },
     deliveryFee: { type: Number, default: 0 },
+    surgeFee: { type: Number, default: 0 },
     platformFee: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
     couponCode: { type: String },

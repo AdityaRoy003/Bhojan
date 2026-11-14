@@ -43,15 +43,28 @@ const SlideToPay = ({
         }
     };
 
+    // Reset slider whenever loading completes or fails
+    useEffect(() => {
+        if (!loading) {
+            setIsConfirmed(false);
+            x.set(0);
+        }
+    }, [loading, x]);
+
+    const handleConfirmAction = () => {
+        if (disabled || loading || isConfirmed) return;
+        setIsConfirmed(true);
+        triggerHaptic(30);
+        x.set(maxDrag);
+        if (onConfirm) onConfirm();
+    };
+
     const handleDragEnd = (_, info) => {
         if (disabled || loading || isConfirmed) return;
 
-        // If dragged past 75% of the track or flung with high velocity
-        if (x.get() >= maxDrag * 0.75 || info.velocity.x > 450) {
-            setIsConfirmed(true);
-            triggerHaptic([30, 50, 30]);
-            x.set(maxDrag);
-            if (onConfirm) onConfirm();
+        // If dragged past 65% of the track or flung with high velocity
+        if (x.get() >= maxDrag * 0.65 || info.velocity.x > 350) {
+            handleConfirmAction();
         } else {
             // Spring back to start
             x.set(0);
@@ -59,27 +72,21 @@ const SlideToPay = ({
         }
     };
 
-    // When loading transitions from true -> false and action did not finish, reset slider immediately
-    useEffect(() => {
-        if (!loading && isConfirmed) {
-            const timer = setTimeout(() => {
-                setIsConfirmed(false);
-                x.set(0);
-            }, 350);
-            return () => clearTimeout(timer);
-        }
-    }, [loading, isConfirmed, x]);
-
     return (
         <div className="w-full select-none">
             <div
                 ref={containerRef}
-                className={`relative h-15 rounded-2xl overflow-hidden p-1 flex items-center transition-all ${
+                onClick={() => {
+                    if (!disabled && !loading && !isConfirmed) {
+                        handleConfirmAction();
+                    }
+                }}
+                className={`relative h-15 rounded-2xl overflow-hidden p-1 flex items-center transition-all cursor-pointer ${
                     disabled
                         ? 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
                         : isConfirmed || loading
                             ? 'bg-emerald-600 shadow-lg shadow-emerald-500/25 border border-emerald-500'
-                            : 'bg-gradient-to-r from-orange-500/10 via-primary/10 to-orange-500/10 dark:from-gray-800 dark:to-gray-800/80 border-2 border-primary/30 shadow-md'
+                            : 'bg-gradient-to-r from-orange-500/10 via-primary/10 to-orange-500/10 dark:from-gray-800 dark:to-gray-800/80 border-2 border-primary/30 shadow-md hover:border-primary/50'
                 }`}
             >
                 {/* Dynamic Drag Progress Fill Track */}
@@ -95,27 +102,27 @@ const SlideToPay = ({
                 {/* Center Instructional Label */}
                 <motion.div
                     style={{ opacity: textOpacity }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none px-12"
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none px-6"
                 >
                     <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-gray-700 dark:text-gray-200 flex items-center gap-2 drop-shadow-xs">
                         {disabled ? (
                             <span>Select Delivery Address First</span>
                         ) : loading || isConfirmed ? (
-                            <span className="text-white flex items-center gap-2">
-                                <span className="inline-block animate-spin">⏳</span> {successText}...
+                            <span className="text-white flex items-center gap-2 font-black">
+                                <span className="inline-block animate-spin text-base">⏳</span> {successText}...
                             </span>
                         ) : (
                             <>
                                 <span>{label}</span>
                                 {amount > 0 && <span className="text-primary font-black">• ₹{Math.round(amount)}</span>}
-                                <span className="text-primary animate-pulse text-base hidden sm:inline">➔</span>
+                                <span className="text-primary text-xs font-bold opacity-75 hidden sm:inline">(Tap or Slide)</span>
                             </>
                         )}
                     </span>
                 </motion.div>
 
                 {/* Draggable Thumb Handle */}
-                {!disabled && !loading && (
+                {!disabled && !loading && !isConfirmed && (
                     <motion.div
                         drag="x"
                         dragConstraints={{ left: 0, right: maxDrag }}
@@ -124,36 +131,16 @@ const SlideToPay = ({
                         onDragStart={() => triggerHaptic(10)}
                         onDragEnd={handleDragEnd}
                         style={{ x }}
-                        className={`absolute left-1 z-10 w-13 h-13 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg active:scale-95 transition-transform ${
-                            isConfirmed
-                                ? 'bg-white text-emerald-600 border border-emerald-300'
-                                : 'bg-gradient-to-tr from-primary to-orange-500 text-white shadow-orange-500/40 ring-2 ring-white/40'
-                        }`}
+                        className="absolute left-1 z-10 w-13 h-13 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg active:scale-95 transition-transform bg-gradient-to-tr from-primary to-orange-500 text-white shadow-orange-500/40 ring-2 ring-white/40"
                     >
-                        {isConfirmed ? (
-                            <motion.span
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="text-xl font-black text-emerald-600"
-                            >
-                                ✓
-                            </motion.span>
-                        ) : (
-                            <span className="text-lg font-black tracking-tighter text-white">➔➔</span>
-                        )}
+                        <span className="text-lg font-black tracking-tighter text-white">➔➔</span>
                     </motion.div>
                 )}
 
-                {/* Fallback Tap action for accessibility / assistive tools */}
+                {/* Accessible Button */}
                 <button
                     type="button"
-                    onClick={() => {
-                        if (!disabled && !loading) {
-                            setIsConfirmed(true);
-                            triggerHaptic(25);
-                            if (onConfirm) onConfirm();
-                        }
-                    }}
+                    onClick={handleConfirmAction}
                     disabled={disabled || loading}
                     className="sr-only"
                     aria-label={`${label} ₹${amount}`}
