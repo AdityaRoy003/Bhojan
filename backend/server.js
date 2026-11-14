@@ -12,6 +12,8 @@ const maintenanceModeMiddleware = require('./middlewares/maintenanceMode');
 const sanitize = require('mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 
+const path = require('path');
+dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 const app = express();
@@ -356,15 +358,16 @@ app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 
 // Serve static frontend assets in production if frontend/dist exists
-const path = require('path');
 const fs = require('fs');
 const frontendDistPath = path.join(__dirname, '../frontend/dist');
 
 if (fs.existsSync(frontendDistPath)) {
     app.use(express.static(frontendDistPath));
-    app.get('*', (req, res, next) => {
-        if (req.path.startsWith('/api') || req.path === '/health') return next();
-        res.sendFile(path.join(frontendDistPath, 'index.html'));
+    app.use((req, res, next) => {
+        if (req.method === 'GET' && !req.path.startsWith('/api') && req.path !== '/health') {
+            return res.sendFile(path.join(frontendDistPath, 'index.html'));
+        }
+        next();
     });
 }
 
