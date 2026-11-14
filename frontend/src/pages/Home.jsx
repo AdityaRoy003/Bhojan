@@ -575,14 +575,14 @@ const Home = () => {
                         </div>
                     </div>
 
-                    {/* Streamlined Search Bar: Search + Mic + Search Button (Point 2) */}
+                    {/* Streamlined Search Bar: Clean & Professional with Clickable Search Logo */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.15 }}
                         className="flex flex-col items-center relative z-50 px-2 max-w-2xl mx-auto"
                     >
-                        <div className="flex items-center w-full bg-white dark:bg-gray-900 rounded-[24px] border border-gray-200 dark:border-gray-800 p-1.5 transition-all group focus-within:ring-4 focus-within:ring-primary/10 shadow-sm">
+                        <div className="flex items-center w-full bg-white dark:bg-gray-900 rounded-[24px] border border-gray-200 dark:border-gray-800 p-1.5 transition-all group focus-within:ring-4 focus-within:ring-primary/10 shadow-sm relative">
                             <div className="relative flex-1 flex items-center min-w-0">
                                 <button
                                     type="button"
@@ -603,7 +603,7 @@ const Home = () => {
                                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                                     placeholder="Search for 'Biryani', 'Pizza', 'Burger'..."
-                                    className="w-full pl-11 pr-12 md:pr-14 py-2.5 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm md:text-base font-bold placeholder:text-gray-400 placeholder:font-normal"
+                                    className="w-full pl-11 pr-14 py-2.5 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none text-sm md:text-base font-bold placeholder:text-gray-400 placeholder:font-normal"
                                 />
                                 {searchQuery && (
                                     <button
@@ -612,22 +612,20 @@ const Home = () => {
                                             setSearchQuery('');
                                             fetchShops();
                                         }}
-                                        className="absolute right-3 md:right-11 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center text-xs font-black transition-all cursor-pointer z-10"
+                                        className="absolute right-10 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center text-xs font-black transition-all cursor-pointer z-10"
                                         title="Clear search"
                                     >
                                         ✕
                                     </button>
                                 )}
-                                <div className="hidden md:block">
-                                    <button
-                                        type="button"
-                                        onClick={handleVoiceSearch}
-                                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all ${isListening ? 'bg-primary text-white scale-110 animate-pulse' : 'text-gray-400 hover:text-primary'} cursor-pointer z-10`}
-                                        title="Voice Search"
-                                    >
-                                        <span className="text-xl">{isListening ? '🛑' : '🎙️'}</span>
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleVoiceSearch}
+                                    className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all ${isListening ? 'bg-primary text-white scale-110 animate-pulse' : 'text-gray-400 hover:text-primary'} cursor-pointer z-10`}
+                                    title="Voice Search"
+                                >
+                                    <span className="text-xl">{isListening ? '🛑' : '🎙️'}</span>
+                                </button>
 
                                 {/* Suggestions Dropdown */}
                                 <AnimatePresence>
@@ -665,27 +663,6 @@ const Home = () => {
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                            </div>
-
-                            {/* Streamlined Search Icons: Voice Mic + Search Button */}
-                            <div className="flex items-center gap-1 md:gap-1.5 pr-1 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={handleVoiceSearch}
-                                    className={`md:hidden p-2 rounded-full transition-all flex items-center justify-center ${isListening ? 'bg-primary text-white animate-pulse' : 'text-gray-400'}`}
-                                    title="Voice Search"
-                                >
-                                    <span className="text-lg">{isListening ? '🛑' : '🎙️'}</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSearch}
-                                    className="bg-primary hover:bg-primary/90 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-primary/20 hover:shadow-primary/30 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                                >
-                                    <span className="text-sm">🔍</span>
-                                    <span>Search</span>
-                                </button>
                             </div>
                         </div>
 
