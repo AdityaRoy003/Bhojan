@@ -30,6 +30,70 @@ const SCHEDULE_SLOTS = [
 
 const TIP_OPTIONS = [0, 20, 30, 50, 100];
 
+// Lightweight 60fps native canvas confetti burst
+const triggerCelebrationConfetti = () => {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '9999';
+        document.body.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width = window.innerWidth;
+        const height = canvas.height = window.innerHeight;
+
+        const colors = ['#e63946', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316'];
+        const particles = Array.from({ length: 90 }, () => ({
+            x: width / 2,
+            y: height / 2,
+            vx: (Math.random() - 0.5) * 18,
+            vy: (Math.random() - 0.8) * 20,
+            size: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 12,
+            opacity: 1
+        }));
+
+        let animationFrame;
+        const startTime = Date.now();
+        const render = () => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed > 3500) {
+                cancelAnimationFrame(animationFrame);
+                if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+                return;
+            }
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.38; // gravity
+                p.vx *= 0.98; // air resistance
+                p.rotation += p.rotationSpeed;
+                p.opacity = Math.max(0, 1 - elapsed / 3500);
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.globalAlpha = p.opacity;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                ctx.restore();
+            });
+            animationFrame = requestAnimationFrame(render);
+        };
+        render();
+    } catch (e) {
+        // graceful fallback
+    }
+};
+
 const Checkout = () => {
     const { cartItems, restaurant } = useSelector((state) => state.cart);
     const { user } = useSelector((state) => state.user);
@@ -117,6 +181,12 @@ const Checkout = () => {
     }
 
     const total = Math.max(0, (subtotal + deliveryFee + platformFee + taxes + tipAmount + surgeFee) - discountAmount - couponDiscount);
+
+    useEffect(() => {
+        if (orderSuccess) {
+            triggerCelebrationConfetti();
+        }
+    }, [orderSuccess]);
 
     useEffect(() => {
         if (cartItems.length === 0 && !orderSuccess) navigate('/cart');

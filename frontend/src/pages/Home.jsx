@@ -17,6 +17,29 @@ import FriendsActivity from '../components/FriendsActivity';
 
 import { useSelector } from 'react-redux';
 
+const SVG_SHOP_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%231f2937'/><stop offset='100%25' stop-color='%23111827'/></linearGradient></defs><rect width='800' height='400' fill='url(%23g)'/><circle cx='400' cy='180' r='60' fill='%23374151'/><text x='50%25' y='49%25' font-size='56' text-anchor='middle' dominant-baseline='central' fill='%23f97316'>🍲</text><text x='50%25' y='72%25' font-size='22' font-family='sans-serif' font-weight='900' text-anchor='middle' fill='%23f3f4f6'>Bhojan Kitchen</text></svg>";
+
+const RestaurantShimmerSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 animate-pulse">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex flex-col bg-white dark:bg-gray-900 rounded-[26px] p-3 md:p-0 shadow-sm border border-gray-100/90 dark:border-gray-800/80 overflow-hidden">
+                <div className="relative w-full h-44 sm:h-48 md:h-52 bg-gray-200 dark:bg-gray-800 rounded-[20px] md:rounded-none">
+                    <div className="absolute top-2.5 right-2.5 w-12 h-6 bg-white/40 dark:bg-gray-700/60 rounded-xl" />
+                    <div className="absolute bottom-2.5 left-2.5 w-24 h-6 bg-white/40 dark:bg-gray-700/60 rounded-xl" />
+                </div>
+                <div className="p-3 md:p-6 space-y-3">
+                    <div className="h-5 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4" />
+                    <div className="h-3.5 bg-gray-150 dark:bg-gray-800/60 rounded-md w-full" />
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-800/80">
+                        <div className="h-3.5 bg-gray-200 dark:bg-gray-800 rounded w-24" />
+                        <div className="h-3.5 bg-gray-200 dark:bg-gray-800 rounded w-20" />
+                    </div>
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
 const categories = [
     { name: 'Biryani', emoji: '🍛', image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=60&w=120&auto=format' },
     { name: 'Pizza', emoji: '🍕', image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=60&w=120&auto=format' },
@@ -1630,11 +1653,45 @@ const Home = () => {
                 </motion.h2>
 
                 {loading ? (
-                    <div className="text-center py-10 dark:text-gray-400">Loading restaurants...</div>
+                    <RestaurantShimmerSkeleton />
                 ) : filteredShops.length === 0 ? (
-                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <p className="text-gray-500 dark:text-gray-400">No restaurants match your filters.</p>
-                        <button onClick={() => { setFilterMinPrice(0); setFilterMaxPrice(1000); setFilterRating(0); setFilterVeg(false); }} className="mt-4 text-primary font-bold underline">Clear Filters</button>
+                    <div className="text-center py-12 px-4 bg-white dark:bg-gray-800/80 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700/80">
+                        <span className="text-4xl block mb-2">🍽️</span>
+                        <h4 className="text-base font-black text-gray-800 dark:text-white mb-1">No restaurants match your filters</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 font-medium">Try popular cuisines or reset active filters</p>
+                        <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto mb-4">
+                            {['Biryani', 'Pizza', 'Burger', 'Chinese', 'Thali'].map(item => (
+                                <button
+                                    key={item}
+                                    onClick={() => {
+                                        setFilterMinPrice(0);
+                                        setFilterMaxPrice(2000);
+                                        setFilterRating(0);
+                                        setFilterVeg(false);
+                                        setSelectedDietaryTags([]);
+                                        setSearchQuery(item);
+                                        fetchShops(item);
+                                    }}
+                                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-primary hover:text-white transition-all cursor-pointer"
+                                >
+                                    {item}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => {
+                                setFilterMinPrice(0);
+                                setFilterMaxPrice(2000);
+                                setFilterRating(0);
+                                setFilterVeg(false);
+                                setSelectedDietaryTags([]);
+                                setSearchQuery('');
+                                fetchShops();
+                            }}
+                            className="text-xs font-black text-primary hover:underline uppercase tracking-wider cursor-pointer"
+                        >
+                            Reset All Filters
+                        </button>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
@@ -1648,11 +1705,15 @@ const Home = () => {
                                     className="card-3d flex flex-col bg-white dark:bg-gray-900 rounded-[26px] p-3 md:p-0 shadow-[0_8px_25px_rgba(0,0,0,0.06)] border border-gray-100/90 dark:border-gray-800/80 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
                                 >
                                     {/* Image Container with 3D depth */}
-                                    <div className="relative w-full h-44 sm:h-48 md:h-52 overflow-hidden rounded-[20px] md:rounded-none">
+                                    <div className="relative w-full h-44 sm:h-48 md:h-52 overflow-hidden rounded-[20px] md:rounded-none bg-gray-100 dark:bg-gray-800">
                                         <img
                                             src={shop.image || "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=60&w=350&auto=format"}
                                             alt={shop.name}
                                             loading="lazy"
+                                            onError={(e) => {
+                                                e.currentTarget.onerror = null;
+                                                e.currentTarget.src = SVG_SHOP_FALLBACK;
+                                            }}
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />

@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+const SVG_DISH_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><defs><linearGradient id='d' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%23374151'/><stop offset='100%25' stop-color='%231f2937'/></linearGradient></defs><rect width='400' height='400' fill='url(%23d)'/><circle cx='200' cy='180' r='50' fill='%234b5563'/><text x='50%25' y='48%25' font-size='48' text-anchor='middle' dominant-baseline='central' fill='%23fb923c'>🍽️</text><text x='50%25' y='72%25' font-size='16' font-family='sans-serif' font-weight='700' text-anchor='middle' fill='%23e5e7eb'>Delicious Meal</text></svg>";
+
 const RecommendationCard = ({ item, reason }) => {
     const getDietaryBadgeColor = (tag) => {
         const colors = {
@@ -32,10 +34,14 @@ const RecommendationCard = ({ item, reason }) => {
             whileHover={{ scale: 1.02 }}
             className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden hover:shadow-lg transition-all duration-300"
         >
-            <div className="relative h-40 overflow-hidden">
+            <div className="relative h-40 overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <img
-                    src={item.image}
+                    src={item.image || SVG_DISH_FALLBACK}
                     alt={item.name}
+                    onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = SVG_DISH_FALLBACK;
+                    }}
                     className="w-full h-full object-cover"
                 />
                 {reason && (
@@ -85,7 +91,7 @@ const RecommendationCard = ({ item, reason }) => {
                     </div>
                 )}
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2">
                         <span className="text-lg font-black text-gray-900 dark:text-white">₹{item.price}</span>
                         {item.rating > 0 && (

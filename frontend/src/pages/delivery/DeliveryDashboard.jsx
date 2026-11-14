@@ -312,10 +312,10 @@ const DeliveryDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] py-8 px-4 sm:px-6 lg:px-8 font-inter relative overflow-hidden">
+        <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 py-8 px-4 sm:px-6 lg:px-8 font-inter relative overflow-hidden text-gray-800 dark:text-gray-100 transition-colors duration-300">
             {/* Background Decorative Elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-200/20 blur-[120px] rounded-full"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200/20 blur-[120px] rounded-full"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-200/20 dark:bg-amber-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200/20 dark:bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none"></div>
 
             <div className="max-w-4xl mx-auto relative z-10">
 
@@ -327,7 +327,7 @@ const DeliveryDashboard = () => {
                             exit={{ opacity: 0, scale: 0.9 }}
                             className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md"
                         >
-                            <div className="bg-amber-500/90 backdrop-blur-xl text-white p-5 rounded-3xl shadow-[0_20px_50px_rgba(245,158,11,0.3)] flex items-center justify-between border border-white/20">
+                            <div className="bg-amber-500/95 backdrop-blur-xl text-white p-5 rounded-3xl shadow-[0_20px_50px_rgba(245,158,11,0.3)] flex items-center justify-between border border-white/20">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl animate-bounce">🥡</div>
                                     <div>
@@ -335,7 +335,7 @@ const DeliveryDashboard = () => {
                                         <p className="text-xs font-bold opacity-90">{newOrderAlert.shopName} is waiting</p>
                                     </div>
                                 </div>
-                                <button onClick={() => { setActiveTab('find'); setNewOrderAlert(null); }} className="bg-white text-amber-600 px-4 py-2 rounded-xl font-black text-xs shadow-lg hover:scale-105 transition-transform">VIEW ⚡</button>
+                                <button onClick={() => { setActiveTab('find'); setNewOrderAlert(null); }} className="bg-white text-amber-600 px-4 py-2 rounded-xl font-black text-xs shadow-lg hover:scale-105 transition-transform cursor-pointer">VIEW ⚡</button>
                             </div>
                         </motion.div>
                     )}
@@ -344,15 +344,15 @@ const DeliveryDashboard = () => {
                 <motion.header
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="mb-8 flex flex-col md:flex-row justify-between items-center bg-white/70 backdrop-blur-md p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/40"
+                    className="mb-8 flex flex-col md:flex-row justify-between items-center bg-white/80 dark:bg-gray-850/80 backdrop-blur-md p-6 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/40 dark:border-gray-800"
                 >
                     <div className="text-center md:text-left mb-6 md:mb-0">
                         <div className="flex items-center gap-2 mb-1 justify-center md:justify-start">
-                            <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-none">{t.title} <span className="text-amber-500">🚚</span></h1>
+                            <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-none">{t.title} <span className="text-amber-500">🚚</span></h1>
                         </div>
-                        <p className="text-gray-500 font-semibold text-sm flex items-center gap-2 justify-center md:justify-start">
+                        <p className="text-gray-500 dark:text-gray-400 font-semibold text-sm flex items-center gap-2 justify-center md:justify-start">
                             {user?.fullname}
-                            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                            <span className="w-1 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></span>
                             <span className="text-amber-500 flex items-center gap-0.5">⭐ {stats.rating}</span>
                         </p>
                     </div>
@@ -361,11 +361,11 @@ const DeliveryDashboard = () => {
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Wallet Balance</p>
                             <p className="text-2xl font-black">₹{stats.balance.toFixed(0)}</p>
                         </div>
-                        <div className="flex items-center space-x-3 bg-white/50 backdrop-blur-sm px-4 py-3 rounded-2xl border border-gray-100">
-                            <span className={`text-[10px] font-black uppercase tracking-wider ${isOnline ? 'text-green-600' : 'text-gray-400'}`}>
+                        <div className="flex items-center space-x-3 bg-white/60 dark:bg-gray-800/80 backdrop-blur-sm px-4 py-3 rounded-2xl border border-gray-100 dark:border-gray-700">
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${isOnline ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
                                 {isOnline ? t.online : t.offline}
                             </span>
-                            <button onClick={toggleOnline} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none ${isOnline ? 'bg-green-500' : 'bg-gray-200'}`}>
+                            <button onClick={toggleOnline} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none cursor-pointer ${isOnline ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
                                 <motion.span
                                     animate={{ x: isOnline ? 24 : 4 }}
                                     className="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm"
@@ -375,7 +375,7 @@ const DeliveryDashboard = () => {
                     </div>
                 </motion.header>
 
-                <div className="flex space-x-2 mb-8 bg-white/50 backdrop-blur-sm p-2 rounded-3xl shadow-sm border border-white/40 overflow-x-auto scrollbar-hide">
+                <div className="flex space-x-2 mb-8 bg-white/60 dark:bg-gray-850/80 backdrop-blur-sm p-2 rounded-3xl shadow-sm border border-white/40 dark:border-gray-800 overflow-x-auto scrollbar-hide">
                     {[
                         { id: 'find', icon: '🔍', label: t.find },
                         { id: 'active', icon: '📦', label: `${t.active}` },
@@ -385,12 +385,12 @@ const DeliveryDashboard = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 min-w-[90px] flex flex-col justify-center items-center py-4 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all duration-500 relative ${activeTab === tab.id ? 'text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`flex-1 min-w-[90px] flex flex-col justify-center items-center py-4 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all duration-500 relative cursor-pointer ${activeTab === tab.id ? 'text-white' : 'text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
                         >
                             {activeTab === tab.id && (
                                 <motion.div
                                     layoutId="activeTab"
-                                    className="absolute inset-0 bg-amber-500 rounded-2xl shadow-lg shadow-amber-200"
+                                    className="absolute inset-0 bg-amber-500 rounded-2xl shadow-lg shadow-amber-200 dark:shadow-amber-900/30"
                                     transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                                 />
                             )}
@@ -453,10 +453,10 @@ const DeliveryDashboard = () => {
 
                                     <AnimatePresence mode="popLayout">
                                         {availableOrders.filter(o => o.orderStatus === 'Ready' || o.orderStatus === 'Preparing').length === 0 ? (
-                                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-20 bg-white rounded-[40px] shadow-sm border border-gray-100">
+                                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-20 bg-white dark:bg-gray-900 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-800">
                                                 <div className="text-6xl mb-4 grayscale opacity-20">🥡</div>
                                                 <h3 className="text-xl font-bold text-gray-400 tracking-tight">No hungry customers yet!</h3>
-                                                <p className="text-gray-300 text-sm mt-1">Orders appear here as soon as they're ready.</p>
+                                                <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Orders appear here as soon as they're ready.</p>
                                             </motion.div>
                                         ) : (
                                             availableOrders.filter(o => o.orderStatus === 'Ready' || o.orderStatus === 'Preparing').map(order => (
@@ -466,14 +466,14 @@ const DeliveryDashboard = () => {
                                                     animate={{ y: 0, opacity: 1 }}
                                                     exit={{ scale: 0.9, opacity: 0 }}
                                                     key={order._id}
-                                                    className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 transition-all group relative overflow-hidden"
+                                                    className="bg-white dark:bg-gray-900 p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 transition-all group relative overflow-hidden"
                                                 >
                                                     <div className="flex flex-col md:flex-row justify-between items-start gap-4 relative z-10">
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-4 mb-4">
-                                                                <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">🏪</div>
+                                                                <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">🏪</div>
                                                                 <div>
-                                                                    <h3 className="font-black text-xl text-gray-900 group-hover:text-amber-600 transition-colors tracking-tight">{order.shop?.name}</h3>
+                                                                    <h3 className="font-black text-xl text-gray-900 dark:text-white group-hover:text-amber-500 transition-colors tracking-tight">{order.shop?.name}</h3>
                                                                     <p className="text-xs font-bold text-gray-400 flex items-center gap-1 mt-0.5">
                                                                         <span className="text-amber-500">📍</span> {order.shop?.city}
                                                                     </p>
@@ -481,21 +481,21 @@ const DeliveryDashboard = () => {
                                                             </div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {order.items.slice(0, 3).map((item, i) => (
-                                                                    <span key={i} className="bg-gray-50 text-[10px] font-black text-gray-500 px-3 py-1.5 rounded-xl border border-gray-100">
+                                                                    <span key={i} className="bg-gray-50 dark:bg-gray-800 text-[10px] font-black text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700">
                                                                         {item.quantity}× {item.name}
                                                                     </span>
                                                                 ))}
-                                                                {order.items.length > 3 && <span className="bg-gray-50 text-[10px] font-black text-gray-400 px-3 py-1.5 rounded-xl">+{order.items.length - 3} more</span>}
+                                                                {order.items.length > 3 && <span className="bg-gray-50 dark:bg-gray-800 text-[10px] font-black text-gray-400 px-3 py-1.5 rounded-xl">+{order.items.length - 3} more</span>}
                                                             </div>
                                                         </div>
                                                         <div className="w-full md:w-auto flex flex-row md:flex-col justify-between items-center md:items-end gap-4 min-w-[120px]">
                                                             <div className="text-right">
-                                                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest leading-none mb-1">Commission</p>
-                                                                <span className="text-3xl font-black text-green-600 tracking-tight">₹{(order.totalAmount * 0.1).toFixed(0)}</span>
+                                                                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-1">Commission</p>
+                                                                <span className="text-3xl font-black text-green-600 dark:text-green-400 tracking-tight">₹{(order.totalAmount * 0.1).toFixed(0)}</span>
                                                             </div>
                                                             <button
                                                                 onClick={() => handleAcceptOrder(order._id)}
-                                                                className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-amber-500 transition-all shadow-lg hover:shadow-amber-500/20 active:scale-95"
+                                                                className="bg-gray-900 dark:bg-amber-500 text-white dark:text-gray-950 px-8 py-3 rounded-2xl font-black text-sm hover:bg-amber-500 dark:hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/20 active:scale-95 cursor-pointer"
                                                             >
                                                                 Accept ⚡
                                                             </button>
@@ -512,17 +512,17 @@ const DeliveryDashboard = () => {
                         {activeTab === 'active' && (
                             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
                                 <div className="flex justify-between items-center px-2">
-                                    <h2 className="text-xl font-black text-gray-900 tracking-tight text-uppercase">Active Deliveries</h2>
-                                    <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black">{myDeliveries.filter(o => o.orderStatus !== 'Delivered' && o.orderStatus !== 'Cancelled').length} Ongoing</div>
+                                    <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight text-uppercase">Active Deliveries</h2>
+                                    <div className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-[10px] font-black">{myDeliveries.filter(o => o.orderStatus !== 'Delivered' && o.orderStatus !== 'Cancelled').length} Ongoing</div>
                                 </div>
 
                                 {myDeliveries.filter(o => o.orderStatus !== 'Delivered' && o.orderStatus !== 'Cancelled').map(order => (
-                                    <motion.div variants={itemVariants} key={order._id} className="bg-white p-8 rounded-[40px] shadow-xl border border-gray-100 relative overflow-hidden group">
+                                    <motion.div variants={itemVariants} key={order._id} className="bg-white dark:bg-gray-900 p-8 rounded-[40px] shadow-xl border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
                                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-16 h-16 rounded-[24px] bg-slate-900 text-white flex items-center justify-center text-3xl shadow-xl shadow-slate-200">📦</div>
+                                                <div className="w-16 h-16 rounded-[24px] bg-slate-900 text-white flex items-center justify-center text-3xl shadow-xl shadow-slate-200 dark:shadow-none">📦</div>
                                                 <div>
-                                                    <h3 className="font-black text-xl text-gray-900 leading-none mb-1 tracking-tight">#{order._id.slice(-6)}</h3>
+                                                    <h3 className="font-black text-xl text-gray-900 dark:text-white leading-none mb-1 tracking-tight">#{order._id.slice(-6)}</h3>
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                                                         <p className="text-xs font-black text-amber-600 uppercase tracking-widest">{order.orderStatus}</p>
@@ -562,15 +562,15 @@ const DeliveryDashboard = () => {
                                             </div>
                                         ) : null}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                            <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100 group-hover:bg-amber-50/50 transition-colors">
-                                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">From Restaurant</p>
-                                                <p className="text-sm font-black text-gray-800 tracking-tight">{order.shop?.name}</p>
-                                                <p className="text-xs font-bold text-gray-500 mt-1">{order.shop?.address}</p>
+                                            <div className="bg-gray-50/70 dark:bg-gray-800/80 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700/80 group-hover:border-amber-500/30 transition-colors">
+                                                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">From Restaurant</p>
+                                                <p className="text-sm font-black text-gray-800 dark:text-white tracking-tight">{order.shop?.name}</p>
+                                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1">{order.shop?.address}</p>
                                             </div>
-                                            <div className="bg-gray-50/50 p-6 rounded-[32px] border border-gray-100 group-hover:bg-indigo-50/50 transition-colors">
-                                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">To Customer</p>
-                                                <p className="text-sm font-black text-gray-800 tracking-tight">{order.user?.fullname}</p>
-                                                <p className="text-xs font-bold text-gray-500 mt-1">{order.deliveryAddress}</p>
+                                            <div className="bg-gray-50/70 dark:bg-gray-800/80 p-6 rounded-[32px] border border-gray-100 dark:border-gray-700/80 group-hover:border-indigo-500/30 transition-colors">
+                                                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">To Customer</p>
+                                                <p className="text-sm font-black text-gray-800 dark:text-white tracking-tight">{order.user?.fullname}</p>
+                                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1">{order.deliveryAddress}</p>
                                             </div>
                                         </div>
 
@@ -640,16 +640,16 @@ const DeliveryDashboard = () => {
 
                         {activeTab === 'earnings' && (
                             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-                                <h2 className="text-xl font-black text-gray-900 tracking-tight text-uppercase px-2">Performance</h2>
+                                <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase px-2">Performance</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <motion.div variants={itemVariants} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col justify-between group">
+                                    <motion.div variants={itemVariants} className="bg-white dark:bg-gray-900 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col justify-between group">
                                         <div className="flex justify-between items-start mb-8">
-                                            <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl group-hover:rotate-12 transition-transform">📈</div>
-                                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-black">+12% vs expected</span>
+                                            <div className="w-14 h-14 bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 rounded-2xl flex items-center justify-center text-2xl group-hover:rotate-12 transition-transform">📈</div>
+                                            <span className="bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 px-3 py-1 rounded-full text-[10px] font-black">+12% vs expected</span>
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Today's Profit</p>
-                                            <p className="text-5xl font-black text-gray-900 tracking-tighter">₹{stats.todaysEarnings}</p>
+                                            <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Today's Profit</p>
+                                            <p className="text-5xl font-black text-gray-900 dark:text-white tracking-tighter">₹{stats.todaysEarnings}</p>
                                         </div>
                                     </motion.div>
                                     <motion.div variants={itemVariants} className="bg-indigo-600 p-8 rounded-[40px] shadow-2xl text-white relative overflow-hidden group">
@@ -669,19 +669,19 @@ const DeliveryDashboard = () => {
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] -mr-32 -mt-32"></div>
                                     </motion.div>
                                 </div>
-                                <motion.div variants={itemVariants} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100">
-                                    <h3 className="font-black text-gray-900 mb-6 uppercase tracking-widest text-xs">Recent History</h3>
+                                <motion.div variants={itemVariants} className="bg-white dark:bg-gray-900 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-800">
+                                    <h3 className="font-black text-gray-900 dark:text-white mb-6 uppercase tracking-widest text-xs">Recent History</h3>
                                     <div className="space-y-4">
                                         {myDeliveries.filter(o => o.orderStatus === 'Delivered').slice(0, 4).map(o => (
-                                            <div key={o._id} className="flex justify-between items-center p-4 hover:bg-gray-50 rounded-2xl transition-colors">
+                                            <div key={o._id} className="flex justify-between items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-800/60 rounded-2xl transition-colors">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-lg">💰</div>
+                                                    <div className="w-10 h-10 bg-gray-50 dark:bg-gray-800 rounded-xl flex items-center justify-center text-lg">💰</div>
                                                     <div>
-                                                        <p className="font-black text-sm text-gray-800 tracking-tight">Delivery Reward</p>
-                                                        <p className="text-[10px] font-bold text-gray-400">{new Date(o.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{o._id.slice(-4)}</p>
+                                                        <p className="font-black text-sm text-gray-800 dark:text-gray-100 tracking-tight">Delivery Reward</p>
+                                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{new Date(o.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{o._id.slice(-4)}</p>
                                                     </div>
                                                 </div>
-                                                <span className="font-black text-green-600">+₹{(o.totalAmount * 0.1).toFixed(0)}</span>
+                                                <span className="font-black text-green-600 dark:text-green-400">+₹{(o.totalAmount * 0.1).toFixed(0)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -691,25 +691,25 @@ const DeliveryDashboard = () => {
 
                         {activeTab === 'profile' && (
                             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-                                <div className="bg-white p-10 rounded-[48px] shadow-sm border border-gray-100 flex flex-col items-center">
+                                <div className="bg-white dark:bg-gray-900 p-10 rounded-[48px] shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col items-center">
                                     <div className="relative group mb-6">
                                         <motion.div
                                             whileHover={{ scale: 1.05 }}
-                                            className="w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-500 rounded-[40px] shadow-2xl shadow-orange-200 flex items-center justify-center border-4 border-white overflow-hidden"
+                                            className="w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-500 rounded-[40px] shadow-2xl shadow-orange-200 flex items-center justify-center border-4 border-white dark:border-gray-800 overflow-hidden"
                                         >
                                             <span className="text-5xl font-black text-white">{user?.fullname?.charAt(0)}</span>
                                         </motion.div>
-                                        <div className="absolute -bottom-2 -right-2 bg-green-500 border-4 border-white h-8 w-8 rounded-full shadow-lg"></div>
+                                        <div className="absolute -bottom-2 -right-2 bg-green-500 border-4 border-white dark:border-gray-800 h-8 w-8 rounded-full shadow-lg"></div>
                                     </div>
-                                    <h3 className="text-3xl font-black text-gray-900 tracking-tighter mb-1">{user?.fullname}</h3>
-                                    <p className="text-gray-400 font-bold mb-8 uppercase tracking-widest text-[10px]">Prime Delivery Partner</p>
+                                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter mb-1">{user?.fullname}</h3>
+                                    <p className="text-gray-400 dark:text-gray-500 font-bold mb-8 uppercase tracking-widest text-[10px]">Prime Delivery Partner</p>
 
                                     <div className="w-full max-w-sm">
                                         <div className="flex justify-between items-end mb-2">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Profile Completion</span>
-                                            <span className="text-sm font-black text-amber-600">{profileStrength}%</span>
+                                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Profile Completion</span>
+                                            <span className="text-sm font-black text-amber-600 dark:text-amber-400">{profileStrength}%</span>
                                         </div>
-                                        <div className="h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-50 p-1">
+                                        <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden border border-gray-50 dark:border-gray-750 p-1">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${profileStrength}%` }}
@@ -720,40 +720,40 @@ const DeliveryDashboard = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <motion.div variants={itemVariants} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 group">
-                                        <h4 className="font-black text-xs text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                            <span className="w-8 h-8 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center text-sm group-hover:scale-110 transition-transform">🧘</span> {t.wellness}
+                                    <motion.div variants={itemVariants} className="bg-white dark:bg-gray-900 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-800 group">
+                                        <h4 className="font-black text-xs text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                            <span className="w-8 h-8 bg-blue-50 dark:bg-blue-950/40 text-blue-500 dark:text-blue-400 rounded-xl flex items-center justify-center text-sm group-hover:scale-110 transition-transform">🧘</span> {t.wellness}
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-blue-50 p-6 rounded-[32px] text-center border border-blue-100/50 hover:bg-blue-100/50 transition-colors">
+                                            <div className="bg-blue-50 dark:bg-blue-950/30 p-6 rounded-[32px] text-center border border-blue-100/50 dark:border-blue-900/40 hover:bg-blue-100/50 transition-colors">
                                                 <p className="text-[9px] font-black text-blue-400 uppercase mb-3">Hydration</p>
                                                 <div className="flex items-center justify-center gap-3">
-                                                    <span className="text-3xl font-black text-blue-700 leading-none">{wellness.waterIntake}</span>
+                                                    <span className="text-3xl font-black text-blue-700 dark:text-blue-300 leading-none">{wellness.waterIntake}</span>
                                                     <button onClick={() => handleUpdateWellness('waterIntake', 1)} className="w-8 h-8 bg-blue-600 text-white rounded-xl font-black text-lg shadow-lg shadow-blue-200 active:scale-90 transition-transform">+</button>
                                                 </div>
-                                                <p className="text-[9px] font-bold text-blue-300 mt-2 uppercase">Glasses</p>
+                                                <p className="text-[9px] font-bold text-blue-300 dark:text-blue-400 mt-2 uppercase">Glasses</p>
                                             </div>
-                                            <div className="bg-green-50 p-6 rounded-[32px] text-center border border-green-100/50 hover:bg-green-100/50 transition-colors">
+                                            <div className="bg-green-50 dark:bg-green-950/30 p-6 rounded-[32px] text-center border border-green-100/50 dark:border-green-900/40 hover:bg-green-100/50 transition-colors">
                                                 <p className="text-[9px] font-black text-green-400 uppercase mb-3">Activity</p>
                                                 <div className="flex flex-col items-center">
-                                                    <span className="text-2xl font-black text-green-700 leading-none">{wellness.dailySteps}</span>
-                                                    <button onClick={() => handleUpdateWellness('dailySteps', 100)} className="mt-2 text-[8px] font-black text-green-700 bg-white px-2 py-1 rounded-lg border border-green-100">+100</button>
+                                                    <span className="text-2xl font-black text-green-700 dark:text-green-300 leading-none">{wellness.dailySteps}</span>
+                                                    <button onClick={() => handleUpdateWellness('dailySteps', 100)} className="mt-2 text-[8px] font-black text-green-700 dark:text-green-300 bg-white dark:bg-gray-800 px-2 py-1 rounded-lg border border-green-100 dark:border-green-900/40">+100</button>
                                                 </div>
-                                                <p className="text-[9px] font-bold text-green-300 mt-2 uppercase">Steps</p>
+                                                <p className="text-[9px] font-bold text-green-300 dark:text-green-400 mt-2 uppercase">Steps</p>
                                             </div>
                                         </div>
                                     </motion.div>
 
-                                    <motion.div variants={itemVariants} className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 group">
-                                        <h4 className="font-black text-xs text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                            <span className="w-8 h-8 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center text-sm group-hover:scale-110 transition-transform">🌐</span> Language
+                                    <motion.div variants={itemVariants} className="bg-white dark:bg-gray-900 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-gray-800 group">
+                                        <h4 className="font-black text-xs text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                            <span className="w-8 h-8 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 rounded-xl flex items-center justify-center text-sm group-hover:scale-110 transition-transform">🌐</span> Language
                                         </h4>
                                         <div className="flex flex-col gap-2">
                                             {['English', 'Bhojpuri', 'Maithili'].map(lang => (
                                                 <button
                                                     key={lang}
                                                     onClick={() => handleUpdateProfile('language', lang)}
-                                                    className={`w-full py-3.5 px-6 rounded-2xl text-[10px] font-black transition-all border flex items-center justify-between group/btn ${language === lang ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-gray-50 text-gray-400 border-gray-100 hover:bg-white hover:border-indigo-100 hover:text-indigo-400'}`}
+                                                    className={`w-full py-3.5 px-6 rounded-2xl text-[10px] font-black transition-all border flex items-center justify-between group/btn ${language === lang ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-400 border-gray-100 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 hover:border-indigo-100 hover:text-indigo-400'}`}
                                                 >
                                                     {lang}
                                                     {language === lang && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>✨</motion.span>}
@@ -796,7 +796,7 @@ const DeliveryDashboard = () => {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 h-full w-full sm:w-[440px] bg-white shadow-2xl z-[160] flex flex-col font-inter"
+                            className="fixed top-0 right-0 h-full w-full sm:w-[440px] bg-white dark:bg-gray-900 shadow-2xl z-[160] flex flex-col font-inter"
                         >
                             {/* Header */}
                             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
@@ -817,9 +817,9 @@ const DeliveryDashboard = () => {
 
                             {/* Delivery Preset & Instructions */}
                             {(riderChatOrder.deliveryPreset !== 'none' || riderChatOrder.instructions) && (
-                                <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-2">
+                                <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/40 px-4 py-2.5 flex items-center gap-2">
                                     <span className="text-sm">📌</span>
-                                    <p className="text-[11px] text-amber-900 font-bold truncate">
+                                    <p className="text-[11px] text-amber-900 dark:text-amber-200 font-bold truncate">
                                         {riderChatOrder.deliveryPreset && riderChatOrder.deliveryPreset !== 'none' ? `Preset: ${riderChatOrder.deliveryPreset.replace(/_/g, ' ').toUpperCase()} • ` : ''}
                                         {riderChatOrder.instructions || ''}
                                     </p>
@@ -827,11 +827,11 @@ const DeliveryDashboard = () => {
                             )}
 
                             {/* Messages Body */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8fafc]">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8fafc] dark:bg-gray-950">
                                 {riderChatMessages.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400 dark:text-gray-500">
                                         <span className="text-4xl mb-2">💬</span>
-                                        <p className="text-sm font-bold text-gray-600">No messages yet</p>
+                                        <p className="text-sm font-bold text-gray-600 dark:text-gray-300">No messages yet</p>
                                         <p className="text-xs">Update customer on pickup or arrival with one tap below!</p>
                                     </div>
                                 ) : (
@@ -842,11 +842,11 @@ const DeliveryDashboard = () => {
                                                 <div className={`max-w-[80%] p-3.5 rounded-2xl text-xs font-bold shadow-sm ${
                                                     isRider
                                                         ? 'bg-amber-500 text-white rounded-tr-none'
-                                                        : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-200 dark:border-gray-700'
                                                 }`}>
                                                     {msg.message}
                                                 </div>
-                                                <span className="text-[8px] text-gray-400 mt-1 uppercase font-black">
+                                                <span className="text-[8px] text-gray-400 dark:text-gray-500 mt-1 uppercase font-black">
                                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
@@ -857,12 +857,12 @@ const DeliveryDashboard = () => {
                             </div>
 
                             {/* Quick Rider Updates Carousel */}
-                            <div className="px-3 py-2 bg-gray-100 border-t border-gray-200 flex gap-2 overflow-x-auto no-scrollbar">
+                            <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex gap-2 overflow-x-auto no-scrollbar">
                                 {RIDER_QUICK_REPLIES.map((reply, i) => (
                                     <button
                                         key={i}
                                         onClick={() => sendRiderMessage(reply)}
-                                        className="shrink-0 bg-white hover:bg-amber-50 text-gray-800 border border-gray-200 hover:border-amber-300 px-3 py-1.5 rounded-full text-[10px] font-black transition-all whitespace-nowrap active:scale-95"
+                                        className="shrink-0 bg-white dark:bg-gray-700 hover:bg-amber-50 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-amber-300 px-3 py-1.5 rounded-full text-[10px] font-black transition-all whitespace-nowrap active:scale-95"
                                     >
                                         {reply}
                                     </button>
@@ -870,14 +870,14 @@ const DeliveryDashboard = () => {
                             </div>
 
                             {/* Input Bar */}
-                            <div className="p-4 bg-white border-t border-gray-200 flex gap-2">
+                            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex gap-2">
                                 <input
                                     type="text"
                                     placeholder="Type message to customer..."
                                     value={riderChatInput}
                                     onChange={(e) => setRiderChatInput(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && sendRiderMessage()}
-                                    className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-xs font-semibold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                                 />
                                 <button
                                     onClick={() => sendRiderMessage()}

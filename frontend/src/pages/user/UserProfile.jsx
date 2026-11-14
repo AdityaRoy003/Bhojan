@@ -70,7 +70,7 @@ const UserProfile = () => {
     const isOwner = userRoleLower === 'owner';
     const isAdmin = userRoleLower === 'admin';
     const isDelivery = userRoleLower === 'delivery';
-    const isCustomer = !isAdmin && !isOwner && !isDelivery;
+    const isCustomer = !!user && !isAdmin && !isOwner && !isDelivery;
 
     const normalizeAdminTab = (tab) => {
         if (!tab) return 'admin-overview';
@@ -135,6 +135,7 @@ const UserProfile = () => {
     useEffect(() => {
         const rawTab = searchParams.get('tab');
         if (isAdmin) {
+            localStorage.removeItem('isShoppingMode');
             const targetTab = normalizeAdminTab(rawTab);
             setActiveTab(targetTab);
             setIsMobileMain(false);
@@ -220,7 +221,7 @@ const UserProfile = () => {
     const [orderTimeouts, setOrderTimeouts] = useState({});
     const [deliveryStats, setDeliveryStats] = useState({ totalEarnings: 0, completedDeliveries: 0, rating: 4.8 });
 
-    const [isShoppingMode, setIsShoppingMode] = useState(localStorage.getItem('isShoppingMode') === 'true');
+    const [isShoppingMode, setIsShoppingMode] = useState(() => !isAdmin && localStorage.getItem('isShoppingMode') === 'true');
 
     const handleSwitchMode = () => {
         const newMode = !isShoppingMode;
@@ -1960,7 +1961,7 @@ const UserProfile = () => {
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="font-black text-sm text-gray-900">Shop Availability</h4>
+                                        <h4 className="font-black text-sm text-gray-900 dark:text-white">Shop Availability</h4>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Toggle if you are taking orders right now</p>
                                     </div>
                                     <button
@@ -1972,7 +1973,7 @@ const UserProfile = () => {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="font-black text-sm text-gray-900">COD (Cash on Delivery)</h4>
+                                        <h4 className="font-black text-sm text-gray-900 dark:text-white">COD (Cash on Delivery)</h4>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Enable or disable cash payments</p>
                                     </div>
                                     <button
@@ -3542,7 +3543,7 @@ const UserProfile = () => {
         };
 
         return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6 pb-28 md:pb-12">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6 pb-36 md:pb-12">
                 {/* ── 1. Header Card with Live Status ── */}
                 <header className="bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[36px] border border-gray-100 dark:border-gray-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
@@ -4117,7 +4118,7 @@ const UserProfile = () => {
         };
 
         return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6 pb-28 md:pb-12">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6 pb-36 md:pb-12">
                 {/* ── 1. Header Card ── */}
                 <header className="bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[36px] border border-gray-100 dark:border-gray-700/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>

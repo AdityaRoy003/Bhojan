@@ -253,12 +253,75 @@ const Cart = () => {
                     <div className="flex-1 space-y-6">
                         {/* Restaurant Header */}
                         <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-[28px] md:rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 md:gap-4 transition-all">
-                            <img src={restaurant?.image} alt={restaurant?.name} className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl object-cover shadow-inner" />
+                            <img
+                                src={restaurant?.image}
+                                alt={restaurant?.name}
+                                onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23f97316'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='42'>🏪</text></svg>";
+                                }}
+                                className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl object-cover shadow-inner bg-gray-100 dark:bg-gray-700"
+                            />
                             <div>
                                 <h3 className="font-black text-lg md:text-xl text-gray-900 dark:text-white">{restaurant?.name}</h3>
                                 <p className="text-[9px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{restaurant?.city} • {restaurant?.timing?.open} - {restaurant?.timing?.close}</p>
                             </div>
                         </div>
+
+                        {/* ── Progressive Free Delivery Gamification Meter ── */}
+                        {(() => {
+                            const freeDeliveryThreshold = 500;
+                            const isFreeDelivery = subtotal >= freeDeliveryThreshold;
+                            const amountNeeded = Math.max(0, freeDeliveryThreshold - subtotal);
+                            const progressPercent = Math.min(100, Math.round((subtotal / freeDeliveryThreshold) * 100));
+
+                            return (
+                                <motion.div
+                                    layout
+                                    className={`p-4 rounded-[26px] border transition-all ${
+                                        isFreeDelivery
+                                            ? 'bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-teal-500/10 dark:from-emerald-950/40 dark:to-green-950/30 border-emerald-500/30'
+                                            : 'bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-rose-500/10 dark:from-amber-950/40 dark:to-orange-950/30 border-amber-500/30'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">
+                                                {isFreeDelivery ? '🎉' : '🚚'}
+                                            </span>
+                                            <p className="text-xs font-black text-gray-900 dark:text-white leading-tight">
+                                                {isFreeDelivery ? (
+                                                    <span>Hurray! You've unlocked <strong className="text-emerald-600 dark:text-emerald-400">FREE Delivery</strong></span>
+                                                ) : (
+                                                    <span>Add <strong className="text-primary font-black">₹{amountNeeded}</strong> more to unlock <strong className="text-amber-600 dark:text-amber-400">FREE Delivery</strong></span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+                                            isFreeDelivery
+                                                ? 'bg-emerald-500 text-white'
+                                                : 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                                        }`}>
+                                            {isFreeDelivery ? 'Unlocked' : `${progressPercent}%`}
+                                        </span>
+                                    </div>
+
+                                    {/* Progress Track */}
+                                    <div className="h-2.5 bg-gray-200/70 dark:bg-gray-700/80 rounded-full overflow-hidden p-0.5 shadow-inner">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${progressPercent}%` }}
+                                            transition={{ type: 'spring', damping: 20, stiffness: 120 }}
+                                            className={`h-full rounded-full transition-colors ${
+                                                isFreeDelivery
+                                                    ? 'bg-gradient-to-r from-emerald-500 to-green-400 shadow-sm shadow-emerald-500/50'
+                                                    : 'bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-400 shadow-sm shadow-orange-500/40'
+                                            }`}
+                                        />
+                                    </div>
+                                </motion.div>
+                            );
+                        })()}
 
                         {/* Items List */}
                         <div className="space-y-4">
@@ -287,7 +350,15 @@ const Cart = () => {
                                             className="bg-white dark:bg-gray-800 p-3 md:p-4 shadow-sm flex gap-3 md:gap-4 items-center group border border-transparent dark:border-gray-700 hover:border-primary/10 transition-all z-10 relative cursor-grab active:cursor-grabbing"
                                         >
                                             <div className="relative shrink-0 pointer-events-none">
-                                                <img src={item.image} alt={item.name} className="w-20 h-20 md:w-24 md:h-24 rounded-xl md:rounded-2xl object-cover bg-gray-50" />
+                                                <img
+                                                    src={item.image}
+                                                    alt={item.name}
+                                                    onError={(e) => {
+                                                        e.currentTarget.onerror = null;
+                                                        e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23fed7aa'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='42'>🍲</text></svg>";
+                                                    }}
+                                                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl md:rounded-2xl object-cover bg-gray-50 dark:bg-gray-700"
+                                                />
                                                 {item.foodType && (
                                                     <span className={`absolute top-1 left-1 md:top-2 md:left-2 w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm border-2 ${item.foodType === 'Veg' ? 'border-green-600' : 'border-red-600'} flex items-center justify-center bg-white`}>
                                                         <div className={`w-1 h-1 rounded-full ${item.foodType === 'Veg' ? 'bg-green-600' : 'bg-red-600'}`}></div>
