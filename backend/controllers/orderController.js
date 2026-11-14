@@ -55,8 +55,10 @@ exports.placeOrder = async (req, res) => {
         }
 
         // Validate items against DB prices to prevent client-side price tampering
-        const itemIds = items.map(i => i.item || i._id).filter(Boolean);
-        const dbItems = await Item.find({ _id: { $in: itemIds } });
+        const mongoose = require('mongoose');
+        const itemIds = items.map(i => (i.item || i._id)?.toString()).filter(Boolean);
+        const validObjectIds = itemIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+        const dbItems = validObjectIds.length > 0 ? await Item.find({ _id: { $in: validObjectIds } }) : [];
         const dbItemMap = {};
         dbItems.forEach(di => { dbItemMap[di._id.toString()] = di; });
 
@@ -65,35 +67,50 @@ exports.placeOrder = async (req, res) => {
 
         for (const it of items) {
             const itId = (it.item || it._id)?.toString();
-            const dbItem = dbItemMap[itId];
-            if (!dbItem) {
-                return res.status(400).json({ success: false, message: `Item ${it.name || itId} is no longer available` });
-            }
+            const dbItem = itId && dbItemMap[itId];
             const qty = Math.max(1, parseInt(it.quantity) || 1);
             
-            // Calculate base price + variant + add-ons
-            let itemPrice = Number(dbItem.price) || 0;
-            if (it.selectedVariant && it.selectedVariant.price) {
-                itemPrice += Number(it.selectedVariant.price) || 0;
-            }
-            if (Array.isArray(it.selectedAddOns)) {
-                for (const addon of it.selectedAddOns) {
-                    itemPrice += Number(addon.price) || 0;
+            if (dbItem) {
+                // Calculate base price + variant + add-ons
+                let itemPrice = Number(dbItem.price) || 0;
+                if (it.selectedVariant && it.selectedVariant.price) {
+                    itemPrice += Number(it.selectedVariant.price) || 0;
                 }
-            }
-            calculatedSubtotal += itemPrice * qty;
+                if (Array.isArray(it.selectedAddOns)) {
+                    for (const addon of it.selectedAddOns) {
+                        itemPrice += Number(addon.price) || 0;
+                    }
+                }
+                calculatedSubtotal += itemPrice * qty;
 
-            verifiedItems.push({
-                item: dbItem._id,
-                name: dbItem.name,
-                price: itemPrice,
-                quantity: qty,
-                image: dbItem.image,
-                note: it.note || '',
-                selectedVariant: it.selectedVariant || null,
-                selectedAddOns: Array.isArray(it.selectedAddOns) ? it.selectedAddOns : [],
-                cookingInstructions: it.cookingInstructions || it.note || ''
-            });
+                verifiedItems.push({
+                    item: dbItem._id,
+                    name: dbItem.name,
+                    price: itemPrice,
+                    quantity: qty,
+                    image: dbItem.image,
+                    note: it.note || '',
+                    selectedVariant: it.selectedVariant || undefined,
+                    selectedAddOns: Array.isArray(it.selectedAddOns) ? it.selectedAddOns : [],
+                    cookingInstructions: it.cookingInstructions || it.note || ''
+                });
+            } else {
+                // Quick add-on or promotional item (e.g. addon_gulab_jamun)
+                const addonPrice = Number(it.price) || 0;
+                calculatedSubtotal += addonPrice * qty;
+
+                verifiedItems.push({
+                    item: (itId && mongoose.Types.ObjectId.isValid(itId)) ? itId : new mongoose.Types.ObjectId(),
+                    name: it.name || 'Delicious Add-on',
+                    price: addonPrice,
+                    quantity: qty,
+                    image: it.image || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=200',
+                    note: it.note || '',
+                    selectedVariant: it.selectedVariant || undefined,
+                    selectedAddOns: Array.isArray(it.selectedAddOns) ? it.selectedAddOns : [],
+                    cookingInstructions: it.cookingInstructions || it.note || ''
+                });
+            }
         }
 
         // Verify Razorpay payment signature for Online payments if signature provided

@@ -355,4 +355,4 @@ process.on('unhandledRejection', (reason, promise) => {
 server.listen(PORT, () => {
     logger.info(`Server is running on port ${PORT}`);
 });
-// Trigger nodemon reload to load updated env vars
+// Trigger nodemon reload to load updated controller changes

@@ -5,7 +5,7 @@ const orderSchema = new mongoose.Schema({
     shop: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
     items: [
         {
-            item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
+            item: { type: mongoose.Schema.Types.Mixed, required: false },
             name: { type: String, required: true }, // Store snapshot
             price: { type: Number, required: true }, // Store snapshot
             quantity: { type: Number, required: true, default: 1 },
