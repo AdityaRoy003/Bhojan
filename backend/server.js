@@ -176,6 +176,26 @@ const otpLimiter = rateLimit({
 app.use('/api/auth/forgot-password', otpLimiter);
 app.use('/api/auth/reset-password', otpLimiter);
 
+// Order creation limiter — prevents automated bot checkout spam
+const orderPlacementLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isDev ? 1000 : 40,
+    message: { success: false, message: 'Too many orders initiated, please slow down and try again shortly.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/order/place', orderPlacementLimiter);
+
+// Coupon code brute-force limiter
+const couponValidationLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: isDev ? 500 : 20,
+    message: { success: false, message: 'Too many coupon attempts. Please wait 10 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/payment/apply-coupon', couponValidationLimiter);
+
 
 // Database Connection
 connectDB();

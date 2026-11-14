@@ -62,6 +62,17 @@ exports.placeOrder = async (req, res) => {
         const dbItemMap = {};
         dbItems.forEach(di => { dbItemMap[di._id.toString()] = di; });
 
+        // Whitelist of valid promotional quick add-ons with server-enforced pricing
+        const VERIFIED_QUICK_ADDONS = {
+            'addon_gulab_jamun': { name: 'Gulab Jamun (2 Pcs)', price: 60, image: 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=200' },
+            'addon_cold_drink': { name: 'Chilled Coke Can (300ml)', price: 40, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=200' },
+            'addon_lassi': { name: 'Punjabi Sweet Lassi', price: 55, image: 'https://images.unsplash.com/photo-1571006682875-c9f285223364?q=80&w=200' },
+            'addon_brownie': { name: 'Choco Walnut Brownie', price: 85, image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?q=80&w=200' },
+            'addon_ice_cream': { name: 'Vanilla Sundae Scoop', price: 50, image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?q=80&w=200' },
+            'addon_extra_chutney': { name: 'Mint Chutney Dip', price: 20, image: 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=200' },
+            'addon_roasted_papad': { name: 'Roasted Masala Papad (2 Pcs)', price: 30, image: 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=200' }
+        };
+
         let calculatedSubtotal = 0;
         const verifiedItems = [];
 
@@ -94,51 +105,128 @@ exports.placeOrder = async (req, res) => {
                     selectedAddOns: Array.isArray(it.selectedAddOns) ? it.selectedAddOns : [],
                     cookingInstructions: it.cookingInstructions || it.note || ''
                 });
-            } else {
-                // Quick add-on or promotional item (e.g. addon_gulab_jamun)
-                const addonPrice = Number(it.price) || 0;
-                calculatedSubtotal += addonPrice * qty;
+            } else if (itId && VERIFIED_QUICK_ADDONS[itId]) {
+                // Verified quick add-on with immutable server-enforced price
+                const addonDef = VERIFIED_QUICK_ADDONS[itId];
+                calculatedSubtotal += addonDef.price * qty;
 
                 verifiedItems.push({
-                    item: (itId && mongoose.Types.ObjectId.isValid(itId)) ? itId : new mongoose.Types.ObjectId(),
-                    name: it.name || 'Delicious Add-on',
-                    price: addonPrice,
+                    item: new mongoose.Types.ObjectId(),
+                    name: addonDef.name,
+                    price: addonDef.price,
                     quantity: qty,
-                    image: it.image || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=200',
+                    image: addonDef.image,
                     note: it.note || '',
-                    selectedVariant: it.selectedVariant || undefined,
-                    selectedAddOns: Array.isArray(it.selectedAddOns) ? it.selectedAddOns : [],
+                    selectedVariant: undefined,
+                    selectedAddOns: [],
                     cookingInstructions: it.cookingInstructions || it.note || ''
+                });
+            } else {
+                // Unknown or unverified item ID — reject to prevent injection of fake dishes or tampered prices
+                logger.warn(`[SECURITY] Rejected unverified item ID ${itId} submitted by user ${user._id}`);
+                return res.status(400).json({
+                    success: false,
+                    message: `Item '${it.name || itId}' could not be verified in the restaurant menu.`
                 });
             }
         }
 
-        // Verify Razorpay payment signature for Online payments if signature provided
-        if (paymentMethod === 'Online' && req.body.razorpay_signature && orderId && paymentId) {
-            const secret = process.env.RAZORPAY_KEY_SECRET;
-            if (secret && secret !== 'secret_placeholder') {
-                const body = orderId + '|' + paymentId;
-                const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
-                if (expectedSignature !== req.body.razorpay_signature) {
-                    return res.status(400).json({ success: false, message: 'Payment verification failed: invalid signature' });
+        // Server-Side Coupon Verification
+        let verifiedCouponDiscount = 0;
+        if (couponCode) {
+            const Coupon = require('../models/Coupon');
+            const upperCode = String(couponCode).trim().toUpperCase();
+
+            // 1. Check Personal Rewards wallet
+            const userCoupon = user.coupons?.find(c => c && c.code && c.code.toUpperCase() === upperCode && !c.isUsed);
+            if (userCoupon) {
+                if (!userCoupon.expiresAt || new Date() <= userCoupon.expiresAt) {
+                    if (userCoupon.type === 'free_delivery') {
+                        verifiedCouponDiscount = Number(deliveryFee) || 30;
+                    } else {
+                        verifiedCouponDiscount = Math.min(Number(userCoupon.value) || 0, calculatedSubtotal);
+                    }
+                }
+            } else {
+                // 2. Check Global/Shop Coupons
+                const globalCoupon = await Coupon.findOne({ code: upperCode, isActive: true });
+                if (globalCoupon && (!globalCoupon.validUntil || new Date() <= globalCoupon.validUntil)) {
+                    if (calculatedSubtotal >= (globalCoupon.minOrderValue || 0)) {
+                        if (globalCoupon.discountType === 'Percentage') {
+                            let discount = (calculatedSubtotal * globalCoupon.value) / 100;
+                            if (globalCoupon.maxDiscount) {
+                                discount = Math.min(discount, globalCoupon.maxDiscount);
+                            }
+                            verifiedCouponDiscount = Math.min(discount, calculatedSubtotal);
+                        } else {
+                            verifiedCouponDiscount = Math.min(Number(globalCoupon.value) || 0, calculatedSubtotal);
+                        }
+                    }
                 }
             }
         }
 
-        let finalAmount = totalAmount;
+        // Calculate expected order total server-side
+        const verifiedDeliveryFee = Number(deliveryFee) || 0;
+        const verifiedPlatformFee = 10;
+        const verifiedTax = Math.round(calculatedSubtotal * 0.05); // 5% GST
+        const verifiedTip = Math.max(0, Number(req.body.tipAmount) || 0);
+
+        let serverOrderTotal = calculatedSubtotal + verifiedDeliveryFee + verifiedPlatformFee + verifiedTax + verifiedTip - verifiedCouponDiscount;
+        serverOrderTotal = Math.max(0, Math.round(serverOrderTotal));
+
+        // Validate client totalAmount against server calculated total (allow ±₹3 rounding leeway)
+        const submittedTotal = Math.round(Number(totalAmount) || 0);
+        if (Math.abs(submittedTotal - serverOrderTotal) > 3) {
+            logger.warn(`[SECURITY] Price discrepancy detected: User ${user._id} submitted ₹${submittedTotal}, server calculated ₹${serverOrderTotal}`);
+            return res.status(400).json({
+                success: false,
+                message: `Order total verification mismatch. Server computed ₹${serverOrderTotal}, received ₹${submittedTotal}. Please refresh your cart.`
+            });
+        }
+
+        // Strict Razorpay Payment Verification for Online Orders
+        if (paymentMethod === 'Online') {
+            const isDev = process.env.NODE_ENV !== 'production';
+            const isSimulated = isDev && typeof paymentId === 'string' && paymentId.startsWith('SIMULATED_PAY_');
+
+            if (!isSimulated) {
+                if (!orderId || !paymentId || !req.body.razorpay_signature) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Payment verification failed: Razorpay order ID, payment ID, and signature are required for online orders.'
+                    });
+                }
+
+                const secret = process.env.RAZORPAY_KEY_SECRET;
+                if (!secret || secret === 'secret_placeholder') {
+                    if (!isDev) {
+                        logger.error('[SECURITY] Razorpay secret is not configured in production');
+                        return res.status(500).json({ success: false, message: 'Payment gateway configuration error' });
+                    }
+                } else {
+                    const body = orderId + '|' + paymentId;
+                    const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
+                    if (expectedSignature !== req.body.razorpay_signature) {
+                        logger.warn(`[SECURITY] Invalid Razorpay signature attempt by user ${user._id} for order ${orderId}`);
+                        return res.status(400).json({ success: false, message: 'Payment verification failed: invalid signature' });
+                    }
+                }
+            }
+        }
+
+        let finalAmount = serverOrderTotal;
         let pointsRedeemed = 0;
 
         // Handle Point Redemption
         if (redeemPoints && user.loyaltyPoints > 0) {
-            // max redemption: 10% of total amount or available points, whichever is lower
-            // Conversion: 10 points = â‚¹1
-            const maxDiscount = Math.floor(totalAmount * 0.1); // Max 10% discount
+            const maxDiscount = Math.floor(serverOrderTotal * 0.1); // Max 10% discount
             const maxPointsRedeemable = maxDiscount * 10;
 
             pointsRedeemed = Math.min(user.loyaltyPoints, maxPointsRedeemable);
             const discountAmount = pointsRedeemed / 10;
 
-            finalAmount = totalAmount - discountAmount;
+            finalAmount = Math.max(0, serverOrderTotal - discountAmount);
 
             // Deduct points
             user.loyaltyPoints -= pointsRedeemed;

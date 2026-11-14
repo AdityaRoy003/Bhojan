@@ -79,11 +79,17 @@ exports.confirmTopUp = async (req, res) => {
         if (expectedSignature === razorpay_signature) {
             const transaction = await Transaction.findOne({ razorpayOrderId: razorpay_order_id });
             if (transaction && transaction.status === 'Pending') {
+                const userId = (req.user.id || req.user._id).toString();
+
+                // Prevent IDOR: Ensure the transaction belongs to the calling user
+                if (transaction.user.toString() !== userId) {
+                    return res.status(403).json({ success: false, message: 'Not authorized: transaction belongs to another account' });
+                }
+
                 transaction.status = 'Completed';
                 transaction.razorpayPaymentId = razorpay_payment_id;
                 await transaction.save();
 
-                const userId = req.user.id || req.user._id;
                 const user = await User.findById(userId);
                 user.bhojanMoney += transaction.amount;
                 await user.save();

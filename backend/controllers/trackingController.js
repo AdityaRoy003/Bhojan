@@ -98,12 +98,23 @@ const getTrackingDetails = async (req, res) => {
 
         const order = await Order.findById(orderId)
             .populate('user', 'fullname mobile')
-            .populate('shop', 'name address location')
+            .populate('shop', 'name address location owner')
             .populate('deliveryPartner', 'fullname mobile avatar')
             .populate('items.item');
 
         if (!order) {
             return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        // Verify authorization: only the customer, assigned delivery partner, shop owner, or Admin can track
+        const requesterId = (req.user._id || req.user.id).toString();
+        const orderUserId = (order.user?._id || order.user)?.toString();
+        const partnerId = (order.deliveryPartner?._id || order.deliveryPartner)?.toString();
+        const shopOwnerId = (order.shop?.owner?._id || order.shop?.owner)?.toString();
+        const isAdmin = req.user.role === 'Admin';
+
+        if (requesterId !== orderUserId && requesterId !== partnerId && requesterId !== shopOwnerId && !isAdmin) {
+            return res.status(403).json({ success: false, message: 'Not authorized to view tracking details for this order' });
         }
 
         // Self-heal/populate coordinates if missing
