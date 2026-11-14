@@ -379,7 +379,7 @@ const Checkout = () => {
                     </p>
                     <div className="space-y-3">
                         <button
-                            onClick={() => navigate(`/order-tracking/${createdOrderId}`)}
+                            onClick={() => navigate(`/track/${createdOrderId}`)}
                             className="w-full py-4 bg-primary text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/20 hover:opacity-95 transition-all"
                         >
                             Track Live Order 📍

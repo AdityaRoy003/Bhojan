@@ -248,6 +248,7 @@ function AppContent() {
             <Route path="/group-cart/:partyId" element={<GroupCartScreen />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/track/:orderId" element={<OrderTracking />} />
+            <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
             <Route path="/prime-membership" element={<PrimeMembership />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />
           </Route>

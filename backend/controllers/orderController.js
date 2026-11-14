@@ -372,15 +372,15 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        // Verify authorization
+        // Verify authorization: Admin, Shop Owner, or assigned Delivery Partner
         const Shop = require('../models/Shop');
         const shop = await Shop.findById(order.shop);
 
-        const isOwner = shop.owner.toString() === req.user._id.toString();
+        const isOwner = shop && shop.owner ? shop.owner.toString() === req.user._id.toString() : false;
+        const isAdmin = req.user.role === 'Admin';
         const isAssignedDelivery = order.deliveryPartner?.toString() === req.user._id.toString();
 
-        // Allow Delivery Partner update if assigned
-        if (!isOwner && !isAssignedDelivery) {
+        if (!isAdmin && !isOwner && !isAssignedDelivery) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
@@ -871,10 +871,34 @@ exports.cancelMyOrder = async (req, res) => {
 
         await order.save();
 
-        // Notify Shop owner via Socket
+        // Restore redeemed loyalty points or refund online payment to Bhojan Money wallet
+        try {
+            const User = require('../models/User');
+            const user = await User.findById(userId);
+            if (user) {
+                let updated = false;
+                if (order.pointsRedeemed && order.pointsRedeemed > 0) {
+                    user.loyaltyPoints = (user.loyaltyPoints || 0) + order.pointsRedeemed;
+                    updated = true;
+                }
+                if (order.paymentMethod === 'Online' && order.paymentStatus === 'Completed') {
+                    user.bhojanMoney = (user.bhojanMoney || 0) + (order.totalAmount || 0);
+                    updated = true;
+                }
+                if (updated) {
+                    await user.save();
+                }
+            }
+        } catch (walletErr) {
+            logger.warn(`[ORDER] Wallet/points restoration warning on cancel: ${walletErr.message}`);
+        }
+
+        // Notify Shop owner, customer, and order rooms via Socket
         if (req.io) {
-            const shopId = order.shop.id || order.shop._id || order.shop;
+            const shopId = order.shop?.id || order.shop?._id || order.shop;
             req.io.to(`shop_${shopId}`).emit('status_update', { status: 'Cancelled', orderId: order._id });
+            req.io.to(`order_${order._id}`).emit('orderStatusChanged', { status: 'Cancelled', orderId: order._id });
+            req.io.to(`user_${userId}`).emit('order_cancelled', { orderId: order._id });
         }
 
         logger.info(`[ORDER] Order ${orderId} cancelled successfully by User ${authUserId}`);

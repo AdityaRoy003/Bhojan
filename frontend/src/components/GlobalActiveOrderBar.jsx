@@ -56,7 +56,7 @@ const GlobalActiveOrderBar = () => {
     const isCustomer = !['admin', 'owner', 'delivery'].includes(userRoleLower);
 
     // Hide on tracking page, checkout, or auth pages
-    const isTrackingPage = location.pathname.startsWith('/track/');
+    const isTrackingPage = location.pathname.startsWith('/track/') || location.pathname.startsWith('/order-tracking/');
     const isHiddenRoute = ['/', '/login', '/signup', '/checkout'].includes(location.pathname);
 
     const fetchActiveOrder = useCallback(async () => {

@@ -1751,7 +1751,7 @@ const UserProfile = () => {
 
             case 'owner-shops':
                 return (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 pb-36 md:pb-12">
                         <section className="bg-white dark:bg-gray-800 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-gray-700">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-black flex items-center gap-2 dark:text-white">
@@ -1769,6 +1769,8 @@ const UserProfile = () => {
                                     <input
                                         type="text"
                                         placeholder="e.g. Bhalla da Dhaba"
+                                        autoComplete="off"
+                                        spellCheck="false"
                                         className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.name}
                                         onChange={e => setShopData({ ...shopData, name: e.target.value })}
@@ -1779,6 +1781,8 @@ const UserProfile = () => {
                                     <input
                                         type="text"
                                         placeholder="e.g. 07AAAAA0000A1Z5"
+                                        autoComplete="off"
+                                        spellCheck="false"
                                         className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.gstin}
                                         onChange={e => setShopData({ ...shopData, gstin: e.target.value })}
@@ -1789,6 +1793,8 @@ const UserProfile = () => {
                                     <input
                                         type="text"
                                         placeholder="e.g. 10019011000001"
+                                        autoComplete="off"
+                                        spellCheck="false"
                                         className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.fssai}
                                         onChange={e => setShopData({ ...shopData, fssai: e.target.value })}
@@ -1799,6 +1805,7 @@ const UserProfile = () => {
                                     <input
                                         type="number"
                                         placeholder="0"
+                                        autoComplete="off"
                                         className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.minOrderValue}
                                         onChange={e => setShopData({ ...shopData, minOrderValue: e.target.value })}
@@ -1808,6 +1815,8 @@ const UserProfile = () => {
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Full Address</label>
                                     <textarea
                                         placeholder="Enter full restaurant street address, landmark, pincode..."
+                                        autoComplete="off"
+                                        spellCheck="false"
                                         className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none min-h-[100px]"
                                         value={shopData.address}
                                         onChange={e => setShopData({ ...shopData, address: e.target.value })}

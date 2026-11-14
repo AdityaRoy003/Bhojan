@@ -59,19 +59,16 @@ const SlideToPay = ({
         }
     };
 
-    // If externally resetting or loading failed, reset slider
+    // When loading transitions from true -> false and action did not finish, reset slider immediately
     useEffect(() => {
-        if (!loading && !disabled) {
-            // If action failed, allow sliding again
+        if (!loading && isConfirmed) {
             const timer = setTimeout(() => {
-                if (isConfirmed && !loading) {
-                    setIsConfirmed(false);
-                    x.set(0);
-                }
-            }, 3000);
+                setIsConfirmed(false);
+                x.set(0);
+            }, 350);
             return () => clearTimeout(timer);
         }
-    }, [loading, disabled, isConfirmed, x]);
+    }, [loading, isConfirmed, x]);
 
     return (
         <div className="w-full select-none">
@@ -127,22 +124,22 @@ const SlideToPay = ({
                         onDragStart={() => triggerHaptic(10)}
                         onDragEnd={handleDragEnd}
                         style={{ x }}
-                        className={`absolute left-1 z-10 w-13 h-13 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing text-white shadow-lg active:scale-95 transition-transform ${
+                        className={`absolute left-1 z-10 w-13 h-13 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg active:scale-95 transition-transform ${
                             isConfirmed
-                                ? 'bg-white text-emerald-600'
-                                : 'bg-gradient-to-tr from-primary to-orange-500 shadow-orange-500/40 ring-2 ring-white/40'
+                                ? 'bg-white text-emerald-600 border border-emerald-300'
+                                : 'bg-gradient-to-tr from-primary to-orange-500 text-white shadow-orange-500/40 ring-2 ring-white/40'
                         }`}
                     >
                         {isConfirmed ? (
                             <motion.span
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                className="text-xl font-black"
+                                className="text-xl font-black text-emerald-600"
                             >
                                 ✓
                             </motion.span>
                         ) : (
-                            <span className="text-lg font-black tracking-tighter">➔➔</span>
+                            <span className="text-lg font-black tracking-tighter text-white">➔➔</span>
                         )}
                     </motion.div>
                 )}

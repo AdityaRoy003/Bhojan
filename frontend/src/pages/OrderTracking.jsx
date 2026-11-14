@@ -465,7 +465,7 @@ const OrderTracking = () => {
                 <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
                     <h3 className="font-black text-gray-900 dark:text-white mb-4">Order Summary</h3>
                     <div className="space-y-3">
-                        {order.items.map((item, idx) => (
+                        {order.items?.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-start text-sm">
                                 <div>
                                     <p className="text-gray-800 dark:text-gray-200 font-bold">
