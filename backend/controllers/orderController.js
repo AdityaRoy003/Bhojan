@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Shop = require('../models/Shop');
@@ -130,8 +131,15 @@ exports.placeOrder = async (req, res) => {
         const pointsEarned = Math.floor(finalAmount / 10);
         user.loyaltyPoints += pointsEarned;
 
-        // Update Milestones & Badges
+        // Update Milestones & Badges safely
+        if (!user.milestones) {
+            user.milestones = { totalOrders: 0 };
+        }
         user.milestones.totalOrders = (user.milestones.totalOrders || 0) + 1;
+
+        if (!Array.isArray(user.badges)) {
+            user.badges = [];
+        }
 
         // "First Bite" Badge - 1st Order
         if (user.milestones.totalOrders === 1) {
@@ -153,9 +161,9 @@ exports.placeOrder = async (req, res) => {
             });
         }
 
-        // Handle Coupon usage for Personal Rewards
-        if (couponCode) {
-            const userCoupon = user.coupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase() && !c.isUsed);
+        // Handle Coupon usage for Personal Rewards safely
+        if (couponCode && Array.isArray(user.coupons)) {
+            const userCoupon = user.coupons.find(c => c && c.code && c.code.toUpperCase() === couponCode.toUpperCase() && !c.isUsed);
             if (userCoupon) {
                 userCoupon.isUsed = true;
                 logger.info(`Personal coupon ${couponCode} marked as used for user ${user._id}`);
@@ -164,8 +172,27 @@ exports.placeOrder = async (req, res) => {
 
         await user.save();
 
-        // Retrieve shop details to extract coordinates
-        const shop = await Shop.findById(shopId);
+        // Retrieve shop details to extract coordinates & ensure valid shop ID
+        let effectiveShopId = shopId;
+        if (!effectiveShopId && verifiedItems.length > 0) {
+            const firstDbItem = dbItems[0];
+            if (firstDbItem && firstDbItem.shop) {
+                effectiveShopId = firstDbItem.shop;
+            }
+        }
+
+        let shop = null;
+        if (effectiveShopId) {
+            try {
+                shop = await Shop.findById(effectiveShopId);
+            } catch (err) {
+                logger.warn('[ORDER] Failed to find shop by ID: ' + err.message);
+            }
+        }
+
+        if (!effectiveShopId && !shop) {
+            return res.status(400).json({ success: false, message: 'Restaurant information is missing from the order' });
+        }
         
         let restaurantCoords = req.body.restaurantCoords;
         let deliveryCoords = req.body.deliveryCoords;
@@ -191,34 +218,42 @@ exports.placeOrder = async (req, res) => {
             };
         }
 
+        const ALLOWED_PRESETS = ['none', 'leave_at_door', 'dont_ring_bell', 'call_at_gate', 'hand_to_security', 'contactless'];
+        const safeDeliveryPreset = ALLOWED_PRESETS.includes(req.body.deliveryPreset) ? req.body.deliveryPreset : 'none';
+
+        const safeScheduledSlot = (Boolean(req.body.isScheduled) && req.body.scheduledSlot) ? {
+            date: String(req.body.scheduledSlot.date || ''),
+            time: String(req.body.scheduledSlot.time || '')
+        } : undefined;
+
         const newOrder = await Order.create({
-            user: req.user.id,
-            shop: shopId,
+            user: req.user.id || req.user._id,
+            shop: effectiveShopId || shop?._id,
             items: verifiedItems,
             totalAmount: finalAmount, // Use discounted amount
             tipAmount: Number(req.body.tipAmount) || 0,
             optOutCutlery: Boolean(req.body.optOutCutlery),
-            deliveryPreset: req.body.deliveryPreset || 'none',
+            deliveryPreset: safeDeliveryPreset,
             isScheduled: Boolean(req.body.isScheduled),
-            scheduledSlot: req.body.scheduledSlot || null,
-            razorpayOrderId: orderId,
-            razorpayPaymentId: paymentId,
+            scheduledSlot: safeScheduledSlot,
+            razorpayOrderId: orderId || null,
+            razorpayPaymentId: paymentId || null,
             paymentStatus: paymentMethod === 'COD' ? 'Pending' : 'Paid',
             paymentMethod: paymentMethod || 'Online',
             isPaid: paymentMethod === 'Online',
-            instructions,
+            instructions: instructions || '',
             deliveryAddress: address || 'Default Address',
-            deliveryFee,
-            platformFee,
-            taxAmount,
-            couponCode,
-            couponDiscount,
+            deliveryFee: Number(deliveryFee) || 0,
+            platformFee: Number(platformFee) || 0,
+            taxAmount: Number(taxAmount) || 0,
+            couponCode: couponCode || null,
+            couponDiscount: Number(couponDiscount) || 0,
             restaurantCoords,
             deliveryCoords,
             statusHistory: [{
                 status: 'Placed',
                 timestamp: new Date(),
-                updatedBy: req.user.id
+                updatedBy: req.user.id || req.user._id
             }]
         });
 
@@ -252,16 +287,24 @@ exports.placeOrder = async (req, res) => {
             }
         });
 
-        // Populate user details for socket emission
-        await newOrder.populate('user', 'fullname email mobile');
+        // Populate user details for socket emission safely
+        try {
+            await newOrder.populate('user', 'fullname email mobile');
+        } catch (popErr) {
+            logger.warn('[ORDER] Failed to populate user: ' + popErr.message);
+        }
 
-        // Notify Shop owner via Socket
-        req.io.to(`shop_${shopId}`).emit('new_order', newOrder);
-
-        // Note: In-app notification already recorded and emitted via sendNotification above.
-        // Confirmation email is sent ONLY after successful delivery of items.
+        // Notify Shop owner via Socket safely
+        const targetShopId = effectiveShopId || shop?._id;
+        if (req.io && targetShopId) {
+            req.io.to(`shop_${targetShopId}`).emit('new_order', newOrder);
+        } else if (global.io && targetShopId) {
+            global.io.to(`shop_${targetShopId}`).emit('new_order', newOrder);
+        }
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        logger.error('[ORDER] Failed to place order: ' + error.message, { stack: error.stack });
+        console.error('Order placement server error:', error);
+        res.status(500).json({ success: false, message: error.message || 'Server error while placing order' });
     }
 };
 

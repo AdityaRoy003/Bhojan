@@ -234,34 +234,36 @@ const Checkout = () => {
     };
 
     const placeOrderBackend = async (paymentDetails = {}) => {
+        const effectiveShopId = restaurant?._id || (typeof restaurant === 'string' ? restaurant : null) || cartItems[0]?.shop?._id || (typeof cartItems[0]?.shop === 'string' ? cartItems[0]?.shop : null);
+
         const orderData = {
-            shopId: restaurant._id,
+            shopId: effectiveShopId,
             items: cartItems.map(item => ({
                 item: item._id,
                 name: item.name,
                 price: item.price,
                 quantity: item.quantity,
-                selectedVariant: item.selectedVariant || null,
+                selectedVariant: item.selectedVariant || undefined,
                 selectedAddOns: item.selectedAddOns || [],
                 cookingInstructions: item.cookingInstructions || item.note || ''
             })),
             totalAmount: total,
-            tipAmount,
-            optOutCutlery,
-            deliveryPreset,
-            isScheduled,
-            scheduledSlot: isScheduled ? { date: scheduledDay, time: scheduledTime } : null,
-            paymentMethod,
-            instructions,
-            address: `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.pincode}`,
-            deliveryFee,
-            platformFee,
-            taxAmount: taxes,
-            redeemPoints,
-            isGroupOrder,
-            partyId,
+            tipAmount: tipAmount || 0,
+            optOutCutlery: Boolean(optOutCutlery),
+            deliveryPreset: deliveryPreset || 'none',
+            isScheduled: Boolean(isScheduled),
+            scheduledSlot: isScheduled ? { date: scheduledDay, time: scheduledTime } : undefined,
+            paymentMethod: paymentMethod || 'Online',
+            instructions: instructions || '',
+            address: selectedAddress ? `${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.pincode}` : 'Default Address',
+            deliveryFee: deliveryFee || 0,
+            platformFee: platformFee || 0,
+            taxAmount: taxes || 0,
+            redeemPoints: Boolean(redeemPoints),
+            isGroupOrder: Boolean(isGroupOrder),
+            partyId: partyId || null,
             couponCode: couponApplied ? couponCode : null,
-            couponDiscount,
+            couponDiscount: couponDiscount || 0,
             ...paymentDetails
         };
 
@@ -273,7 +275,9 @@ const Checkout = () => {
                 dispatch(clearCart());
             }
         } catch (error) {
-            toast.error("Failed to place order. Please try again.");
+            const errorMsg = error.response?.data?.message || error.message || "Failed to place order. Please try again.";
+            toast.error(errorMsg);
+            console.error("Order placement error:", error);
         }
     };
 
