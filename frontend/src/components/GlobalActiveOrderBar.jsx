@@ -55,9 +55,10 @@ const GlobalActiveOrderBar = () => {
     const userRoleLower = (user?.role || '').toLowerCase();
     const isCustomer = !['admin', 'owner', 'delivery'].includes(userRoleLower);
 
-    // Hide on tracking page, checkout, or auth pages
+    // Hide on tracking page, checkout, auth pages, or order history tab
     const isTrackingPage = location.pathname.startsWith('/track/') || location.pathname.startsWith('/order-tracking/');
-    const isHiddenRoute = ['/', '/login', '/signup', '/checkout'].includes(location.pathname);
+    const isOrdersTab = location.pathname === '/profile' && new URLSearchParams(location.search).get('tab') === 'orders';
+    const isHiddenRoute = ['/', '/login', '/signup', '/checkout'].includes(location.pathname) || isOrdersTab;
 
     const fetchActiveOrder = useCallback(async () => {
         if (!isAuthenticated || !isCustomer) {

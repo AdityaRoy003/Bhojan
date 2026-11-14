@@ -2200,7 +2200,7 @@ const UserProfile = () => {
                 const filteredOrdersList = getFilteredOrders();
 
                 return (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 md:space-y-6">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 md:space-y-6 pb-36 md:pb-12">
                         {/* ── 1. Swiggy Live Tracking Hero Card ── */}
                         {activeOrder && (
                             <motion.div
@@ -2363,24 +2363,28 @@ const UserProfile = () => {
                                     return (
                                         <div
                                             key={order._id}
-                                            className="bg-white dark:bg-gray-800/90 p-4 md:p-6 rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-orange-500/5 border border-gray-100 dark:border-gray-700/60 transition-all overflow-hidden relative"
+                                            className="bg-white dark:bg-gray-800/90 p-3.5 sm:p-5 md:p-6 rounded-[24px] sm:rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-orange-500/5 border border-gray-100 dark:border-gray-700/60 transition-all overflow-hidden relative"
                                         >
                                             {/* Restaurant Header */}
-                                            <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-gray-100 dark:border-gray-700/50">
-                                                <div className="flex items-center gap-3 min-w-0">
+                                            <div className="flex items-start justify-between gap-2.5 pb-3 border-b border-gray-100 dark:border-gray-700/50">
+                                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                                                     <img
                                                         src={order.shop?.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=60&w=120'}
                                                         alt={order.shop?.name}
-                                                        className="w-13 h-13 rounded-2xl object-cover shrink-0 border border-gray-100 dark:border-gray-700 shadow-xs"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=60&w=120';
+                                                        }}
+                                                        className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl object-cover shrink-0 border border-gray-100 dark:border-gray-700 shadow-xs"
                                                     />
-                                                    <div className="min-w-0">
-                                                        <h3 className="font-black text-gray-900 dark:text-white text-base leading-tight truncate">
-                                                            {order.shop?.name}
+                                                    <div className="min-w-0 flex-1">
+                                                        <h3 className="font-black text-gray-900 dark:text-white text-sm sm:text-base leading-tight truncate">
+                                                            {order.shop?.name || 'Bhojan Kitchen'}
                                                         </h3>
-                                                        <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-400 truncate mt-0.5">
+                                                        <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 dark:text-gray-400 truncate mt-0.5">
                                                             {order.shop?.city || order.deliveryAddress?.split(',')[0] || 'Order Placed'}
                                                         </p>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+                                                        <p className="text-[9.5px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5 truncate">
                                                             {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
                                                     </div>
@@ -2388,7 +2392,7 @@ const UserProfile = () => {
 
                                                 <div className="text-right shrink-0">
                                                     <span
-                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${
                                                             isDelivered
                                                                 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
                                                                 : isCancelled
@@ -2399,15 +2403,15 @@ const UserProfile = () => {
                                                         <span>{isDelivered ? '✓' : isCancelled ? '✕' : '⏳'}</span>
                                                         <span>{order.orderStatus}</span>
                                                     </span>
-                                                    <p className="text-base font-black text-gray-900 dark:text-white mt-1.5">
+                                                    <p className="text-sm sm:text-base font-black text-gray-900 dark:text-white mt-1">
                                                         ₹{order.totalAmount?.toFixed(0)}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            {/* Dishes Breakdown (Swiggy item line with veg/non-veg indicator) */}
-                                            <div className="py-3.5 space-y-1.5">
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                            {/* Dishes Breakdown */}
+                                            <div className="py-2.5 sm:py-3.5 space-y-1.5">
+                                                <div className="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
                                                     {order.items?.map((item, idx) => {
                                                         const itemName = item.name || item.item?.name || 'Dish Item';
                                                         const isVeg = item.item?.isVeg || item.item?.foodType === 'Veg' || item.foodType === 'Veg';
@@ -2418,7 +2422,7 @@ const UserProfile = () => {
                                                                 }`}>
                                                                     ●
                                                                 </span>
-                                                                <span className="truncate max-w-[170px] sm:max-w-none">{itemName}</span>
+                                                                <span className="truncate max-w-[150px] sm:max-w-none">{itemName}</span>
                                                                 <span className="font-bold text-gray-400 dark:text-gray-500">x{item.quantity}</span>
                                                             </div>
                                                         );
@@ -2427,17 +2431,17 @@ const UserProfile = () => {
                                             </div>
 
                                             {/* Swiggy Bottom Action Buttons */}
-                                            <div className="pt-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-1.5">
+                                            <div className="pt-2.5 sm:pt-3 border-t border-gray-100 dark:border-gray-700/50 flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
                                                     <button
                                                         onClick={() => handleViewDetails(order)}
-                                                        className="px-3 py-2 rounded-xl text-xs font-black text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 flex items-center gap-1 active:scale-95"
+                                                        className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-black text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 flex items-center gap-1 active:scale-95 shrink-0"
                                                     >
                                                         <span>📋</span> Details
                                                     </button>
                                                     <button
                                                         onClick={() => handleDownloadInvoice(order)}
-                                                        className="p-2 rounded-xl text-xs font-black text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 active:scale-95"
+                                                        className="p-1.5 sm:p-2 rounded-xl text-xs font-black text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-100 dark:border-gray-700 active:scale-95 shrink-0"
                                                         title="Download Invoice PDF"
                                                     >
                                                         📄
@@ -2445,7 +2449,7 @@ const UserProfile = () => {
                                                     {isDelivered && (
                                                         <button
                                                             onClick={() => handleRateOrder(order)}
-                                                            className="px-3 py-2 rounded-xl text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition-all border border-amber-200 dark:border-amber-800/60 flex items-center gap-1 active:scale-95"
+                                                            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 transition-all border border-amber-200 dark:border-amber-800/60 flex items-center gap-1 active:scale-95 shrink-0"
                                                         >
                                                             <span>⭐</span> Rate
                                                         </button>
@@ -2453,7 +2457,7 @@ const UserProfile = () => {
                                                     {isActiveOrder && (
                                                         <button
                                                             onClick={() => navigate(`/track/${order._id}`)}
-                                                            className="px-3 py-2 rounded-xl text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition-all border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1 animate-pulse active:scale-95"
+                                                            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 transition-all border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1 animate-pulse active:scale-95 shrink-0"
                                                         >
                                                             <span>🛵</span> Track
                                                         </button>
@@ -2463,7 +2467,7 @@ const UserProfile = () => {
                                                 {/* Primary Reorder CTA Button */}
                                                 <button
                                                     onClick={() => handleReorder(order)}
-                                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 via-primary to-rose-600 hover:opacity-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-primary/25 active:scale-95 transition-all flex items-center gap-1.5"
+                                                    className="px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-orange-600 via-primary to-rose-600 hover:opacity-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-primary/25 active:scale-95 transition-all flex items-center gap-1 shrink-0 ml-auto sm:ml-0"
                                                 >
                                                     <span>🔁</span>
                                                     <span>Reorder</span>
