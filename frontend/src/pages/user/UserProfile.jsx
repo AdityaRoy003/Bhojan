@@ -1764,45 +1764,50 @@ const UserProfile = () => {
                             </div>
                             <form onSubmit={handleUpdateShopSettings} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Shop Name</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Shop Name</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all"
+                                        placeholder="e.g. Bhalla da Dhaba"
+                                        className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.name}
                                         onChange={e => setShopData({ ...shopData, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">GSTIN Number</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">GSTIN Number</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all dark:text-white"
+                                        placeholder="e.g. 07AAAAA0000A1Z5"
+                                        className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.gstin}
                                         onChange={e => setShopData({ ...shopData, gstin: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">FSSAI License</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">FSSAI License</label>
                                     <input
                                         type="text"
-                                        className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all dark:text-white"
+                                        placeholder="e.g. 10019011000001"
+                                        className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.fssai}
                                         onChange={e => setShopData({ ...shopData, fssai: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Min Order Value (₹)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Min Order Value (₹)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all dark:text-white"
+                                        placeholder="0"
+                                        className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                         value={shopData.minOrderValue}
                                         onChange={e => setShopData({ ...shopData, minOrderValue: e.target.value })}
                                     />
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Full Address</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Full Address</label>
                                     <textarea
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all min-h-[100px]"
+                                        placeholder="Enter full restaurant street address, landmark, pincode..."
+                                        className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none min-h-[100px]"
                                         value={shopData.address}
                                         onChange={e => setShopData({ ...shopData, address: e.target.value })}
                                     />
@@ -1843,16 +1848,16 @@ const UserProfile = () => {
                                         <h4 className="text-2xl font-black mb-6 dark:text-white">{editingItemId ? 'Edit Item' : 'Add New Item'}</h4>
                                         <form onSubmit={handleSaveItem} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Item Name</label>
-                                                <input type="text" className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold border-none" value={itemFormData.name} onChange={e => setItemFormData({ ...itemFormData, name: e.target.value })} required />
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Item Name</label>
+                                                <input type="text" className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500" value={itemFormData.name} onChange={e => setItemFormData({ ...itemFormData, name: e.target.value })} placeholder="e.g. Butter Paneer Masala" required />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Price (₹)</label>
-                                                <input type="number" className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none dark:text-white" value={itemFormData.price} onChange={e => setItemFormData({ ...itemFormData, price: e.target.value })} required />
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Price (₹)</label>
+                                                <input type="number" className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary outline-none" value={itemFormData.price} onChange={e => setItemFormData({ ...itemFormData, price: e.target.value })} placeholder="199" required />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Category</label>
-                                                <select className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none dark:text-white" value={itemFormData.category} onChange={e => setItemFormData({ ...itemFormData, category: e.target.value })}>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Category</label>
+                                                <select className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary outline-none cursor-pointer" value={itemFormData.category} onChange={e => setItemFormData({ ...itemFormData, category: e.target.value })}>
                                                     {['Snacks', 'Main Course', 'Dessert', 'Pizza', 'Burger', 'Sandwich', 'South Indian', 'North Indian', 'Chinese', 'Fast Food', 'Others'].map(c => <option key={c}>{c}</option>)}
                                                 </select>
                                             </div>
@@ -1865,12 +1870,12 @@ const UserProfile = () => {
                                                 </div>
                                             </div>
                                             <div className="md:col-span-2 space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Image URL</label>
-                                                <input type="text" className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border-none dark:text-white" value={itemFormData.image} onChange={e => setItemFormData({ ...itemFormData, image: e.target.value })} />
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Image URL</label>
+                                                <input type="text" className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500" value={itemFormData.image} onChange={e => setItemFormData({ ...itemFormData, image: e.target.value })} placeholder="https://..." />
                                             </div>
                                             <div className="md:col-span-2 space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Description</label>
-                                                <textarea className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold border-none min-h-[80px]" value={itemFormData.description} onChange={e => setItemFormData({ ...itemFormData, description: e.target.value })} />
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Description</label>
+                                                <textarea className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary outline-none min-h-[80px] placeholder:text-gray-400 dark:placeholder:text-gray-500" value={itemFormData.description} onChange={e => setItemFormData({ ...itemFormData, description: e.target.value })} placeholder="Describe ingredients, taste, or portion size..." />
                                             </div>
                                             <div className="md:col-span-2 flex justify-end gap-4 pt-4">
                                                 <button type="button" onClick={() => setShowItemModal(false)} className="px-6 py-3 font-black text-xs uppercase tracking-widest text-gray-400">Cancel</button>
@@ -1979,19 +1984,21 @@ const UserProfile = () => {
                                 </div>
                                 <div className="grid grid-cols-2 gap-6 mt-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Opening Time</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Opening Time</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all dark:text-white"
+                                            placeholder="e.g. 09:00 AM"
+                                            className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                             value={shopData.timing.open}
                                             onChange={e => setShopData({ ...shopData, timing: { ...shopData.timing, open: e.target.value } })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Closing Time</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Closing Time</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-gray-50 dark:bg-gray-700 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-primary transition-all dark:text-white"
+                                            placeholder="e.g. 11:00 PM"
+                                            className="w-full bg-gray-50 dark:bg-gray-700/80 border border-gray-200/80 dark:border-gray-600/80 rounded-2xl p-4 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none"
                                             value={shopData.timing.close}
                                             onChange={e => setShopData({ ...shopData, timing: { ...shopData.timing, close: e.target.value } })}
                                         />
@@ -5821,15 +5828,15 @@ const UserProfile = () => {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">City</label>
-                                            <input type="text" required className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold border-none focus:ring-2 ring-primary transition-all" value={addressFormData.city} onChange={e => setAddressFormData({ ...addressFormData, city: e.target.value })} />
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">City</label>
+                                            <input type="text" required className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border border-gray-200/80 dark:border-gray-600/80 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 ring-primary transition-all outline-none" value={addressFormData.city} onChange={e => setAddressFormData({ ...addressFormData, city: e.target.value })} placeholder="City / District" />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">State</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">State</label>
                                         <select
                                             required
-                                            className="w-full bg-gray-50 rounded-2xl p-4 text-sm font-bold border-none focus:ring-2 ring-primary transition-all outline-none"
+                                            className="w-full bg-gray-50 dark:bg-gray-700 rounded-2xl p-4 text-sm font-bold border border-gray-200/80 dark:border-gray-600/80 text-gray-900 dark:text-white focus:ring-2 ring-primary transition-all outline-none cursor-pointer"
                                             value={addressFormData.state || ''}
                                             onChange={e => setAddressFormData({ ...addressFormData, state: e.target.value })}
                                         >

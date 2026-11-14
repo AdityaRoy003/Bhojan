@@ -172,3 +172,4 @@ const SlideToPay = ({
 };
 
 export default SlideToPay;
+
