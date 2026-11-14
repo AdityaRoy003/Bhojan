@@ -1,6 +1,11 @@
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:8000', {
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ||
+    (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8000'
+        : '/');
+
+const socket = io(SOCKET_URL, {
     withCredentials: true,
     autoConnect: false
 });

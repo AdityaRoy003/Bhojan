@@ -65,12 +65,12 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com", "https://accounts.google.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com", "https://accounts.google.com", "https://checkout.razorpay.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
             imgSrc: ["'self'", "data:", "blob:", "https:"],
-            connectSrc: ["'self'", "http://localhost:8000", "ws://localhost:8000", process.env.FRONTEND_URL || ''].filter(Boolean),
-            frameSrc: ["'none'"],                       // block iframing entirely
+            connectSrc: ["'self'", "http://localhost:8000", "ws://localhost:8000", "https://api.razorpay.com", "https://lumberjack.razorpay.com", "https:", "wss:", process.env.FRONTEND_URL || ''].filter(Boolean),
+            frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
             objectSrc: ["'none'"],
             upgradeInsecureRequests: [],
         },
@@ -354,6 +354,19 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/quests', require('./routes/questRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
+
+// Serve static frontend assets in production if frontend/dist exists
+const path = require('path');
+const fs = require('fs');
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+
+if (fs.existsSync(frontendDistPath)) {
+    app.use(express.static(frontendDistPath));
+    app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api') || req.path === '/health') return next();
+        res.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
+}
 
 // Global Error Handler
 const { errorHandler } = require('./middlewares/errorMiddleware');
